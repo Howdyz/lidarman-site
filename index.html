@@ -259,6 +259,7 @@
       <label>Search radius (meters)</label>
       <input type="number" id="radiusInput" value="300">
       <button class="primary" id="searchBtn">Search</button>
+      <button class="secondary-btn" id="viewToggleBtn" type="button" disabled>🔦 Lidar view: on</button>
       <div id="toolStatus"></div>
       <div id="trialStatus">Loading trial status…</div>
       <div class="cand-legend">
@@ -654,6 +655,10 @@
         map.invalidateSize();
         map.fitBounds(data.bounds);
 
+        lidarViewOn = true;
+        viewToggleBtn.disabled = false;
+        viewToggleBtn.textContent = '🔦 Lidar view: on';
+
         candidateMarkers.clearLayers();
         (data.candidates || []).slice(0, 60).forEach(c => {
           L.circleMarker([c.lat, c.lon], { radius: 6, color: shapeColor(c.shape), weight: 2, fillOpacity: 0.2 })
@@ -666,6 +671,15 @@
 
   searchBtn.addEventListener('click', runSearch);
   document.getElementById('placeInput').addEventListener('keydown', e => { if (e.key === 'Enter') runSearch(); });
+
+  const viewToggleBtn = document.getElementById('viewToggleBtn');
+  let lidarViewOn = true;
+  viewToggleBtn.addEventListener('click', () => {
+    if (!compositeOverlay) return;
+    lidarViewOn = !lidarViewOn;
+    compositeOverlay.setOpacity(lidarViewOn ? 0.7 : 0);
+    viewToggleBtn.textContent = lidarViewOn ? '🔦 Lidar view: on' : '🛰️ Lidar view: off';
+  });
 
   const useLocationBtn = document.getElementById('useLocationBtn');
   const locationStatusEl = document.getElementById('locationStatus');
