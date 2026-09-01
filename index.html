@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Liedarman — LIDAR-Based Structure Detection</title>
+<meta name="description" content="A hosted tool for detecting archaeological and historical structures from airborne LIDAR elevation data.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #faf7f0;
+    --ink: #1c1a17;
+    --ink-soft: #4a453e;
+    --rule: #d8d0c0;
+    --accent: #7a3b2e;
+    --accent-soft: #ac6a52;
+    --fig-bg: #f0ebe0;
+    --code-bg: #efe9db;
+    --shadow: rgba(28, 26, 23, 0.08);
+    --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --mono: "JetBrains Mono", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--serif);
+    line-height: 1.65;
+    font-size: 18px;
+  }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 0 24px; }
+
+  header.top {
+    border-bottom: 1px solid var(--rule);
+    padding: 14px 0;
+    position: sticky; top: 0; background: rgba(250,247,240,0.92); backdrop-filter: blur(4px);
+    z-index: 10;
+  }
+  header.top .wrap { display: flex; justify-content: space-between; align-items: center; }
+  header.top .brand { font-weight: 700; font-size: 1.05em; letter-spacing: 0.02em; }
+  header.top a.gh {
+    font-family: var(--mono); font-size: 0.85em; text-decoration: none;
+    color: var(--paper); background: var(--ink); padding: 7px 14px; border-radius: 3px;
+  }
+  header.top a.gh:hover { background: var(--accent); }
+
+  .hero { padding: 56px 0 20px; }
+  .hero h1 { font-size: 2.3em; margin: 0 0 6px; line-height: 1.15; }
+  .hero .subtitle { font-size: 1.2em; color: var(--ink-soft); font-style: italic; margin-bottom: 22px; }
+  .meta-line { font-family: var(--mono); font-size: 0.82em; color: var(--ink-soft); margin-bottom: 28px; }
+  .meta-line a { color: var(--accent); }
+
+  .abstract {
+    background: var(--fig-bg);
+    border-left: 3px solid var(--accent);
+    padding: 20px 24px;
+    margin: 24px 0 44px;
+    font-size: 0.97em;
+  }
+  .abstract .label { font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.75em; color: var(--accent); display: block; margin-bottom: 10px; }
+
+  nav.toc {
+    font-size: 0.88em; color: var(--ink-soft); margin-bottom: 48px;
+    border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding: 14px 0;
+  }
+  nav.toc a { color: var(--ink-soft); text-decoration: none; margin-right: 4px; }
+  nav.toc a:hover { color: var(--accent); text-decoration: underline; }
+  nav.toc ol { margin: 6px 0 0; padding-left: 20px; columns: 2; }
+
+  section { margin-bottom: 46px; }
+  h2 { font-size: 1.5em; border-bottom: 1px solid var(--rule); padding-bottom: 8px; margin-bottom: 18px; }
+  h3 { font-size: 1.15em; margin-bottom: 10px; color: var(--ink); }
+  p { margin: 0 0 16px; }
+  ul, ol { margin: 0 0 16px; padding-left: 24px; }
+  li { margin-bottom: 6px; }
+
+  figure { margin: 26px 0; }
+  figure img { width: 100%; border-radius: 4px; border: 1px solid var(--rule); display: block; box-shadow: 0 2px 10px var(--shadow); }
+  figcaption { font-size: 0.85em; color: var(--ink-soft); margin-top: 8px; }
+  figcaption b { color: var(--ink); }
+
+  .fig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 640px) { .fig-grid { grid-template-columns: 1fr; } }
+
+  code, pre { font-family: var(--mono); font-size: 0.85em; }
+  code { background: var(--code-bg); padding: 2px 5px; border-radius: 3px; }
+  pre {
+    background: var(--code-bg); padding: 14px 16px; border-radius: 5px; overflow-x: auto;
+    border: 1px solid var(--rule);
+  }
+  pre code { background: none; padding: 0; }
+
+  table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 0.92em; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule); }
+  th { font-family: var(--mono); font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft); }
+  td.num { font-family: var(--mono); }
+
+  .callout {
+    background: var(--fig-bg); border-radius: 5px; padding: 16px 18px; margin: 20px 0;
+    font-size: 0.92em; border: 1px solid var(--rule);
+  }
+  .callout .tag { font-family: var(--mono); font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); display: block; margin-bottom: 6px; }
+
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 0.85em; color: var(--ink-soft); margin: 8px 0 18px; }
+  .legend span.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+
+  footer { border-top: 1px solid var(--rule); padding: 28px 0 50px; color: var(--ink-soft); font-size: 0.85em; }
+  footer a { color: var(--accent); }
+
+  .badge-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 18px 0 0; }
+  .badge-row img { height: 20px; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand">Liedarman</div>
+    <a class="gh" href="#access">Get Access</a>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="hero">
+    <h1>Liedarman</h1>
+    <div class="subtitle">Detecting vanished structures in airborne LIDAR terrain data</div>
+    <div class="meta-line">
+      Howdyz · Hosted tool
+    </div>
+    <div class="badge-row">
+      <img src="https://img.shields.io/badge/python-3.12-blue.svg" alt="python">
+      <img src="https://img.shields.io/badge/status-active--development-orange.svg" alt="status">
+      <img src="https://img.shields.io/badge/data-USGS%203DEP-informational.svg" alt="data source">
+    </div>
+  </div>
+
+  <div class="abstract">
+    <span class="label">Abstract</span>
+    Liedarman is a software pipeline for surfacing archaeological and
+    historical structures — building foundations, mounds, berms, sunken
+    paths — from airborne LIDAR elevation data, aimed primarily at
+    metal-detector hobbyists and independent researchers rather than
+    institutional archaeology teams. The tool fetches or ingests a
+    bare-earth digital elevation model, derives a set of established
+    terrain-visualization products (multi-directional hillshade, slope,
+    Local Relief Model, positive/negative sky-view openness), and applies
+    contour-based geometric analysis to automatically rank candidate
+    structure locations by how rectangular or circular they are — man-made
+    features tend toward one or the other; natural terrain rarely does. We
+    validate the detection pipeline against a synthetic DEM with known
+    ground-truth structures, demonstrate the full pipeline against a
+    real-world LIDAR tile, and provide both a scriptable CLI and an
+    interactive map-based web application with a present/past "flicker
+    comparator" for visually locating a structure's present-day position.
+  </div>
+
+  <nav class="toc">
+    Contents
+    <ol>
+      <li><a href="#motivation">Motivation</a></li>
+      <li><a href="#methods">Methods</a></li>
+      <li><a href="#validation">Validation</a></li>
+      <li><a href="#case-study">Case study: Gettysburg, PA</a></li>
+      <li><a href="#flicker">Present/past comparison</a></li>
+      <li><a href="#webapp">Interactive web application</a></li>
+      <li><a href="#access">Get access</a></li>
+      <li><a href="#limitations">Limitations &amp; future work</a></li>
+    </ol>
+  </nav>
+
+  <section id="motivation">
+    <h2>1. Motivation</h2>
+    <p>
+      Airborne LIDAR has become a standard remote-sensing tool in
+      archaeology because of one property optical imagery lacks: a single
+      laser pulse can return multiple times as it passes through vegetation
+      canopy before hitting bare ground, letting a classified point cloud
+      be filtered down to a "bare-earth" elevation model with the trees and
+      undergrowth digitally stripped away. This is the same property behind
+      well-known LIDAR-driven discoveries of settlement networks hidden
+      under dense forest canopy in Mesoamerica and Southeast Asia — the
+      structures were never truly hidden underground, only hidden from
+      optical sensors by what was growing on top of them.
+    </p>
+    <p>
+      Raw elevation alone, however, rarely shows anything useful: a
+      building foundation reduced to a few centimeters of relief is
+      invisible against natural micro-topography and sensor noise at
+      normal color scales. The techniques below — long established in
+      archaeological remote-sensing literature — exaggerate exactly that
+      kind of small local relief, turning elevation data most people would
+      dismiss as "just a flat field" into a map of what used to stand
+      there.
+    </p>
+  </section>
+
+  <section id="methods">
+    <h2>2. Methods</h2>
+
+    <h3>2.1 Data acquisition</h3>
+    <p>
+      Input can be a user-supplied DEM GeoTIFF, a ground-classified LAS/LAZ
+      point cloud (gridded via linear interpolation over the classified
+      ground returns), or — for US locations — a place name or coordinate
+      pair, geocoded via OpenStreetMap/Nominatim and fetched directly from
+      USGS's 3D Elevation Program (3DEP) web services, with no manual
+      download step and no API key required.
+    </p>
+
+    <h3>2.2 Terrain visualization derivatives</h3>
+    <p>Four derived products are computed from the DEM:</p>
+    <ul>
+      <li><b>Multi-directional hillshade</b> — simulated illumination averaged
+        over eight sun azimuths, reducing the single-light-direction bias of
+        a conventional hillshade.</li>
+      <li><b>Slope</b> — steepness at each cell, in degrees.</li>
+      <li><b>Local Relief Model (LRM)</b> — the DEM minus a Gaussian-smoothed
+        copy of itself, isolating small local bumps and depressions from the
+        broader regional terrain trend.</li>
+      <li><b>Sky-view openness</b> (positive and negative) — the mean horizon
+        angle across several compass directions at each cell; positive
+        openness highlights convex features (mounds, walls), negative
+        highlights concave ones (pits, ditches, sunken paths), independent of
+        any single simulated light source.</li>
+    </ul>
+    <p>
+      These four are fused into an RGB composite (openness channels plus
+      hillshade) in which man-made geometry tends to separate visually from
+      the more textured, irregular signature of natural terrain.
+    </p>
+
+    <h3>2.3 Candidate detection</h3>
+    <p>
+      The LRM is thresholded against local background noise (mean ± <i>k</i>
+      standard deviations) into "raised" and "depressed" binary masks, which
+      are then processed with OpenCV contour extraction. Each contour is
+      scored for <i>rectangularity</i> (contour area over minimum-bounding-rectangle
+      area) and <i>circularity</i> (4π·area / perimeter²) — shapes clearing
+      either threshold are classified accordingly and ranked by score; the
+      rest are kept as lower-confidence "irregular" candidates.
+    </p>
+    <div class="callout">
+      <span class="tag">Methodological note</span>
+      A large, perfectly flat raised feature — a big rectangular building
+      pad, for instance — is nearly invisible to the LRM in its own
+      <i>interior</i>: Gaussian local-relief smoothing only lights up the
+      <i>edges</i> of a plateau much bigger than the smoothing radius,
+      leaving a thin outline that fragments into disconnected pieces right
+      at the threshold boundary rather than one closed shape. We apply
+      morphological closing to the thresholded mask before contour
+      extraction specifically to bridge these fragments back into a single
+      connected loop, restoring the full footprint area to the shape score
+      rather than a handful of edge slivers. This was discovered directly
+      during validation (§3) and is not something the underlying LRM
+      technique compensates for on its own.
+    </div>
+  </section>
+
+  <section id="validation">
+    <h2>3. Validation against synthetic ground truth</h2>
+    <p>
+      Before trusting the pipeline against real data, we generated a
+      synthetic DEM — rolling terrain plus Gaussian noise — with three
+      known structures embedded at known locations: a 40 × 20&nbsp;m
+      rectangular raised foundation, an 18&nbsp;m-diameter circular raised
+      mound, and a diagonal sunken linear ditch. The detection pipeline was
+      run blind to these ground-truth positions.
+    </p>
+    <div class="fig-grid">
+      <figure>
+        <img src="assets/synthetic_lrm.jpg" alt="Local Relief Model of the synthetic validation DEM">
+        <figcaption><b>Figure 1.</b> Local Relief Model of the synthetic
+          test DEM. All three embedded features are visible against the
+          background noise.</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/synthetic_candidates.jpg" alt="Auto-detected candidates on the synthetic DEM">
+        <figcaption><b>Figure 2.</b> Auto-flagged candidates (numbered
+          markers). The rectangle and circle rank #1 and #2 by confidence
+          score.</figcaption>
+      </figure>
+    </div>
+    <table>
+      <tr><th>Rank</th><th>Shape</th><th>Detected area</th><th>True area</th><th>Detected size</th><th>True size</th></tr>
+      <tr><td class="num">1</td><td>rectangular</td><td class="num">751 m²</td><td class="num">800 m²</td><td class="num">20.0 × 39.5 m</td><td class="num">20 × 40 m</td></tr>
+      <tr><td class="num">2</td><td>circular</td><td class="num">238 m²</td><td class="num">~254 m²</td><td class="num">17.7 m dia.</td><td class="num">18 m dia.</td></tr>
+    </table>
+    <p>
+      Both embedded structures were recovered as the top two ranked
+      candidates, with size and location matching ground truth closely.
+      Remaining candidates in the ranked list are false positives driven by
+      the synthetic terrain's random noise floor — expected, and
+      consistently ranked below the true structures by confidence score.
+    </p>
+  </section>
+
+  <section id="case-study">
+    <h2>4. Case study: Gettysburg, PA</h2>
+    <p>
+      To test the pipeline against real, auto-fetched LIDAR data, we ran it
+      against an 800 × 800&nbsp;m area centered on downtown Gettysburg,
+      Pennsylvania, at 1&nbsp;m resolution, fetched automatically from USGS
+      3DEP by place name alone.
+    </p>
+    <div class="fig-grid">
+      <figure>
+        <img src="assets/gettysburg_composite.jpg" alt="RGB composite of Gettysburg PA LIDAR data">
+        <figcaption><b>Figure 3.</b> RGB composite (positive openness /
+          inverted negative openness / hillshade). Building outlines,
+          streets, and the Lincoln Square traffic circle resolve clearly.</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/gettysburg_candidates.jpg" alt="Auto-detected candidates over Gettysburg PA">
+        <figcaption><b>Figure 4.</b> Auto-flagged candidates over the same
+          area — 477 candidates in this dense downtown block.</figcaption>
+        <div class="legend">
+          <span><span class="dot" style="background:#ffd54f;"></span>rectangular</span>
+          <span><span class="dot" style="background:#4dd0e1;"></span>circular</span>
+          <span><span class="dot" style="background:#ff7043;"></span>irregular</span>
+        </div>
+      </figure>
+    </div>
+    <div class="callout">
+      <span class="tag">Scope of this result</span>
+      This case study validates that the pipeline correctly resolves
+      rectilinear/circular geometry from real LIDAR data — but it does so
+      against <i>currently-standing</i> downtown buildings, not the
+      vanished-structure case the tool is ultimately built for. USGS
+      3DEP's "DEM" product in dense urban areas is not guaranteed to be pure
+      bare-earth. A rural site where nothing is standing today, with a
+      known historical structure, is the natural next validation target.
+    </div>
+  </section>
+
+  <section id="flicker">
+    <h2>5. Present/past comparison</h2>
+    <p>
+      Once a candidate location is identified, the next question for a
+      hobbyist is: where does that map onto the world as it actually looks
+      today? Liedarman builds a "blink comparator" — the same technique
+      astronomers have long used to spot a moving object by flashing two
+      photos of the same sky back and forth — that flashes between a
+      present-day satellite image and the LIDAR past-structure composite,
+      aligned pixel-for-pixel, in real time. In the web application this is
+      a live map overlay; the CLI additionally emits a standalone,
+      self-contained HTML file for offline viewing.
+    </p>
+  </section>
+
+  <section id="webapp">
+    <h2>6. Interactive web application</h2>
+    <p>
+      A Leaflet-based map interface runs over the same pipeline described
+      above:
+    </p>
+    <ul>
+      <li>Search by place name or coordinates — runs the full fetch →
+        derive → detect pipeline server-side</li>
+      <li>Candidate markers colored and ranked by shape/confidence, with
+        details on click</li>
+      <li>Real-time flicker toggle (or space bar) between the live
+        satellite basemap and the past-structure overlay</li>
+      <li>Click anywhere to name and save your own flagged location,
+        persisted locally across sessions</li>
+    </ul>
+  </section>
+
+  <section id="access">
+    <h2>7. Get access</h2>
+    <p>
+      Liedarman is a hosted tool — each search runs real LIDAR fetch,
+      terrain-derivative, and detection compute server-side, which costs
+      real time and resources per query rather than being a one-time
+      download. Access details and pricing are being finalized.
+    </p>
+    <div class="callout">
+      <span class="tag">Status</span>
+      The tool is in active development. Check back here for availability,
+      or watch this page for updates.
+    </div>
+  </section>
+
+  <section id="limitations">
+    <h2>8. Limitations &amp; future work</h2>
+    <ul>
+      <li><b>False positives are expected.</b> Natural terrain noise,
+        vegetation edges, and shadow artifacts can score high enough to be
+        flagged. Auto-detection is a starting point for narrowing a search
+        area, not a verdict — always cross-check the composite/overlay
+        images directly.</li>
+      <li><b>Large flat features need parameter tuning.</b> The
+        morphological-closing kernel (§2.3) must be sized relative to the
+        smallest feature you expect; a mismatch fragments detection results.</li>
+      <li><b>DEM quality varies by location.</b> Urban "bare-earth" products
+        aren't always guaranteed to exclude standing structures; rural
+        agricultural or forested sites are typically cleaner test cases.</li>
+      <li><b>Not yet validated against a genuinely vanished structure.</b>
+        Every validation so far used either synthetic ground truth or
+        currently-standing real buildings.</li>
+      <li><b>Roadmap:</b> weighting/ML-based confidence scoring beyond pure
+        geometric heuristics, non-US data source support, and packaging for
+        wider distribution.</li>
+    </ul>
+    <p>
+      No legal or jurisdictional restrictions are built into the tool
+      itself — where it is or isn't appropriate to search with the results
+      is entirely the responsibility of the person using it, the same as
+      any other detection or survey equipment.
+    </p>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    &copy; Liedarman.
+  </div>
+</footer>
+
+</body>
+</html>
