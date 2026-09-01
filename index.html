@@ -139,7 +139,7 @@
   #toolSidebar { width: 300px; flex-shrink: 0; padding: 16px; box-sizing: border-box; }
   #map { flex: 1; min-height: 520px; }
   #toolSidebar label { display: block; font-size: 0.78em; color: #aaa; margin: 10px 0 3px; }
-  #toolSidebar input[type=text], #toolSidebar input[type=number] {
+  #toolSidebar input[type=text], #toolSidebar input[type=number], #toolSidebar select {
     width: 100%; box-sizing: border-box; padding: 7px; border-radius: 4px; border: 1px solid #444;
     background: #262626; color: #eee; font-size: 0.9em;
   }
@@ -268,6 +268,21 @@
       </div>
       <button class="secondary-btn" id="useLocationBtn" type="button">📍 Use my location</button>
       <div id="locationStatus"></div>
+      <label>...or pick a famous battlefield (US only — data source coverage)</label>
+      <select id="battlefieldSelect">
+        <option value="">— Select a battlefield —</option>
+        <option value="39.8309,-77.2311">Gettysburg, PA (1863)</option>
+        <option value="39.4762,-77.7517">Antietam, MD (1862)</option>
+        <option value="38.8146,-77.5222">Manassas / Bull Run, VA (1861 &amp; 1862)</option>
+        <option value="35.1400,-88.3450">Shiloh, TN (1862)</option>
+        <option value="32.3526,-90.8779">Vicksburg, MS (1863)</option>
+        <option value="34.9490,-85.2569">Chickamauga, GA (1863)</option>
+        <option value="38.3141,-77.6350">Chancellorsville, VA (1863)</option>
+        <option value="37.2380,-76.5083">Yorktown, VA (1781)</option>
+        <option value="43.0117,-73.6459">Saratoga, NY (1777)</option>
+        <option value="35.1378,-81.8129">Cowpens, SC (1781)</option>
+        <option value="45.5670,-107.4284">Little Bighorn, MT (1876)</option>
+      </select>
       <label>Search radius (meters)</label>
       <input type="number" id="radiusInput" value="300">
       <button class="primary" id="searchBtn">Search</button>
@@ -702,11 +717,22 @@
     viewToggleBtn.textContent = lidarViewOn ? '🔦 Lidar view: on' : '🛰️ Lidar view: off';
   });
 
+  document.getElementById('battlefieldSelect').addEventListener('change', (e) => {
+    if (!e.target.value) return;
+    const [lat, lon] = e.target.value.split(',').map(Number);
+    document.getElementById('placeInput').value = '';
+    document.getElementById('latInput').value = lat.toFixed(6);
+    document.getElementById('lonInput').value = lon.toFixed(6);
+    map.invalidateSize();
+    map.setView([lat, lon], 14);
+  });
+
   const clearBtn = document.getElementById('clearBtn');
   clearBtn.addEventListener('click', () => {
     document.getElementById('placeInput').value = '';
     document.getElementById('latInput').value = '';
     document.getElementById('lonInput').value = '';
+    document.getElementById('battlefieldSelect').value = '';
     setStatus('');
     map.closePopup();
 
