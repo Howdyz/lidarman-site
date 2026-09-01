@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
   :root {
     --paper: #faf7f0;
@@ -112,6 +113,53 @@
 
   .badge-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 18px 0 0; }
   .badge-row img { height: 20px; }
+
+  /* --- Interactive tool --- */
+  #tool { max-width: 1100px; margin: 0 auto 56px; padding: 0 24px; font-family: system-ui, sans-serif; }
+  #tool h2 { max-width: 780px; margin: 0 auto 18px; font-family: var(--serif); font-size: 1.5em; border-bottom: 1px solid var(--rule); padding-bottom: 8px; }
+  #toolPanel { display: flex; gap: 0; background: #1a1a1a; color: #eee; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 20px var(--shadow); }
+  #toolSidebar { width: 300px; flex-shrink: 0; padding: 16px; box-sizing: border-box; }
+  #map { flex: 1; min-height: 520px; }
+  #toolSidebar label { display: block; font-size: 0.78em; color: #aaa; margin: 10px 0 3px; }
+  #toolSidebar input[type=text], #toolSidebar input[type=number] {
+    width: 100%; box-sizing: border-box; padding: 7px; border-radius: 4px; border: 1px solid #444;
+    background: #262626; color: #eee; font-size: 0.9em;
+  }
+  #toolSidebar button.primary {
+    width: 100%; margin-top: 12px; padding: 9px 12px; border-radius: 4px; border: none;
+    background: #3a7bd5; color: white; font-size: 0.92em; cursor: pointer;
+  }
+  #toolSidebar button.primary:hover { background: #2f66b3; }
+  #toolSidebar button.primary:disabled { background: #555; cursor: not-allowed; }
+  #trialStatus { font-size: 0.8em; color: #ffb74d; margin-top: 10px; line-height: 1.5; }
+  #trialStatus.unlocked { color: #81c784; }
+  #toolStatus { font-size: 0.82em; color: #ffb74d; margin-top: 8px; min-height: 1.2em; }
+  .cand-legend { font-size: 0.75em; color: #999; margin-top: 14px; line-height: 1.6; }
+  .cand-legend .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; }
+
+  #paywallOverlay {
+    display: none; position: fixed; inset: 0; background: rgba(20,18,16,0.75); z-index: 1000;
+    align-items: center; justify-content: center; padding: 20px;
+  }
+  #paywallOverlay.show { display: flex; }
+  #paywallCard {
+    background: var(--paper); color: var(--ink); border-radius: 8px; padding: 32px;
+    max-width: 420px; font-family: var(--serif); text-align: center;
+  }
+  #paywallCard h3 { margin-top: 0; }
+  #paywallCard button.primary {
+    background: var(--accent); color: white; border: none; padding: 12px 24px; border-radius: 4px;
+    font-size: 1em; cursor: pointer; margin-top: 16px; font-family: var(--serif);
+  }
+  #paywallCard button.secondary {
+    background: none; border: none; color: var(--ink-soft); text-decoration: underline;
+    cursor: pointer; margin-top: 12px; display: block; margin-left: auto; margin-right: auto; font-family: var(--serif);
+  }
+  #unlockedBanner {
+    display: none; max-width: 780px; margin: 0 auto 24px; padding: 14px 18px; border-radius: 5px;
+    background: #e8f5e9; border: 1px solid #81c784; color: #2e7d32; font-size: 0.92em;
+  }
+  #unlockedBanner.show { display: block; }
 </style>
 </head>
 <body>
@@ -119,7 +167,7 @@
 <header class="top">
   <div class="wrap">
     <div class="brand">Liedarman</div>
-    <a class="gh" href="#access">Get Access</a>
+    <a class="gh" href="#try-it">Try It</a>
   </div>
 </header>
 
@@ -158,9 +206,52 @@
     comparator" for visually locating a structure's present-day position.
   </div>
 
+</div>
+
+<div id="unlockedBanner"><b>Unlocked!</b> Payment confirmed — you have unlimited searches on this device now.</div>
+
+<div id="tool">
+  <h2 id="try-it">Try it</h2>
+  <div id="toolPanel">
+    <div id="toolSidebar">
+      <label>Place name</label>
+      <input type="text" id="placeInput" placeholder="e.g. Gettysburg, PA">
+      <label>...or lat, lon</label>
+      <div style="display:flex; gap:6px;">
+        <input type="text" id="latInput" placeholder="lat">
+        <input type="text" id="lonInput" placeholder="lon">
+      </div>
+      <label>Search radius (meters)</label>
+      <input type="number" id="radiusInput" value="300">
+      <button class="primary" id="searchBtn">Search</button>
+      <div id="toolStatus"></div>
+      <div id="trialStatus">Loading trial status…</div>
+      <div class="cand-legend">
+        <span class="dot" style="background:#ffd54f;"></span>rectangular&nbsp;&nbsp;
+        <span class="dot" style="background:#4dd0e1;"></span>circular&nbsp;&nbsp;
+        <span class="dot" style="background:#ff7043;"></span>irregular
+        <br>Click the map to save your own flagged spot.
+      </div>
+    </div>
+    <div id="map"></div>
+  </div>
+</div>
+
+<div id="paywallOverlay">
+  <div id="paywallCard">
+    <h3>Free trial used up</h3>
+    <p id="paywallMessage">You've used your free searches for this device.</p>
+    <button class="primary" id="unlockBtn">Unlock — $10 one-time</button>
+    <button class="secondary" id="paywallCloseBtn">Maybe later</button>
+  </div>
+</div>
+
+<div class="wrap">
+
   <nav class="toc">
     Contents
     <ol>
+      <li><a href="#try-it">Try it</a></li>
       <li><a href="#motivation">Motivation</a></li>
       <li><a href="#methods">Methods</a></li>
       <li><a href="#validation">Validation</a></li>
@@ -375,13 +466,11 @@
       Liedarman is a hosted tool — each search runs real LIDAR fetch,
       terrain-derivative, and detection compute server-side, which costs
       real time and resources per query rather than being a one-time
-      download. Access details and pricing are being finalized.
+      download. Try it free — the first three searches on a device are on
+      the house, then a one-time $10 payment unlocks unlimited searches on
+      that device, no subscription.
     </p>
-    <div class="callout">
-      <span class="tag">Status</span>
-      The tool is in active development. Check back here for availability,
-      or watch this page for updates.
-    </div>
+    <p><a href="#try-it">↑ Jump to the tool</a></p>
   </section>
 
   <section id="limitations">
@@ -420,6 +509,159 @@
     &copy; Liedarman.
   </div>
 </footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function () {
+  const API_BASE = 'https://liedarman-backend.onrender.com';
+
+  function getDeviceId() {
+    let id = localStorage.getItem('liedarmanDeviceId');
+    if (!id) {
+      id = (crypto.randomUUID ? crypto.randomUUID() : ('id-' + Math.random().toString(36).slice(2) + Date.now()));
+      localStorage.setItem('liedarmanDeviceId', id);
+    }
+    return id;
+  }
+  const deviceId = getDeviceId();
+
+  const map = L.map('map').setView([39.8283, -98.5795], 4);
+  const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Esri World Imagery', maxZoom: 20
+  }).addTo(map);
+  const streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
+  });
+  L.control.layers({ 'Satellite': satellite, 'Streets': streets }).addTo(map);
+
+  let compositeOverlay = null;
+  let candidateMarkers = L.layerGroup().addTo(map);
+  let savedMarkers = L.layerGroup().addTo(map);
+
+  const statusEl = document.getElementById('toolStatus');
+  const trialEl = document.getElementById('trialStatus');
+  const searchBtn = document.getElementById('searchBtn');
+  const paywallOverlay = document.getElementById('paywallOverlay');
+  const paywallMessage = document.getElementById('paywallMessage');
+
+  function setStatus(msg, isError) {
+    statusEl.textContent = msg || '';
+    statusEl.style.color = isError ? '#ff8a80' : '#ffb74d';
+  }
+
+  function shapeColor(shape) {
+    return { rectangular: '#ffd54f', circular: '#4dd0e1', irregular: '#ff7043' }[shape] || '#ffffff';
+  }
+
+  function renderTrialStatus(data) {
+    if (data.unlocked) {
+      trialEl.textContent = '✅ Unlocked — unlimited searches on this device.';
+      trialEl.classList.add('unlocked');
+    } else {
+      trialEl.classList.remove('unlocked');
+      const used = data.scansUsed || 0;
+      const allowed = data.scansAllowed || 3;
+      trialEl.textContent = `${Math.max(0, allowed - used)} of ${allowed} free searches remaining on this device.`;
+    }
+  }
+
+  function refreshTrialStatus() {
+    fetch(`${API_BASE}/api/access/status?deviceId=${encodeURIComponent(deviceId)}`)
+      .then(r => r.json()).then(renderTrialStatus).catch(() => {});
+  }
+
+  function showPaywall(message) {
+    paywallMessage.textContent = message || "You've used your free searches for this device.";
+    paywallOverlay.classList.add('show');
+  }
+  function hidePaywall() { paywallOverlay.classList.remove('show'); }
+
+  document.getElementById('paywallCloseBtn').addEventListener('click', hidePaywall);
+  document.getElementById('unlockBtn').addEventListener('click', () => {
+    fetch(`${API_BASE}/api/access/checkout`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceId })
+    }).then(r => r.json()).then(data => {
+      if (data.url) { window.location.href = data.url; }
+      else { showPaywall(data.error || 'Payments are not available right now — try again later.'); }
+    });
+  });
+
+  function runSearch() {
+    const place = document.getElementById('placeInput').value.trim();
+    const latVal = document.getElementById('latInput').value.trim();
+    const lonVal = document.getElementById('lonInput').value.trim();
+    const radius = parseFloat(document.getElementById('radiusInput').value) || 300;
+
+    const body = { deviceId, radius, detect: true };
+    if (place) { body.place = place; }
+    else if (latVal && lonVal) { body.lat = parseFloat(latVal); body.lon = parseFloat(lonVal); }
+    else { setStatus('Enter a place name or lat/lon.', true); return; }
+
+    setStatus('Fetching + processing LIDAR data (can take 30-90s)...');
+    searchBtn.disabled = true;
+
+    fetch(`${API_BASE}/api/search`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+    })
+      .then(async r => {
+        const data = await r.json();
+        if (r.status === 402) { setStatus(''); searchBtn.disabled = false; showPaywall(data.message); renderTrialStatus(data); return; }
+        if (!r.ok) { setStatus(data.error || 'Search failed.', true); searchBtn.disabled = false; return; }
+
+        setStatus('');
+        searchBtn.disabled = false;
+        renderTrialStatus(data);
+
+        if (compositeOverlay) map.removeLayer(compositeOverlay);
+        compositeOverlay = L.imageOverlay(`${API_BASE}${data.composite_url}`, data.bounds, { opacity: 0.7 });
+        compositeOverlay.addTo(map);
+        map.invalidateSize();
+        map.fitBounds(data.bounds);
+
+        candidateMarkers.clearLayers();
+        (data.candidates || []).slice(0, 60).forEach(c => {
+          L.circleMarker([c.lat, c.lon], { radius: 6, color: shapeColor(c.shape), weight: 2, fillOpacity: 0.2 })
+            .bindPopup(`<b>#${c.rank} ${c.shape} (${c.kind})</b><br>score: ${c.score.toFixed(2)}<br>~${Math.round(c.area_m2)} m²`)
+            .addTo(candidateMarkers);
+        });
+      })
+      .catch(err => { setStatus('Request failed: ' + err, true); searchBtn.disabled = false; });
+  }
+
+  searchBtn.addEventListener('click', runSearch);
+  document.getElementById('placeInput').addEventListener('keydown', e => { if (e.key === 'Enter') runSearch(); });
+
+  function loadSaved() {
+    fetch(`${API_BASE}/api/saved?deviceId=${encodeURIComponent(deviceId)}`)
+      .then(r => r.json()).then(items => {
+        savedMarkers.clearLayers();
+        (items || []).forEach(item => {
+          L.marker([item.lat, item.lon]).bindPopup(`<b>${item.name}</b><br>${item.notes || ''}`).addTo(savedMarkers);
+        });
+      });
+  }
+
+  map.on('click', (e) => {
+    const name = prompt('Name this spot:');
+    if (name === null) return;
+    const notes = prompt('Notes (optional):') || '';
+    fetch(`${API_BASE}/api/saved`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceId, lat: e.latlng.lat, lon: e.latlng.lng, name, notes })
+    }).then(() => loadSaved());
+  });
+
+  // Returning from Stripe checkout success_url=...?unlocked=1
+  if (new URLSearchParams(window.location.search).get('unlocked') === '1') {
+    document.getElementById('unlockedBanner').classList.add('show');
+    history.replaceState(null, '', window.location.pathname);
+  }
+
+  refreshTrialStatus();
+  loadSaved();
+})();
+</script>
 
 </body>
 </html>
