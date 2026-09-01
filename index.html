@@ -260,6 +260,7 @@
       <input type="number" id="radiusInput" value="300">
       <button class="primary" id="searchBtn">Search</button>
       <button class="secondary-btn" id="viewToggleBtn" type="button" disabled>🔦 Lidar view: on</button>
+      <button class="secondary-btn" id="clearBtn" type="button">🧹 Clear</button>
       <div id="toolStatus"></div>
       <div id="trialStatus">Loading trial status…</div>
       <div class="cand-legend">
@@ -679,6 +680,23 @@
     lidarViewOn = !lidarViewOn;
     compositeOverlay.setOpacity(lidarViewOn ? 0.7 : 0);
     viewToggleBtn.textContent = lidarViewOn ? '🔦 Lidar view: on' : '🛰️ Lidar view: off';
+  });
+
+  const clearBtn = document.getElementById('clearBtn');
+  clearBtn.addEventListener('click', () => {
+    document.getElementById('placeInput').value = '';
+    document.getElementById('latInput').value = '';
+    document.getElementById('lonInput').value = '';
+    setStatus('');
+    map.closePopup();
+
+    if (compositeOverlay) { map.removeLayer(compositeOverlay); compositeOverlay = null; }
+    if (searchPin) { map.removeLayer(searchPin); searchPin = null; }
+    candidateMarkers.clearLayers();
+
+    lidarViewOn = true;
+    viewToggleBtn.textContent = '🔦 Lidar view: on';
+    viewToggleBtn.disabled = true;
   });
 
   const useLocationBtn = document.getElementById('useLocationBtn');
