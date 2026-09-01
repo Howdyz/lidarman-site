@@ -185,6 +185,12 @@
     background: #e8f5e9; border: 1px solid #81c784; color: #2e7d32; font-size: 0.92em;
   }
   #unlockedBanner.show { display: block; }
+
+  .search-pin-icon {
+    font-size: 26px; line-height: 1; text-align: center; cursor: grab;
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
+  }
+  .search-pin-icon:active { cursor: grabbing; }
 </style>
 </head>
 <body>
@@ -259,7 +265,7 @@
         <span class="dot" style="background:#ffd54f;"></span>rectangular&nbsp;&nbsp;
         <span class="dot" style="background:#4dd0e1;"></span>circular&nbsp;&nbsp;
         <span class="dot" style="background:#ff7043;"></span>irregular
-        <br>Click the map to save your own flagged spot.
+        <br>Click the map to drop a pin there — drag it to fine-tune, then search or save it from its popup.
       </div>
     </div>
     <div id="map"></div>
@@ -703,14 +709,68 @@
       });
   }
 
-  map.on('click', (e) => {
+  function saveSpotAt(lat, lon) {
     const name = prompt('Name this spot:');
     if (name === null) return;
     const notes = prompt('Notes (optional):') || '';
     fetch(`${API_BASE}/api/saved`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ deviceId, lat: e.latlng.lat, lon: e.latlng.lng, name, notes })
+      body: JSON.stringify({ deviceId, lat, lon, name, notes })
     }).then(() => loadSaved());
+  }
+
+  const searchPinIcon = L.divIcon({
+    html: '📍', className: 'search-pin-icon', iconSize: [28, 28], iconAnchor: [14, 26]
+  });
+  let searchPin = null;
+
+  function fillCoordsFromPin(lat, lon) {
+    document.getElementById('placeInput').value = '';
+    document.getElementById('latInput').value = lat.toFixed(6);
+    document.getElementById('lonInput').value = lon.toFixed(6);
+  }
+
+  function popupHtmlFor(lat, lon) {
+    return `<div style="text-align:center;">
+      <div style="font-family:var(--mono, monospace); font-size:0.85em; margin-bottom:6px;">${lat.toFixed(5)}, ${lon.toFixed(5)}</div>
+      <button class="pin-search-btn" style="margin-right:6px; padding:4px 10px; cursor:pointer;">Search here</button>
+      <button class="pin-save-btn" style="padding:4px 10px; cursor:pointer;">📌 Save spot</button>
+    </div>`;
+  }
+
+  function placeSearchPin(lat, lon, openPopup) {
+    fillCoordsFromPin(lat, lon);
+    if (searchPin) {
+      searchPin.setLatLng([lat, lon]);
+    } else {
+      searchPin = L.marker([lat, lon], { icon: searchPinIcon, draggable: true })
+        .bindPopup(popupHtmlFor(lat, lon))
+        .addTo(map);
+      searchPin.on('drag', (e) => fillCoordsFromPin(e.target.getLatLng().lat, e.target.getLatLng().lng));
+      searchPin.on('dragend', (e) => {
+        const ll = e.target.getLatLng();
+        searchPin.setPopupContent(popupHtmlFor(ll.lat, ll.lng));
+      });
+    }
+    searchPin.setPopupContent(popupHtmlFor(lat, lon));
+    if (openPopup) searchPin.openPopup();
+  }
+
+  map.on('popupopen', (e) => {
+    const el = e.popup.getElement();
+    if (!el) return;
+    const searchBtnEl = el.querySelector('.pin-search-btn');
+    const saveBtnEl = el.querySelector('.pin-save-btn');
+    if (searchBtnEl) searchBtnEl.addEventListener('click', () => { map.closePopup(); runSearch(); });
+    if (saveBtnEl) saveBtnEl.addEventListener('click', () => {
+      const ll = searchPin.getLatLng();
+      map.closePopup();
+      saveSpotAt(ll.lat, ll.lng);
+    });
+  });
+
+  map.on('click', (e) => {
+    placeSearchPin(e.latlng.lat, e.latlng.lng, true);
   });
 
   // Returning from Stripe checkout success_url=...?unlocked=1
