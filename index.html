@@ -48,10 +48,28 @@
   }
   header.top a.gh:hover { background: var(--accent); }
 
-  .hero { padding: 56px 0 20px; }
-  .hero h1 { font-size: 2.3em; margin: 0 0 6px; line-height: 1.15; }
-  .hero .subtitle { font-size: 1.2em; color: var(--ink-soft); font-style: italic; margin-bottom: 22px; }
-  .meta-line { font-family: var(--mono); font-size: 0.82em; color: var(--ink-soft); margin-bottom: 28px; }
+  .hero {
+    position: relative;
+    min-height: 62vh;
+    display: flex;
+    align-items: flex-end;
+    background-image:
+      linear-gradient(to bottom, rgba(20,16,10,0.12) 0%, rgba(20,16,10,0.55) 62%, var(--paper) 100%),
+      url('assets/hero-background.jpg');
+    background-size: cover;
+    background-position: center 62%;
+  }
+  .hero-inner { padding: 56px 24px 40px; }
+  .hero h1 {
+    font-size: 2.6em; margin: 0 0 6px; line-height: 1.15;
+    color: #fdfaf3; text-shadow: 0 2px 18px rgba(0,0,0,0.45);
+  }
+  .hero .subtitle {
+    font-size: 1.25em; color: #f1e9d8; font-style: italic; margin-bottom: 22px;
+    text-shadow: 0 1px 12px rgba(0,0,0,0.5);
+  }
+  .hero .meta-line { color: #e5dcc8; margin-bottom: 28px; text-shadow: 0 1px 8px rgba(0,0,0,0.5); }
+  .hero .meta-line a { color: #f1cbb8; }
   .meta-line a { color: var(--accent); }
 
   .abstract {
@@ -171,9 +189,8 @@
   </div>
 </header>
 
-<div class="wrap">
-
-  <div class="hero">
+<div class="hero">
+  <div class="wrap hero-inner">
     <h1>Liedarman</h1>
     <div class="subtitle">Detecting vanished structures in airborne LIDAR terrain data</div>
     <div class="meta-line">
@@ -185,6 +202,9 @@
       <img src="https://img.shields.io/badge/data-USGS%203DEP-informational.svg" alt="data source">
     </div>
   </div>
+</div>
+
+<div class="wrap">
 
   <div class="abstract">
     <span class="label">Abstract</span>
