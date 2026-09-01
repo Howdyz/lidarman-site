@@ -161,6 +161,18 @@
   #toolStatus { font-size: 0.82em; color: #ffb74d; margin-top: 8px; min-height: 1.2em; }
   .cand-legend { font-size: 0.75em; color: #999; margin-top: 14px; line-height: 1.6; }
   .cand-legend .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; }
+  .legend-details { margin: 6px 0; }
+  .legend-details summary {
+    cursor: pointer; color: #8ab4f8; font-size: 0.95em; list-style: none;
+  }
+  .legend-details summary::-webkit-details-marker { display: none; }
+  .legend-details[open] summary { margin-bottom: 6px; }
+  .legend-details-body {
+    background: #1f1f1f; border: 1px solid #3a3a3a; border-radius: 4px;
+    padding: 8px 10px; font-size: 0.95em; line-height: 1.5;
+  }
+  .legend-details-body p { margin: 0 0 8px; }
+  .legend-details-body p:last-child { margin-bottom: 0; }
 
   #paywallOverlay {
     display: none; position: fixed; inset: 0; background: rgba(20,18,16,0.75); z-index: 1000;
@@ -267,6 +279,14 @@
         <span class="dot" style="background:#ffd54f;"></span>rectangular&nbsp;&nbsp;
         <span class="dot" style="background:#4dd0e1;"></span>circular&nbsp;&nbsp;
         <span class="dot" style="background:#ff7043;"></span>irregular
+        <details class="legend-details">
+          <summary>ℹ️ What do these mean?</summary>
+          <div class="legend-details-body">
+            <p><span class="dot" style="background:#ffd54f;"></span><b>Rectangular</b> — the shape closely fills its own bounding rectangle. Best match for building foundations, walls, or other rectilinear structures.</p>
+            <p><span class="dot" style="background:#4dd0e1;"></span><b>Circular</b> — the shape closely matches a circle. Best match for mounds, pits, or other circular features.</p>
+            <p><span class="dot" style="background:#ff7043;"></span><b>Irregular</b> — doesn't clearly match either. Lowest-confidence tier: could be a real irregular feature (a bend in an old path), or just terrain noise/shadow artifacts. Worth a look, but verify before trusting it.</p>
+          </div>
+        </details>
         <br>Click the map to drop a pin there — drag it to fine-tune, then search or save it from its popup.
       </div>
     </div>
