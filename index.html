@@ -138,6 +138,11 @@
   #toolPanel { display: flex; gap: 0; background: #1a1a1a; color: #eee; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 20px var(--shadow); }
   #toolSidebar { width: 300px; flex-shrink: 0; padding: 16px; box-sizing: border-box; }
   #map { flex: 1; min-height: 520px; }
+  @media (max-width: 600px) {
+    #toolPanel { flex-direction: column; }
+    #toolSidebar { width: 100%; box-sizing: border-box; }
+    #map { width: 100%; min-height: 380px; }
+  }
   #toolSidebar label { display: block; font-size: 0.78em; color: #aaa; margin: 10px 0 3px; }
   #toolSidebar input[type=text], #toolSidebar input[type=number], #toolSidebar select {
     width: 100%; box-sizing: border-box; padding: 7px; border-radius: 4px; border: 1px solid #444;
