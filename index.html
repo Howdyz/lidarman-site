@@ -161,6 +161,8 @@
   #toolSidebar button.secondary-btn:hover { background: #303030; }
   #toolSidebar button.secondary-btn:disabled { opacity: 0.6; cursor: not-allowed; }
   #locationStatus { font-size: 0.78em; color: #999; margin-top: 5px; min-height: 1.1em; }
+  #trackStatus { font-size: 0.85em; color: #ccc; margin-top: 6px; min-height: 1.1em; line-height: 1.5; }
+  #trackStatus b { font-size: 1.15em; color: #fff; }
   #trialStatus { font-size: 0.8em; color: #ffb74d; margin-top: 10px; line-height: 1.5; }
   #trialStatus.unlocked { color: #81c784; }
   #toolStatus { font-size: 0.82em; color: #ffb74d; margin-top: 8px; min-height: 1.2em; }
@@ -293,6 +295,8 @@
       <button class="primary" id="searchBtn">Search</button>
       <button class="secondary-btn" id="viewToggleBtn" type="button" disabled>🔦 Lidar view: on</button>
       <button class="secondary-btn" id="clearBtn" type="button">🧹 Clear</button>
+      <button class="secondary-btn" id="trackBtn" type="button">🎯 Start tracking</button>
+      <div id="trackStatus"></div>
       <div id="toolStatus"></div>
       <div id="trialStatus">Loading trial status…</div>
       <div class="cand-legend">
@@ -703,7 +707,8 @@
         candidateMarkers.clearLayers();
         (data.candidates || []).slice(0, 60).forEach(c => {
           L.circleMarker([c.lat, c.lon], { radius: 6, color: shapeColor(c.shape), weight: 2, fillOpacity: 0.2 })
-            .bindPopup(`<b>#${c.rank} ${c.shape} (${c.kind})</b><br>score: ${c.score.toFixed(2)}<br>~${Math.round(c.area_m2)} m²`)
+            .bindPopup(`<b>#${c.rank} ${c.shape} (${c.kind})</b><br>score: ${c.score.toFixed(2)}<br>~${Math.round(c.area_m2)} m²`
+              + `<br><button class="cand-track-btn" data-lat="${c.lat}" data-lon="${c.lon}" style="margin-top:6px; padding:4px 10px; cursor:pointer;">🎯 Track this</button>`)
             .addTo(candidateMarkers);
         });
       })
@@ -744,10 +749,85 @@
     if (compositeOverlay) { map.removeLayer(compositeOverlay); compositeOverlay = null; }
     if (searchPin) { map.removeLayer(searchPin); searchPin = null; }
     candidateMarkers.clearLayers();
+    stopTracking();
 
     lidarViewOn = true;
     viewToggleBtn.textContent = '🔦 Lidar view: on';
     viewToggleBtn.disabled = true;
+  });
+
+  // ---- Live GPS tracking toward the search pin/candidate ----
+  function haversineDistanceMeters(lat1, lon1, lat2, lon2) {
+    const R = 6371000;
+    const toRad = d => d * Math.PI / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  function bearingDegrees(lat1, lon1, lat2, lon2) {
+    const toRad = d => d * Math.PI / 180;
+    const toDeg = r => r * 180 / Math.PI;
+    const y = Math.sin(toRad(lon2 - lon1)) * Math.cos(toRad(lat2));
+    const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) - Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(toRad(lon2 - lon1));
+    return (toDeg(Math.atan2(y, x)) + 360) % 360;
+  }
+
+  function compassLabel(deg) {
+    const dirs = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+    return dirs[Math.round(deg / 22.5) % 16];
+  }
+
+  const trackBtn = document.getElementById('trackBtn');
+  const trackStatus = document.getElementById('trackStatus');
+  let trackWatchId = null;
+  let trackLastDistance = null;
+
+  function stopTracking() {
+    if (trackWatchId !== null) navigator.geolocation.clearWatch(trackWatchId);
+    trackWatchId = null;
+    trackLastDistance = null;
+    trackBtn.textContent = '🎯 Start tracking';
+    trackStatus.textContent = '';
+  }
+
+  trackBtn.addEventListener('click', () => {
+    if (trackWatchId !== null) { stopTracking(); return; }
+    if (!searchPin) {
+      trackStatus.textContent = 'Drop a pin (or "Track this" on a candidate) first.';
+      return;
+    }
+    if (!navigator.geolocation) {
+      trackStatus.textContent = 'Geolocation is not supported by this browser.';
+      return;
+    }
+    trackBtn.textContent = '⏹ Stop tracking';
+    trackStatus.textContent = 'Getting your position…';
+    trackLastDistance = null;
+    trackWatchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        if (!searchPin) { stopTracking(); return; }
+        const target = searchPin.getLatLng();
+        const dist = haversineDistanceMeters(pos.coords.latitude, pos.coords.longitude, target.lat, target.lng);
+        const brng = bearingDegrees(pos.coords.latitude, pos.coords.longitude, target.lat, target.lng);
+        let trend = '';
+        if (trackLastDistance !== null) {
+          if (dist < trackLastDistance - 0.5) trend = '🔥 Closing in!';
+          else if (dist > trackLastDistance + 0.5) trend = '❄️ Moving away';
+          else trend = '➡️ Holding steady';
+        }
+        trackLastDistance = dist;
+        const distText = dist < 1000 ? `${dist.toFixed(1)} m` : `${(dist / 1000).toFixed(2)} km`;
+        trackStatus.innerHTML = `<b>${distText}</b> from target · bearing ${Math.round(brng)}° ${compassLabel(brng)}`
+          + (trend ? `<br>${trend}` : '');
+      },
+      (err) => {
+        const messages = { 1: 'Location permission denied.', 2: 'Location unavailable right now.', 3: 'Location request timed out.' };
+        trackStatus.textContent = messages[err.code] || 'Could not get your location.';
+      },
+      { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 }
+    );
   });
 
   const useLocationBtn = document.getElementById('useLocationBtn');
@@ -849,6 +929,14 @@
       const ll = searchPin.getLatLng();
       map.closePopup();
       saveSpotAt(ll.lat, ll.lng);
+    });
+    const trackBtnEl = el.querySelector('.cand-track-btn');
+    if (trackBtnEl) trackBtnEl.addEventListener('click', () => {
+      const lat = parseFloat(trackBtnEl.dataset.lat);
+      const lon = parseFloat(trackBtnEl.dataset.lon);
+      placeSearchPin(lat, lon, false);
+      map.closePopup();
+      trackStatus.textContent = 'Target set. Tap "Start tracking" to begin.';
     });
   });
 
