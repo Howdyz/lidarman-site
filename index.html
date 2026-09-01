@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Liedarman — LIDAR-Based Structure Detection</title>
+<title>Lidarman — LIDAR-Based Structure Detection</title>
 <meta name="description" content="A hosted tool for detecting archaeological and historical structures from airborne LIDAR elevation data.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -191,14 +191,14 @@
 
 <header class="top">
   <div class="wrap">
-    <div class="brand">Liedarman</div>
+    <div class="brand">Lidarman</div>
     <a class="gh" href="#try-it">Try It</a>
   </div>
 </header>
 
 <div class="hero">
   <div class="wrap hero-inner">
-    <h1>Liedarman</h1>
+    <h1>Lidarman</h1>
     <div class="subtitle">Detecting vanished structures in airborne LIDAR terrain data</div>
     <div class="meta-line">
       Howdyz · Hosted tool
@@ -215,7 +215,7 @@
 
   <div class="abstract">
     <span class="label">Abstract</span>
-    Liedarman is a software pipeline for surfacing archaeological and
+    Lidarman is a software pipeline for surfacing archaeological and
     historical structures — building foundations, mounds, berms, sunken
     paths — from airborne LIDAR elevation data, aimed primarily at
     metal-detector hobbyists and independent researchers rather than
@@ -461,7 +461,7 @@
     <p>
       Once a candidate location is identified, the next question for a
       hobbyist is: where does that map onto the world as it actually looks
-      today? Liedarman builds a "blink comparator" — the same technique
+      today? Lidarman builds a "blink comparator" — the same technique
       astronomers have long used to spot a moving object by flashing two
       photos of the same sky back and forth — that flashes between a
       present-day satellite image and the LIDAR past-structure composite,
@@ -492,7 +492,7 @@
   <section id="access">
     <h2>7. Get access</h2>
     <p>
-      Liedarman is a hosted tool — each search runs real LIDAR fetch,
+      Lidarman is a hosted tool — each search runs real LIDAR fetch,
       terrain-derivative, and detection compute server-side, which costs
       real time and resources per query rather than being a one-time
       download. Try it free — the first three searches on a device are on
@@ -535,20 +535,20 @@
 
 <footer>
   <div class="wrap">
-    &copy; Liedarman.
+    &copy; Lidarman.
   </div>
 </footer>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (function () {
-  const API_BASE = 'https://liedarman-backend.onrender.com';
+  const API_BASE = 'https://lidarman-backend.onrender.com';
 
   function getDeviceId() {
-    let id = localStorage.getItem('liedarmanDeviceId');
+    let id = localStorage.getItem('lidarmanDeviceId');
     if (!id) {
       id = (crypto.randomUUID ? crypto.randomUUID() : ('id-' + Math.random().toString(36).slice(2) + Date.now()));
-      localStorage.setItem('liedarmanDeviceId', id);
+      localStorage.setItem('lidarmanDeviceId', id);
     }
     return id;
   }
