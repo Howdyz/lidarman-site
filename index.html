@@ -811,6 +811,29 @@
     history.replaceState(null, '', window.location.pathname);
   }
 
+  // Owner comp unlock: visit ?admin=<ADMIN_SECRET> once on a device to
+  // unlock it without paying — mirrors Truth Button's admin-comp endpoint.
+  const adminSecret = new URLSearchParams(window.location.search).get('admin');
+  if (adminSecret) {
+    history.replaceState(null, '', window.location.pathname);
+    fetch(`${API_BASE}/api/admin/unlock`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': adminSecret },
+      body: JSON.stringify({ deviceId }),
+    })
+      .then(r => r.json().then(d => ({ ok: r.ok, d })))
+      .then(({ ok, d }) => {
+        if (ok && d.unlocked) {
+          document.getElementById('unlockedBanner').innerHTML = '<b>Admin unlock applied.</b> This device now has unlimited searches.';
+          document.getElementById('unlockedBanner').classList.add('show');
+          refreshTrialStatus();
+        } else {
+          setStatus(d.error || 'Admin unlock failed.', true);
+        }
+      })
+      .catch(err => setStatus('Admin unlock request failed: ' + err, true));
+  }
+
   refreshTrialStatus();
   loadSaved();
 })();
