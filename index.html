@@ -7,6 +7,7 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#7a3b2e">
 <title>Lidarman — LIDAR-Based Structure Detection</title>
+<link rel="canonical" href="https://lidarman.com/">
 <meta name="description" content="A hosted tool for detecting archaeological and historical structures from airborne LIDAR elevation data.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://lidarman.com/">
@@ -33,6 +34,39 @@
     "priceCurrency": "USD",
     "description": "One-time payment for unlimited searches, after 3 free trial searches."
   }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Does Lidarman work outside the United States?",
+      "acceptedAnswer": { "@type": "Answer", "text": "No, not currently. Elevation data comes from USGS's 3D Elevation Program, which only covers the US. International coverage is on the roadmap but not built yet." }
+    },
+    {
+      "@type": "Question",
+      "name": "How much does Lidarman cost?",
+      "acceptedAnswer": { "@type": "Answer", "text": "The first three searches on a device are free, no account required. After that, a one-time $10 payment unlocks unlimited searches on that device — no subscription, no recurring charge." }
+    },
+    {
+      "@type": "Question",
+      "name": "What is LIDAR, and why does it reveal things aerial photos don't?",
+      "acceptedAnswer": { "@type": "Answer", "text": "LIDAR measures ground elevation directly by bouncing laser pulses off the surface from an aircraft, dense enough to filter out tree canopy and see the bare earth underneath. A collapsed foundation or filled-in sunken path can be invisible in a satellite photo while still showing up as a few centimeters of elevation change in a properly processed bare-earth model." }
+    },
+    {
+      "@type": "Question",
+      "name": "Do I need a metal detector to use Lidarman?",
+      "acceptedAnswer": { "@type": "Answer", "text": "No. Lidarman only narrows down where to look — it doesn't detect metal itself. It's built with detectorists in mind, but the output is just as useful to anyone scouting old sites on foot." }
+    },
+    {
+      "@type": "Question",
+      "name": "Is it legal to search a location Lidarman flags?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Lidarman doesn't build in any restriction on where you search — that responsibility is entirely yours, same as owning a metal detector doesn't make every location legal to use one on. Check land ownership and local/state rules before you dig." }
+    }
+  ]
 }
 </script>
 <meta name="twitter:image" content="https://lidarman.com/assets/hero-background.jpg">
@@ -380,6 +414,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       <li><a href="#webapp">Interactive web application</a></li>
       <li><a href="#access">Get access</a></li>
       <li><a href="#limitations">Limitations &amp; future work</a></li>
+      <li><a href="#faq">FAQ</a></li>
     </ol>
   </nav>
 
@@ -616,6 +651,58 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       itself — where it is or isn't appropriate to search with the results
       is entirely the responsibility of the person using it, the same as
       any other detection or survey equipment.
+    </p>
+  </section>
+
+  <section id="faq">
+    <h2>9. FAQ</h2>
+
+    <h3>Does Lidarman work outside the United States?</h3>
+    <p>
+      No, not currently. Elevation data comes from USGS's 3D Elevation
+      Program, which only covers the US. International coverage is on the
+      roadmap (§8) but not built yet.
+    </p>
+
+    <h3>How much does Lidarman cost?</h3>
+    <p>
+      The first three searches on a device are free, no account required.
+      After that, a one-time $10 payment unlocks unlimited searches on that
+      device — no subscription, no recurring charge.
+    </p>
+
+    <h3>What is LIDAR, and why does it reveal things aerial photos don't?</h3>
+    <p>
+      LIDAR measures ground elevation directly by bouncing laser pulses off
+      the surface from an aircraft, dense enough to filter out tree canopy
+      and see the bare earth underneath. A collapsed foundation or filled-in
+      sunken path can be completely invisible in a satellite photo — flat
+      color, no shadow — while still showing up as a few centimeters of
+      elevation change once you process the bare-earth model the right way
+      (§2.2).
+    </p>
+
+    <h3>Do I need a metal detector to use Lidarman?</h3>
+    <p>
+      No. Lidarman only narrows down where to look — it doesn't detect
+      metal itself. It's built with detectorists in mind, but the output is
+      just as useful to anyone scouting old sites on foot.
+    </p>
+
+    <h3>Does a flagged candidate mean something is definitely there?</h3>
+    <p>
+      No — treat candidates as a starting point, not a verdict. See
+      Limitations (§8) for the specific failure modes (terrain noise,
+      vegetation edges, large flat features) worth knowing before you
+      commit to digging a spot.
+    </p>
+
+    <h3>Is it legal to search a location Lidarman flags?</h3>
+    <p>
+      Lidarman doesn't build in any restriction on where you search — that
+      responsibility is entirely yours, same as owning a metal detector
+      doesn't make every location legal to use one on. Check land ownership
+      and local/state rules before you dig.
     </p>
   </section>
 
