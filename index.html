@@ -616,6 +616,12 @@
     return { rectangular: '#ffd54f', circular: '#4dd0e1', irregular: '#ff7043' }[shape] || '#ffffff';
   }
 
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, ch => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[ch]));
+  }
+
   function renderTrialStatus(data) {
     if (data.unlocked) {
       trialEl.textContent = '✅ Unlocked — unlimited searches on this device.';
@@ -849,7 +855,7 @@
       .then(r => r.json()).then(items => {
         savedMarkers.clearLayers();
         (items || []).forEach(item => {
-          L.marker([item.lat, item.lon]).bindPopup(`<b>${item.name}</b><br>${item.notes || ''}`).addTo(savedMarkers);
+          L.marker([item.lat, item.lon]).bindPopup(`<b>${escapeHtml(item.name)}</b><br>${escapeHtml(item.notes || '')}`).addTo(savedMarkers);
         });
       });
   }
