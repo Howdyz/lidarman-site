@@ -1015,6 +1015,30 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       .catch(err => setStatus('Admin unlock request failed: ' + err, true));
   }
 
+  // Gift-code unlock: visit ?gift=<code> once on a device to redeem a
+  // one-time promo/outreach code (scoped — unlike ?admin=, can't see
+  // visitor stats or create more codes, and each code only works once).
+  const giftCode = new URLSearchParams(window.location.search).get('gift');
+  if (giftCode) {
+    history.replaceState(null, '', window.location.pathname);
+    fetch(`${API_BASE}/api/redeem`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceId, code: giftCode }),
+    })
+      .then(r => r.json().then(d => ({ ok: r.ok, d })))
+      .then(({ ok, d }) => {
+        if (ok && d.ok) {
+          document.getElementById('unlockedBanner').innerHTML = '<b>Unlocked!</b> This device now has unlimited searches.';
+          document.getElementById('unlockedBanner').classList.add('show');
+          refreshTrialStatus();
+        } else {
+          setStatus(d.error || 'Gift code redemption failed.', true);
+        }
+      })
+      .catch(err => setStatus('Gift code request failed: ' + err, true));
+  }
+
   refreshTrialStatus();
   loadSaved();
 })();
