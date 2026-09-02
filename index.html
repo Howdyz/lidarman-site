@@ -231,6 +231,16 @@
 </head>
 <body>
 
+<script>
+// fire-and-forget page view beacon — never blocks or breaks the page if it fails
+fetch('https://lidarman-backend.onrender.com/api/visit', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ path: location.pathname, referrer: document.referrer }),
+  keepalive: true
+}).catch(function(){});
+</script>
+
 <header class="top">
   <div class="wrap">
     <div class="brand">Lidarman</div>
