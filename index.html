@@ -367,6 +367,13 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       <input type="number" id="radiusInput" value="300">
       <button class="primary" id="searchBtn">Search</button>
       <button class="secondary-btn" id="viewToggleBtn" type="button" disabled>🔦 Lidar view: on</button>
+      <label>Color style</label>
+      <select id="styleSelect" disabled>
+        <option value="composite">Composite (default)</option>
+        <option value="hillshade">Hillshade (grayscale)</option>
+        <option value="slope">Slope (viridis)</option>
+        <option value="lrm">Local relief (red/blue)</option>
+      </select>
       <button class="secondary-btn" id="clearBtn" type="button">🧹 Clear</button>
       <button class="secondary-btn" id="trackBtn" type="button">🎯 Start tracking</button>
       <div id="trackStatus"></div>
@@ -824,6 +831,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         renderTrialStatus(data);
 
         if (compositeOverlay) map.removeLayer(compositeOverlay);
+        currentStyles = data.styles || { composite: data.composite_url };
         compositeOverlay = L.imageOverlay(`${API_BASE}${data.composite_url}`, data.bounds, { opacity: 0.7 });
         compositeOverlay.addTo(map);
         map.invalidateSize();
@@ -832,6 +840,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         lidarViewOn = true;
         viewToggleBtn.disabled = false;
         viewToggleBtn.textContent = '🔦 Lidar view: on';
+        styleSelect.disabled = false;
+        styleSelect.value = 'composite';
 
         candidateMarkers.clearLayers();
         (data.candidates || []).slice(0, 60).forEach(c => {
@@ -854,6 +864,14 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     lidarViewOn = !lidarViewOn;
     compositeOverlay.setOpacity(lidarViewOn ? 0.7 : 0);
     viewToggleBtn.textContent = lidarViewOn ? '🔦 Lidar view: on' : '🛰️ Lidar view: off';
+  });
+
+  const styleSelect = document.getElementById('styleSelect');
+  let currentStyles = {};
+  styleSelect.addEventListener('change', () => {
+    if (!compositeOverlay) return;
+    const url = currentStyles[styleSelect.value] || currentStyles.composite;
+    if (url) compositeOverlay.setUrl(`${API_BASE}${url}`);
   });
 
   document.getElementById('battlefieldSelect').addEventListener('change', (e) => {
@@ -883,6 +901,9 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     lidarViewOn = true;
     viewToggleBtn.textContent = '🔦 Lidar view: on';
     viewToggleBtn.disabled = true;
+    currentStyles = {};
+    styleSelect.value = 'composite';
+    styleSelect.disabled = true;
   });
 
   // ---- Live GPS tracking toward the search pin/candidate ----
