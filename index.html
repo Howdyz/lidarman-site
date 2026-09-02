@@ -367,6 +367,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       <input type="number" id="radiusInput" value="300">
       <button class="primary" id="searchBtn">Search</button>
       <button class="secondary-btn" id="viewToggleBtn" type="button" disabled>🔦 Lidar view: on</button>
+      <button class="secondary-btn" id="zoomLockBtn" type="button">🔓 Lock zoom</button>
       <label>Color style</label>
       <select id="styleSelect" disabled>
         <option value="composite">Composite (default)</option>
@@ -759,6 +760,31 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
   });
   L.control.layers({ 'Satellite': satellite, 'Streets': streets }).addTo(map);
+
+  // Zoom lock: pins minZoom/maxZoom to the current zoom level, which makes
+  // Leaflet itself refuse every zoom trigger (scroll wheel, pinch,
+  // double-click, keyboard, the +/- buttons) — including zoom changes
+  // requested programmatically later (fitBounds after a search, jumping to
+  // a battlefield, live tracking), which just pan/re-center at the locked
+  // zoom instead of changing it. One flag covers every path, no need to
+  // intercept each interaction separately.
+  const zoomLockBtn = document.getElementById('zoomLockBtn');
+  let zoomLocked = false;
+  const UNLOCKED_MIN_ZOOM = 0;
+  const UNLOCKED_MAX_ZOOM = 20;
+  zoomLockBtn.addEventListener('click', () => {
+    zoomLocked = !zoomLocked;
+    if (zoomLocked) {
+      const z = map.getZoom();
+      map.setMinZoom(z);
+      map.setMaxZoom(z);
+      zoomLockBtn.textContent = '🔒 Zoom locked (click to unlock)';
+    } else {
+      map.setMinZoom(UNLOCKED_MIN_ZOOM);
+      map.setMaxZoom(UNLOCKED_MAX_ZOOM);
+      zoomLockBtn.textContent = '🔓 Lock zoom';
+    }
+  });
 
   let compositeOverlay = null;
   let candidateMarkers = L.layerGroup().addTo(map);
