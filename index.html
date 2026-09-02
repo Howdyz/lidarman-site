@@ -120,6 +120,12 @@
   }
   header.top button.install-btn:hover { background: var(--accent-soft); }
   header.top button.install-btn.show { display: inline-block; }
+  header.top button.share-btn {
+    font-family: var(--mono); font-size: 0.85em;
+    color: var(--paper); background: var(--ink); border: none;
+    padding: 7px 14px; border-radius: 3px; cursor: pointer; margin-right: 10px;
+  }
+  header.top button.share-btn:hover { background: var(--accent); }
   header.top .nav-actions { display: flex; align-items: center; }
 
   .hero {
@@ -296,6 +302,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   <div class="wrap">
     <div class="brand">Lidarman</div>
     <div class="nav-actions">
+      <button class="share-btn" id="shareBtn" type="button">🔗 Share</button>
       <button class="install-btn" id="installBtn" type="button">Install App</button>
       <a class="gh" href="#try-it">Try It</a>
     </div>
@@ -1219,6 +1226,28 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   window.addEventListener('appinstalled', () => {
     installBtn.classList.remove('show');
     deferredPrompt = null;
+  });
+})();
+</script>
+
+<script>
+(function() {
+  const shareBtn = document.getElementById('shareBtn');
+  shareBtn.addEventListener('click', function() {
+    const shareData = {
+      title: 'Lidarman',
+      text: 'Lidarman — scan real LIDAR terrain data for old foundations, mounds, and sunken paths before you dig.',
+      url: location.href
+    };
+    if (navigator.share) {
+      navigator.share(shareData).catch(function(){});
+      return;
+    }
+    const restoreLabel = shareBtn.textContent;
+    navigator.clipboard.writeText(shareData.url).then(function(){
+      shareBtn.textContent = '✓ Link Copied';
+      setTimeout(function(){ shareBtn.textContent = restoreLabel; }, 2000);
+    }).catch(function(){});
   });
 })();
 </script>
