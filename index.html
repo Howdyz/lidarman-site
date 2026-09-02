@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="google-site-verification" content="Pb6NOw17s7RfX5pYMRmZ4eADPe7YECDrC2oq61h0-8E" />
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#7a3b2e">
 <title>Lidarman — LIDAR-Based Structure Detection</title>
 <meta name="description" content="A hosted tool for detecting archaeological and historical structures from airborne LIDAR elevation data.">
 <meta property="og:type" content="website">
@@ -59,6 +61,15 @@
     color: var(--paper); background: var(--ink); padding: 7px 14px; border-radius: 3px;
   }
   header.top a.gh:hover { background: var(--accent); }
+  header.top button.install-btn {
+    font-family: var(--mono); font-size: 0.85em;
+    color: var(--paper); background: var(--accent); border: none;
+    padding: 7px 14px; border-radius: 3px; cursor: pointer; margin-right: 10px;
+    display: none;
+  }
+  header.top button.install-btn:hover { background: var(--accent-soft); }
+  header.top button.install-btn.show { display: inline-block; }
+  header.top .nav-actions { display: flex; align-items: center; }
 
   .hero {
     position: relative;
@@ -223,7 +234,10 @@
 <header class="top">
   <div class="wrap">
     <div class="brand">Lidarman</div>
-    <a class="gh" href="#try-it">Try It</a>
+    <div class="nav-actions">
+      <button class="install-btn" id="installBtn" type="button">Install App</button>
+      <a class="gh" href="#try-it">Try It</a>
+    </div>
   </div>
 </header>
 
@@ -976,6 +990,36 @@
 
   refreshTrialStatus();
   loadSaved();
+})();
+</script>
+
+<script>
+(function() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(function(){});
+  }
+
+  const installBtn = document.getElementById('installBtn');
+  let deferredPrompt = null;
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    installBtn.classList.add('show');
+  });
+
+  installBtn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    installBtn.classList.remove('show');
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+  });
+
+  window.addEventListener('appinstalled', () => {
+    installBtn.classList.remove('show');
+    deferredPrompt = null;
+  });
 })();
 </script>
 
