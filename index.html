@@ -8,6 +8,7 @@
 <meta name="theme-color" content="#7a3b2e">
 <title>Lidarman — LIDAR-Based Structure Detection</title>
 <link rel="canonical" href="https://lidarman.com/">
+<link rel="icon" type="image/png" href="assets/icon-192.png">
 <meta name="description" content="A hosted tool for detecting archaeological and historical structures from airborne LIDAR elevation data.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://lidarman.com/">
@@ -188,7 +189,8 @@
   }
   pre code { background: none; padding: 0; }
 
-  table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 0.92em; }
+  .table-wrap { overflow-x: auto; margin: 18px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.92em; }
   th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule); }
   th { font-family: var(--mono); font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft); }
   td.num { font-family: var(--mono); }
@@ -560,11 +562,13 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
           score.</figcaption>
       </figure>
     </div>
-    <table>
-      <tr><th>Rank</th><th>Shape</th><th>Detected area</th><th>True area</th><th>Detected size</th><th>True size</th></tr>
-      <tr><td class="num">1</td><td>rectangular</td><td class="num">751 m²</td><td class="num">800 m²</td><td class="num">20.0 × 39.5 m</td><td class="num">20 × 40 m</td></tr>
-      <tr><td class="num">2</td><td>circular</td><td class="num">238 m²</td><td class="num">~254 m²</td><td class="num">17.7 m dia.</td><td class="num">18 m dia.</td></tr>
-    </table>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Rank</th><th>Shape</th><th>Detected area</th><th>True area</th><th>Detected size</th><th>True size</th></tr>
+        <tr><td class="num">1</td><td>rectangular</td><td class="num">751 m²</td><td class="num">800 m²</td><td class="num">20.0 × 39.5 m</td><td class="num">20 × 40 m</td></tr>
+        <tr><td class="num">2</td><td>circular</td><td class="num">238 m²</td><td class="num">~254 m²</td><td class="num">17.7 m dia.</td><td class="num">18 m dia.</td></tr>
+      </table>
+    </div>
     <p>
       Both embedded structures were recovered as the top two ranked
       candidates, with size and location matching ground truth closely.
@@ -640,6 +644,10 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         details on click</li>
       <li>Real-time flicker toggle (or space bar) between the live
         satellite basemap and the past-structure overlay</li>
+      <li>Switch the overlay between the composite, hillshade, slope, and
+        local-relief color styles without re-running the search</li>
+      <li>Lock the map's zoom level once you've framed the view you want,
+        so panning around can't accidentally change it</li>
       <li>Click anywhere to name and save your own flagged location,
         persisted locally across sessions</li>
     </ul>
@@ -1067,7 +1075,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         (items || []).forEach(item => {
           L.marker([item.lat, item.lon]).bindPopup(`<b>${escapeHtml(item.name)}</b><br>${escapeHtml(item.notes || '')}`).addTo(savedMarkers);
         });
-      });
+      }).catch(() => {});
   }
 
   function saveSpotAt(lat, lon) {
