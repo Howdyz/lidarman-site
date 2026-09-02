@@ -374,6 +374,21 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         <option value="slope">Slope (viridis)</option>
         <option value="lrm">Local relief (red/blue)</option>
       </select>
+      <details class="legend-details">
+        <summary>ℹ️ Which color style should I use?</summary>
+        <div class="legend-details-body">
+          <p><b>Composite (default)</b> — a blend of several signals into one image. Raised edges like walls and foundation outlines tend to show up warm and bright; sunken spots fade toward blue/purple. A solid all-around view.</p>
+          <p><b>Hillshade</b> — looks like sunlit terrain, the easiest one to read at a glance. Great for getting your bearings, though it can occasionally underplay a feature if it happens to face the "wrong" way relative to the simulated sun.</p>
+          <p><b>Slope</b> — lights up every edge and change in steepness in yellow, no matter which direction it faces. Best for not missing anything — but on its own it can't tell you whether an edge is a bump or a dip.</p>
+          <p><b>Local relief (red/blue)</b> — the clearest view for sorting bumps from dips: <b>red = higher</b> than the ground around it, <b>blue = lower</b>. This is the same layer the automatic candidate-detector itself is looking at.</p>
+          <p style="margin-top:10px;"><b>What to use for what:</b></p>
+          <p>🛤️ <b>Sunken paths &amp; old roads</b> — Local relief, look for a blue trail. Slope is a good backup (shows as two parallel yellow edges where the path dips in and climbs back out).</p>
+          <p>🕳️ <b>Basements &amp; cellars</b> — Local relief (a blue rectangle), and check Slope too — steep cellar walls often show up as a bright yellow "picture frame" outline around a darker, flatter floor.</p>
+          <p>🧱 <b>Foundations (old wall stubs)</b> — Local relief or Composite, look for a thin red outline.</p>
+          <p>🪨 <b>Walls, berms &amp; mounds</b> — Composite or Local relief — these are raised, so they read warm/red on both.</p>
+          <p style="margin-top:10px;">Quick workflow: start with <b>Slope</b> to catch every edge in view, switch to <b>Local relief</b> to figure out if what you found is raised or sunken, then <b>Hillshade</b> as a gut-check that it looks like real terrain.</p>
+        </div>
+      </details>
       <button class="secondary-btn" id="clearBtn" type="button">🧹 Clear</button>
       <button class="secondary-btn" id="trackBtn" type="button">🎯 Start tracking</button>
       <div id="trackStatus"></div>
