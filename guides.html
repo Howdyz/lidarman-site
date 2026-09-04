@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#7a3b2e">
+<title>Guides — Lidarman</title>
+<link rel="canonical" href="https://lidarman.com/guides.html">
+<link rel="icon" type="image/png" href="assets/icon-192.png">
+<meta name="description" content="Field guides on reading LIDAR terrain maps, finding old homestead sites, sourcing free public LIDAR data, and permission basics before you dig.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://lidarman.com/guides.html">
+<meta property="og:title" content="Guides — Lidarman">
+<meta property="og:description" content="Field guides on reading LIDAR terrain maps, finding old homestead sites, sourcing free public LIDAR data, and permission basics before you dig.">
+<meta property="og:image" content="https://lidarman.com/assets/hero-background.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Guides — Lidarman">
+<meta name="twitter:description" content="Field guides on reading LIDAR terrain maps, finding old homestead sites, sourcing free public LIDAR data, and permission basics before you dig.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #faf7f0; --ink: #1c1a17; --ink-soft: #4a453e; --rule: #d8d0c0;
+    --accent: #7a3b2e; --accent-soft: #ac6a52; --fig-bg: #f0ebe0; --code-bg: #efe9db;
+    --shadow: rgba(28, 26, 23, 0.08);
+    --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --mono: "JetBrains Mono", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--serif); line-height: 1.65; font-size: 18px; }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 0 24px; }
+  header.top {
+    border-bottom: 1px solid var(--rule); padding: 14px 0; position: sticky; top: 0;
+    background: rgba(250,247,240,0.92); backdrop-filter: blur(4px); z-index: 10;
+  }
+  header.top .wrap { display: flex; justify-content: space-between; align-items: center; }
+  header.top .brand { font-weight: 700; font-size: 1.05em; letter-spacing: 0.02em; text-decoration: none; color: var(--ink); }
+  header.top .nav-actions { display: flex; align-items: center; gap: 10px; }
+  header.top a.navlink { font-family: var(--mono); font-size: 0.85em; text-decoration: none; color: var(--ink-soft); }
+  header.top a.navlink:hover { color: var(--accent); }
+  header.top a.gh {
+    font-family: var(--mono); font-size: 0.85em; text-decoration: none;
+    color: var(--paper); background: var(--ink); padding: 7px 14px; border-radius: 3px;
+  }
+  header.top a.gh:hover { background: var(--accent); }
+  .titleblock { padding: 48px 0 8px; }
+  .titleblock .kicker { font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.78em; color: var(--accent); }
+  .titleblock h1 { font-size: 2.1em; margin: 10px 0 8px; line-height: 1.2; }
+  .titleblock .dek { font-size: 1.1em; color: var(--ink-soft); font-style: italic; }
+  section { margin: 40px 0; }
+  .guide-list { list-style: none; margin: 0; padding: 0; }
+  .guide-card {
+    display: block; padding: 20px 0; border-bottom: 1px solid var(--rule); text-decoration: none; color: var(--ink);
+  }
+  .guide-card:hover .guide-title { color: var(--accent); }
+  .guide-card .guide-title { font-size: 1.3em; font-weight: 600; margin-bottom: 6px; }
+  .guide-card .guide-dek { color: var(--ink-soft); font-size: 0.95em; margin: 0; }
+  footer { border-top: 1px solid var(--rule); padding: 28px 0 50px; color: var(--ink-soft); font-size: 0.85em; }
+  footer a { color: var(--accent); }
+</style>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2526876080898597" crossorigin="anonymous"></script>
+</head>
+<body>
+
+<script>
+fetch('https://lidarman-backend.onrender.com/api/visit', {
+  method: 'POST', headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ path: location.pathname, referrer: document.referrer }), keepalive: true
+}).catch(function(){});
+</script>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html">Lidarman</a>
+    <div class="nav-actions">
+      <a class="navlink" href="index.html#faq">FAQ</a>
+      <a class="gh" href="index.html#try-it">Try It</a>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="titleblock">
+    <span class="kicker">Field guides</span>
+    <h1>Guides</h1>
+    <div class="dek">Reading terrain data, finding old sites, sourcing free LIDAR, and staying on the right side of the law before you dig.</div>
+  </div>
+
+  <section>
+    <ul class="guide-list">
+      <li>
+        <a class="guide-card" href="reading-lidar-hillshade-maps.html">
+          <div class="guide-title">How to Read LIDAR Terrain Maps</div>
+          <p class="guide-dek">Hillshade, slope, Local Relief Model, and sky-view openness — what each one is actually showing you, and when to reach for which.</p>
+        </a>
+      </li>
+      <li>
+        <a class="guide-card" href="finding-old-homesteads-with-lidar.html">
+          <div class="guide-title">Finding Old Homestead Sites With LIDAR</div>
+          <p class="guide-dek">What a vanished foundation, root cellar, or filled-in farm road actually looks like in elevation data, and how to narrow down where to search before you go.</p>
+        </a>
+      </li>
+      <li>
+        <a class="guide-card" href="free-public-lidar-data-sources.html">
+          <div class="guide-title">Free Public LIDAR Data Sources</div>
+          <p class="guide-dek">Where LIDAR elevation data actually comes from in the US — USGS 3DEP, OpenTopography, and state GIS portals — and when you'd want raw data instead of a hosted tool.</p>
+        </a>
+      </li>
+      <li>
+        <a class="guide-card" href="metal-detecting-permission-and-legal-basics.html">
+          <div class="guide-title">Permission and Legal Basics Before You Dig</div>
+          <p class="guide-dek">Private land, public land, and protected sites are three very different situations. General ground rules — not a substitute for checking the specific site.</p>
+        </a>
+      </li>
+    </ul>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    &copy; Lidarman. <a href="mailto:projectsilverbeam@gmail.com">projectsilverbeam@gmail.com</a>
+  </div>
+</footer>
+
+</body>
+</html>

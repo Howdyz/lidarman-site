@@ -128,6 +128,11 @@
   }
   header.top button.share-btn:hover { background: var(--accent); }
   header.top .nav-actions { display: flex; align-items: center; }
+  header.top a.guides-link {
+    font-family: var(--mono); font-size: 0.85em; text-decoration: none;
+    color: var(--ink-soft); margin-right: 14px;
+  }
+  header.top a.guides-link:hover { color: var(--accent); }
 
   .hero {
     position: relative;
@@ -304,6 +309,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   <div class="wrap">
     <div class="brand">Lidarman</div>
     <div class="nav-actions">
+      <a class="guides-link" href="guides.html">Guides</a>
       <button class="share-btn" id="shareBtn" type="button">🔗 Share</button>
       <button class="install-btn" id="installBtn" type="button">Install App</button>
       <a class="gh" href="#try-it">Try It</a>
@@ -447,6 +453,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       <li><a href="#access">Get access</a></li>
       <li><a href="#limitations">Limitations &amp; future work</a></li>
       <li><a href="#faq">FAQ</a></li>
+      <li><a href="guides.html">Field guides</a></li>
     </ol>
   </nav>
 
@@ -740,9 +747,16 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       Lidarman doesn't build in any restriction on where you search — that
       responsibility is entirely yours, same as owning a metal detector
       doesn't make every location legal to use one on. Check land ownership
-      and local/state rules before you dig.
+      and local/state rules before you dig — see
+      <a href="metal-detecting-permission-and-legal-basics.html">permission and legal basics</a>
+      for the general ground rules, including a note about the battlefield
+      presets in the tool above.
     </p>
   </section>
+
+  <p style="text-align:center; margin-top: -20px;">
+    <a href="guides.html">More field guides →</a>
+  </p>
 
 </div>
 

@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#7a3b2e">
+<title>How to Read LIDAR Terrain Maps: Hillshade, Slope &amp; Local Relief — Lidarman</title>
+<link rel="canonical" href="https://lidarman.com/reading-lidar-hillshade-maps.html">
+<link rel="icon" type="image/png" href="assets/icon-192.png">
+<meta name="description" content="What hillshade, slope, Local Relief Model, and sky-view openness actually show you in LIDAR terrain data, and a practical workflow for reading them together.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://lidarman.com/reading-lidar-hillshade-maps.html">
+<meta property="og:title" content="How to Read LIDAR Terrain Maps: Hillshade, Slope &amp; Local Relief">
+<meta property="og:description" content="What each terrain-visualization style is actually showing you, and a practical workflow for reading them together in the field.">
+<meta property="og:image" content="https://lidarman.com/assets/hero-background.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="How to Read LIDAR Terrain Maps: Hillshade, Slope &amp; Local Relief">
+<meta name="twitter:description" content="What each terrain-visualization style is actually showing you, and a practical workflow for reading them together in the field.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "How to Read LIDAR Terrain Maps: Hillshade, Slope & Local Relief",
+  "description": "What hillshade, slope, Local Relief Model, and sky-view openness actually show you in LIDAR terrain data, and a practical workflow for reading them together.",
+  "author": { "@type": "Organization", "name": "Lidarman" },
+  "publisher": { "@type": "Organization", "name": "Lidarman", "url": "https://lidarman.com/" },
+  "mainEntityOfPage": "https://lidarman.com/reading-lidar-hillshade-maps.html"
+}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #faf7f0; --ink: #1c1a17; --ink-soft: #4a453e; --rule: #d8d0c0;
+    --accent: #7a3b2e; --accent-soft: #ac6a52; --fig-bg: #f0ebe0; --code-bg: #efe9db;
+    --shadow: rgba(28, 26, 23, 0.08);
+    --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --mono: "JetBrains Mono", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--serif); line-height: 1.65; font-size: 18px; }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 0 24px; }
+  header.top {
+    border-bottom: 1px solid var(--rule); padding: 14px 0; position: sticky; top: 0;
+    background: rgba(250,247,240,0.92); backdrop-filter: blur(4px); z-index: 10;
+  }
+  header.top .wrap { display: flex; justify-content: space-between; align-items: center; }
+  header.top .brand { font-weight: 700; font-size: 1.05em; letter-spacing: 0.02em; text-decoration: none; color: var(--ink); }
+  header.top .nav-actions { display: flex; align-items: center; gap: 10px; }
+  header.top a.navlink { font-family: var(--mono); font-size: 0.85em; text-decoration: none; color: var(--ink-soft); }
+  header.top a.navlink:hover { color: var(--accent); }
+  header.top a.gh {
+    font-family: var(--mono); font-size: 0.85em; text-decoration: none;
+    color: var(--paper); background: var(--ink); padding: 7px 14px; border-radius: 3px;
+  }
+  header.top a.gh:hover { background: var(--accent); }
+  .titleblock { padding: 48px 0 8px; }
+  .titleblock .kicker { font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.78em; color: var(--accent); }
+  .titleblock h1 { font-size: 2.1em; margin: 10px 0 8px; line-height: 1.25; }
+  .titleblock .dek { font-size: 1.1em; color: var(--ink-soft); font-style: italic; }
+  .abstract { background: var(--fig-bg); border-left: 3px solid var(--accent); padding: 20px 24px; margin: 24px 0 44px; font-size: 0.97em; }
+  .abstract .label { font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.75em; color: var(--accent); display: block; margin-bottom: 10px; }
+  nav.toc { font-size: 0.88em; color: var(--ink-soft); margin-bottom: 48px; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding: 14px 0; }
+  nav.toc a { color: var(--ink-soft); text-decoration: none; margin-right: 4px; }
+  nav.toc a:hover { color: var(--accent); text-decoration: underline; }
+  nav.toc ol { margin: 6px 0 0; padding-left: 20px; columns: 2; }
+  section { margin-bottom: 46px; }
+  h2 { font-size: 1.5em; border-bottom: 1px solid var(--rule); padding-bottom: 8px; margin-bottom: 18px; }
+  h3 { font-size: 1.15em; margin-bottom: 10px; color: var(--ink); }
+  p { margin: 0 0 16px; }
+  ul, ol { margin: 0 0 16px; padding-left: 24px; }
+  li { margin-bottom: 6px; }
+  .callout { background: var(--fig-bg); border-radius: 5px; padding: 16px 18px; margin: 20px 0; font-size: 0.92em; border: 1px solid var(--rule); }
+  .callout .tag { font-family: var(--mono); font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); display: block; margin-bottom: 6px; }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 0.85em; color: var(--ink-soft); margin: 8px 0 18px; }
+  .legend span.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+  .cta-box {
+    background: var(--ink); color: var(--paper); border-radius: 6px; padding: 24px 26px; margin: 40px 0;
+    text-align: center;
+  }
+  .cta-box p { color: #e8e2d4; margin-bottom: 14px; }
+  .cta-box a.gh {
+    font-family: var(--mono); font-size: 0.92em; text-decoration: none;
+    color: var(--ink); background: var(--paper); padding: 9px 20px; border-radius: 3px; font-weight: 600;
+  }
+  .cta-box a.gh:hover { background: var(--accent-soft); color: white; }
+  footer { border-top: 1px solid var(--rule); padding: 28px 0 50px; color: var(--ink-soft); font-size: 0.85em; }
+  footer a { color: var(--accent); }
+</style>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2526876080898597" crossorigin="anonymous"></script>
+</head>
+<body>
+
+<script>
+fetch('https://lidarman-backend.onrender.com/api/visit', {
+  method: 'POST', headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ path: location.pathname, referrer: document.referrer }), keepalive: true
+}).catch(function(){});
+</script>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html">Lidarman</a>
+    <div class="nav-actions">
+      <a class="navlink" href="guides.html">Guides</a>
+      <a class="gh" href="index.html#try-it">Try It</a>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="titleblock">
+    <span class="kicker">Field guide</span>
+    <h1>How to Read LIDAR Terrain Maps</h1>
+    <div class="dek">Hillshade, slope, Local Relief Model, and sky-view openness are four different ways of looking at the same elevation data. Each one hides different things and reveals different things.</div>
+  </div>
+
+  <div class="abstract">
+    <span class="label">In short</span>
+    Raw elevation numbers rarely show anything to the eye — a foundation reduced to a few centimeters of relief is invisible at normal color scales. Hillshade, slope, Local Relief Model, and sky-view openness are all just different math applied to the same digital elevation model to exaggerate exactly that kind of small, local relief. None of them is strictly "better" — they surface different failure modes, which is why Lidarman lets you switch between them on the same search without re-running it.
+  </div>
+
+  <nav class="toc">
+    Contents
+    <ol>
+      <li><a href="#hillshade">1. Hillshade</a></li>
+      <li><a href="#slope">2. Slope</a></li>
+      <li><a href="#lrm">3. Local Relief Model</a></li>
+      <li><a href="#openness">4. Sky-view openness</a></li>
+      <li><a href="#workflow">5. A practical workflow</a></li>
+      <li><a href="#cheatsheet">6. Cheat sheet by feature type</a></li>
+    </ol>
+  </nav>
+
+  <section id="hillshade">
+    <h2>1. Hillshade</h2>
+    <p>
+      Hillshade simulates sunlight hitting the terrain from a fixed direction and renders the result in grayscale — it's the closest thing to "what the ground would look like if you stripped away every tree and building and lit it from one angle." It's the easiest style to read at a glance, because it looks like a photograph of terrain rather than an abstraction.
+    </p>
+    <p>
+      The catch is direction-dependence: a feature that happens to face away from the simulated sun can wash out almost completely, while an identical feature facing the light stands out sharply. A single-direction hillshade can genuinely miss things that are sitting right there. Lidarman's default composite view uses a <i>multi-directional</i> hillshade — the same calculation averaged over eight compass directions — specifically to reduce this blind spot, but the plain single-direction hillshade style is still useful on its own as the fastest way to get oriented in a new area before switching to something more sensitive.
+    </p>
+  </section>
+
+  <section id="slope">
+    <h2>2. Slope</h2>
+    <p>
+      Slope measures steepness — the rate of elevation change — at every point, independent of which way it faces. This is what makes it the right tool for <i>not missing anything</i>: an edge that a hillshade might hide because of unlucky lighting geometry still shows up in slope, because slope doesn't care about light direction at all.
+    </p>
+    <p>
+      What slope can't tell you on its own is whether an edge is the top of a rise or the bottom of a dip — a foundation wall and the ditch running next to it can produce a very similar-looking bright edge in a pure slope map. It's a detector for "something changes here," not a classifier for what kind of change it is.
+    </p>
+  </section>
+
+  <section id="lrm">
+    <h2>3. Local Relief Model (LRM)</h2>
+    <p>
+      The Local Relief Model isolates small, local bumps and dips from the broader regional terrain trend: take the elevation model, heavily smooth a copy of it (a large-radius Gaussian blur), then subtract the smoothed version from the original. What's left is only the local deviation — a gentle hillside disappears into the subtraction, while a sharp, small-scale foundation outline or ditch survives it.
+    </p>
+    <p>
+      LRM is the clearest style for sorting <i>raised</i> from <i>sunken</i> at a glance, typically rendered on a diverging color scale: warm/red for higher than the immediate surroundings, cool/blue for lower. It's also the layer Lidarman's automatic candidate-detector itself analyzes (thresholded, then run through contour extraction and shape scoring) — when the tool flags a rectangular or circular candidate, LRM is what it actually looked at.
+    </p>
+    <div class="callout">
+      <span class="tag">Limitation worth knowing</span>
+      A large, perfectly flat raised feature — a big building pad, for instance — can be nearly invisible in the <i>interior</i> of an LRM, because the smoothing radius only lights up the <i>edges</i> of a plateau much bigger than itself. The interior blends back into the smoothed baseline. If you're looking at a large flat-topped feature, cross-check it against slope or hillshade rather than trusting LRM's interior reading alone.
+    </div>
+  </section>
+
+  <section id="openness">
+    <h2>4. Sky-view openness</h2>
+    <p>
+      Openness measures the average horizon angle visible from each point across several compass directions — essentially, how much open sky a point on the ground can "see." <i>Positive</i> openness highlights convex features (mounds, walls, raised pads) that poke up above their surroundings; <i>negative</i> openness highlights concave features (pits, ditches, sunken paths) that dip below theirs. Because it's an average across many directions rather than one simulated light source, it doesn't share hillshade's direction-dependent blind spot.
+    </p>
+    <p>
+      Lidarman's default composite blends positive and negative openness with hillshade into one RGB image, which is why the composite view is a reasonable all-around default even before you know what you're looking for.
+    </p>
+  </section>
+
+  <section id="workflow">
+    <h2>5. A practical workflow</h2>
+    <p>Rather than picking one style and sticking with it, treat them as a sequence:</p>
+    <ol>
+      <li><b>Start with slope</b> to catch every edge in view — this is your net, cast wide.</li>
+      <li><b>Switch to Local Relief</b> to sort what you found into raised vs. sunken, and to see how the automatic detector is scoring it.</li>
+      <li><b>Check hillshade</b> as a gut-check — does it look like plausible real terrain, or does it look like a rendering artifact?</li>
+    </ol>
+    <p>
+      This costs nothing extra: Lidarman computes all four derivative layers for every search, so switching styles is instant and doesn't re-run anything.
+    </p>
+  </section>
+
+  <section id="cheatsheet">
+    <h2>6. Cheat sheet by feature type</h2>
+    <div class="legend">
+      <span><span class="dot" style="background:#ffd54f;"></span>rectangular</span>
+      <span><span class="dot" style="background:#4dd0e1;"></span>circular</span>
+      <span><span class="dot" style="background:#ff7043;"></span>irregular</span>
+    </div>
+    <ul>
+      <li><b>Sunken paths &amp; old roads</b> — Local Relief, look for a blue trail. Slope is a good backup: it shows as two parallel bright edges where the path dips in and climbs back out.</li>
+      <li><b>Basements &amp; cellars</b> — Local Relief (a blue rectangle), cross-checked against slope — steep cellar walls often read as a bright "picture frame" outline around a flatter, darker floor.</li>
+      <li><b>Foundations (old wall stubs)</b> — Local Relief or the composite view, looking for a thin warm-colored outline.</li>
+      <li><b>Walls, berms &amp; mounds</b> — Composite or Local Relief — these are raised features, so they read warm on both.</li>
+    </ul>
+  </section>
+
+  <div class="cta-box">
+    <p>Every style above is one click away on a real search — no manual GIS work, no separate download.</p>
+    <a class="gh" href="index.html#try-it">Try a search — 3 free</a>
+  </div>
+
+  <p><a href="guides.html">&larr; Back to guides</a> &nbsp;·&nbsp; <a href="finding-old-homesteads-with-lidar.html">Next: Finding Old Homestead Sites With LIDAR &rarr;</a></p>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    &copy; Lidarman. <a href="mailto:projectsilverbeam@gmail.com">projectsilverbeam@gmail.com</a>
+  </div>
+</footer>
+
+</body>
+</html>

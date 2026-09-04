@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#7a3b2e">
+<title>Finding Old Homestead Sites With LIDAR — Lidarman</title>
+<link rel="canonical" href="https://lidarman.com/finding-old-homesteads-with-lidar.html">
+<link rel="icon" type="image/png" href="assets/icon-192.png">
+<meta name="description" content="What a vanished farmhouse foundation, root cellar, or filled-in farm lane actually looks like in LIDAR elevation data, and how to narrow down where to search before you go.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://lidarman.com/finding-old-homesteads-with-lidar.html">
+<meta property="og:title" content="Finding Old Homestead Sites With LIDAR">
+<meta property="og:description" content="What a vanished farmhouse foundation, root cellar, or filled-in farm lane actually looks like in LIDAR elevation data, and how to narrow down where to search before you go.">
+<meta property="og:image" content="https://lidarman.com/assets/hero-background.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Finding Old Homestead Sites With LIDAR">
+<meta name="twitter:description" content="What a vanished farmhouse foundation, root cellar, or filled-in farm lane actually looks like in LIDAR elevation data.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Finding Old Homestead Sites With LIDAR",
+  "description": "What a vanished farmhouse foundation, root cellar, or filled-in farm lane actually looks like in LIDAR elevation data, and how to narrow down where to search before you go.",
+  "author": { "@type": "Organization", "name": "Lidarman" },
+  "publisher": { "@type": "Organization", "name": "Lidarman", "url": "https://lidarman.com/" },
+  "mainEntityOfPage": "https://lidarman.com/finding-old-homesteads-with-lidar.html"
+}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #faf7f0; --ink: #1c1a17; --ink-soft: #4a453e; --rule: #d8d0c0;
+    --accent: #7a3b2e; --accent-soft: #ac6a52; --fig-bg: #f0ebe0; --code-bg: #efe9db;
+    --shadow: rgba(28, 26, 23, 0.08);
+    --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --mono: "JetBrains Mono", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--serif); line-height: 1.65; font-size: 18px; }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 0 24px; }
+  header.top {
+    border-bottom: 1px solid var(--rule); padding: 14px 0; position: sticky; top: 0;
+    background: rgba(250,247,240,0.92); backdrop-filter: blur(4px); z-index: 10;
+  }
+  header.top .wrap { display: flex; justify-content: space-between; align-items: center; }
+  header.top .brand { font-weight: 700; font-size: 1.05em; letter-spacing: 0.02em; text-decoration: none; color: var(--ink); }
+  header.top .nav-actions { display: flex; align-items: center; gap: 10px; }
+  header.top a.navlink { font-family: var(--mono); font-size: 0.85em; text-decoration: none; color: var(--ink-soft); }
+  header.top a.navlink:hover { color: var(--accent); }
+  header.top a.gh {
+    font-family: var(--mono); font-size: 0.85em; text-decoration: none;
+    color: var(--paper); background: var(--ink); padding: 7px 14px; border-radius: 3px;
+  }
+  header.top a.gh:hover { background: var(--accent); }
+  .titleblock { padding: 48px 0 8px; }
+  .titleblock .kicker { font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.78em; color: var(--accent); }
+  .titleblock h1 { font-size: 2.1em; margin: 10px 0 8px; line-height: 1.25; }
+  .titleblock .dek { font-size: 1.1em; color: var(--ink-soft); font-style: italic; }
+  .abstract { background: var(--fig-bg); border-left: 3px solid var(--accent); padding: 20px 24px; margin: 24px 0 44px; font-size: 0.97em; }
+  .abstract .label { font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.75em; color: var(--accent); display: block; margin-bottom: 10px; }
+  nav.toc { font-size: 0.88em; color: var(--ink-soft); margin-bottom: 48px; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding: 14px 0; }
+  nav.toc a { color: var(--ink-soft); text-decoration: none; margin-right: 4px; }
+  nav.toc a:hover { color: var(--accent); text-decoration: underline; }
+  nav.toc ol { margin: 6px 0 0; padding-left: 20px; columns: 2; }
+  section { margin-bottom: 46px; }
+  h2 { font-size: 1.5em; border-bottom: 1px solid var(--rule); padding-bottom: 8px; margin-bottom: 18px; }
+  h3 { font-size: 1.15em; margin-bottom: 10px; color: var(--ink); }
+  p { margin: 0 0 16px; }
+  ul, ol { margin: 0 0 16px; padding-left: 24px; }
+  li { margin-bottom: 6px; }
+  .callout { background: var(--fig-bg); border-radius: 5px; padding: 16px 18px; margin: 20px 0; font-size: 0.92em; border: 1px solid var(--rule); }
+  .callout .tag { font-family: var(--mono); font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); display: block; margin-bottom: 6px; }
+  .table-wrap { overflow-x: auto; margin: 18px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.92em; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule); }
+  th { font-family: var(--mono); font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft); }
+  .cta-box { background: var(--ink); color: var(--paper); border-radius: 6px; padding: 24px 26px; margin: 40px 0; text-align: center; }
+  .cta-box p { color: #e8e2d4; margin-bottom: 14px; }
+  .cta-box a.gh {
+    font-family: var(--mono); font-size: 0.92em; text-decoration: none;
+    color: var(--ink); background: var(--paper); padding: 9px 20px; border-radius: 3px; font-weight: 600;
+  }
+  .cta-box a.gh:hover { background: var(--accent-soft); color: white; }
+  footer { border-top: 1px solid var(--rule); padding: 28px 0 50px; color: var(--ink-soft); font-size: 0.85em; }
+  footer a { color: var(--accent); }
+</style>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2526876080898597" crossorigin="anonymous"></script>
+</head>
+<body>
+
+<script>
+fetch('https://lidarman-backend.onrender.com/api/visit', {
+  method: 'POST', headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ path: location.pathname, referrer: document.referrer }), keepalive: true
+}).catch(function(){});
+</script>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html">Lidarman</a>
+    <div class="nav-actions">
+      <a class="navlink" href="guides.html">Guides</a>
+      <a class="gh" href="index.html#try-it">Try It</a>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="titleblock">
+    <span class="kicker">Field guide</span>
+    <h1>Finding Old Homestead Sites With LIDAR</h1>
+    <div class="dek">A farmhouse that burned or was torn down a century ago rarely leaves anything visible from ground level. It almost always leaves a footprint in the terrain.</div>
+  </div>
+
+  <div class="abstract">
+    <span class="label">In short</span>
+    Homesteads are good LIDAR targets precisely because they're small and low-relief — a stone or poured foundation, a root cellar, a filled-in well, and the lane that connected them to the road all disturb the ground by a few centimeters to a couple of feet, which is exactly the scale LIDAR's bare-earth elevation model is sensitive to. The harder part usually isn't spotting a candidate once you're looking in the right place — it's narrowing down <i>where</i> to look in the first place.
+  </div>
+
+  <nav class="toc">
+    Contents
+    <ol>
+      <li><a href="#signatures">1. What to look for</a></li>
+      <li><a href="#research">2. Narrowing down where to look first</a></li>
+      <li><a href="#workflow">3. A search workflow</a></li>
+      <li><a href="#false-positives">4. Common false positives</a></li>
+    </ol>
+  </nav>
+
+  <section id="signatures">
+    <h2>1. What to look for</h2>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Feature</th><th>Typical LIDAR signature</th></tr>
+        <tr><td>Stone or poured foundation</td><td>Thin rectangular outline, slightly raised or with a raised rubble edge — clearest in Local Relief or the composite view.</td></tr>
+        <tr><td>Root cellar / cold cellar</td><td>Small circular or oval depression, often just a few meters across — reads as a tight blue spot in Local Relief.</td></tr>
+        <tr><td>Filled-in well</td><td>Small circular anomaly — a shallow depression if it settled over time, or a slight mound if it was backfilled above grade.</td></tr>
+        <tr><td>Farm lane / cart path</td><td>Long, gently sunken linear trace, often curving to follow easiest grade rather than running perfectly straight.</td></tr>
+        <tr><td>Terracing / field walls</td><td>Long, low, straight-ish raised lines — easy to confuse with a foundation edge in isolation; check whether it's part of a longer running line first.</td></tr>
+      </table>
+    </div>
+    <p>
+      See the <a href="reading-lidar-hillshade-maps.html">terrain-reading guide</a> for how each of these actually renders across hillshade, slope, and Local Relief — a foundation and a field wall can look similar in one style and completely different in another.
+    </p>
+  </section>
+
+  <section id="research">
+    <h2>2. Narrowing down where to look first</h2>
+    <p>
+      A LIDAR scan only covers the search radius you point it at — running blind searches over open country is a slow way to find a needle in a very large haystack. A bit of desk research first turns "somewhere in this county" into a specific few hundred meters worth actually scanning:
+    </p>
+    <ul>
+      <li><b>Old county atlases and plat maps</b> — many US counties published illustrated atlases in the late 1800s showing individual landowner parcels and structure locations by name. Local libraries, county historical societies, and state archives are the usual homes for these.</li>
+      <li><b>Historical USGS topographic maps</b> — USGS has published topo quadrangles since the late 1800s, and older editions often mark individual structures (small black squares) that don't appear on the current sheet at all, because the structure hasn't existed for decades.</li>
+      <li><b>Historical aerial photography</b> — USDA and USGS aerial photo archives go back to the 1930s–40s in a lot of areas; a structure that was demolished after that point may still show up as a roofline in an old photo even though nothing is standing today.</li>
+      <li><b>Local historical &amp; genealogical societies</b> — often the fastest route to "we know exactly where the old so-and-so place was," especially for anything with a name attached to it.</li>
+    </ul>
+    <div class="callout">
+      <span class="tag">Why this matters beyond convenience</span>
+      Corroborating a LIDAR candidate against an independent historical source is also the difference between "probably a foundation" and "confirmed to have had a structure here as of a documented date" — useful context to have before you invest time getting permission and making the trip.
+    </div>
+  </section>
+
+  <section id="workflow">
+    <h2>3. A search workflow</h2>
+    <ol>
+      <li>Narrow a candidate area using the research sources above — even a rough "somewhere along this old road" is enough of a starting point.</li>
+      <li>Run a Lidarman search centered on that area with a generous radius, then tighten the radius once you see where the activity is.</li>
+      <li>Step through hillshade → slope → Local Relief per the <a href="reading-lidar-hillshade-maps.html">terrain-reading guide</a> to sort real candidates from noise.</li>
+      <li>Use the present/past flicker comparator to see how a candidate's location sits relative to today's satellite imagery — tree cover, current land use, and access.</li>
+      <li>Before going out: confirm who owns the land today and get permission. See <a href="metal-detecting-permission-and-legal-basics.html">permission and legal basics</a>.</li>
+    </ol>
+  </section>
+
+  <section id="false-positives">
+    <h2>4. Common false positives</h2>
+    <p>
+      Not every rectangle used to be a house. Modern equipment pads, hay bale storage areas, agricultural terracing, old tennis or basketball courts, and even certain drainage features can produce a similar geometric signature to a foundation. This is exactly why Lidarman's auto-detected candidates are ranked by confidence rather than presented as verdicts — treat a flagged candidate as a place worth a closer look, not a place that's confirmed to have had a structure on it. Independent corroboration (an old map, a known family name tied to the parcel, a filled well visible in a different style) is what turns a candidate into something worth the trip.
+    </p>
+  </section>
+
+  <div class="cta-box">
+    <p>Have a candidate area in mind? Run it against real LIDAR data in under two minutes.</p>
+    <a class="gh" href="index.html#try-it">Try a search — 3 free</a>
+  </div>
+
+  <p><a href="guides.html">&larr; Back to guides</a> &nbsp;·&nbsp; <a href="free-public-lidar-data-sources.html">Next: Free Public LIDAR Data Sources &rarr;</a></p>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    &copy; Lidarman. <a href="mailto:projectsilverbeam@gmail.com">projectsilverbeam@gmail.com</a>
+  </div>
+</footer>
+
+</body>
+</html>

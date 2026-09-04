@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#7a3b2e">
+<title>Free Public LIDAR Data Sources in the US — Lidarman</title>
+<link rel="canonical" href="https://lidarman.com/free-public-lidar-data-sources.html">
+<link rel="icon" type="image/png" href="assets/icon-192.png">
+<meta name="description" content="Where US LIDAR elevation data actually comes from — USGS 3DEP, OpenTopography, The National Map, and state GIS portals — and when raw data is worth the extra work over a hosted tool.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://lidarman.com/free-public-lidar-data-sources.html">
+<meta property="og:title" content="Free Public LIDAR Data Sources in the US">
+<meta property="og:description" content="Where US LIDAR elevation data actually comes from, and when raw data is worth the extra work over a hosted tool.">
+<meta property="og:image" content="https://lidarman.com/assets/hero-background.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Free Public LIDAR Data Sources in the US">
+<meta name="twitter:description" content="Where US LIDAR elevation data actually comes from, and when raw data is worth the extra work over a hosted tool.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Free Public LIDAR Data Sources in the US",
+  "description": "Where US LIDAR elevation data actually comes from — USGS 3DEP, OpenTopography, The National Map, and state GIS portals — and when raw data is worth the extra work over a hosted tool.",
+  "author": { "@type": "Organization", "name": "Lidarman" },
+  "publisher": { "@type": "Organization", "name": "Lidarman", "url": "https://lidarman.com/" },
+  "mainEntityOfPage": "https://lidarman.com/free-public-lidar-data-sources.html"
+}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #faf7f0; --ink: #1c1a17; --ink-soft: #4a453e; --rule: #d8d0c0;
+    --accent: #7a3b2e; --accent-soft: #ac6a52; --fig-bg: #f0ebe0; --code-bg: #efe9db;
+    --shadow: rgba(28, 26, 23, 0.08);
+    --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --mono: "JetBrains Mono", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--serif); line-height: 1.65; font-size: 18px; }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 0 24px; }
+  header.top {
+    border-bottom: 1px solid var(--rule); padding: 14px 0; position: sticky; top: 0;
+    background: rgba(250,247,240,0.92); backdrop-filter: blur(4px); z-index: 10;
+  }
+  header.top .wrap { display: flex; justify-content: space-between; align-items: center; }
+  header.top .brand { font-weight: 700; font-size: 1.05em; letter-spacing: 0.02em; text-decoration: none; color: var(--ink); }
+  header.top .nav-actions { display: flex; align-items: center; gap: 10px; }
+  header.top a.navlink { font-family: var(--mono); font-size: 0.85em; text-decoration: none; color: var(--ink-soft); }
+  header.top a.navlink:hover { color: var(--accent); }
+  header.top a.gh {
+    font-family: var(--mono); font-size: 0.85em; text-decoration: none;
+    color: var(--paper); background: var(--ink); padding: 7px 14px; border-radius: 3px;
+  }
+  header.top a.gh:hover { background: var(--accent); }
+  .titleblock { padding: 48px 0 8px; }
+  .titleblock .kicker { font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.78em; color: var(--accent); }
+  .titleblock h1 { font-size: 2.1em; margin: 10px 0 8px; line-height: 1.25; }
+  .titleblock .dek { font-size: 1.1em; color: var(--ink-soft); font-style: italic; }
+  .abstract { background: var(--fig-bg); border-left: 3px solid var(--accent); padding: 20px 24px; margin: 24px 0 44px; font-size: 0.97em; }
+  .abstract .label { font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.75em; color: var(--accent); display: block; margin-bottom: 10px; }
+  nav.toc { font-size: 0.88em; color: var(--ink-soft); margin-bottom: 48px; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding: 14px 0; }
+  nav.toc a { color: var(--ink-soft); text-decoration: none; margin-right: 4px; }
+  nav.toc a:hover { color: var(--accent); text-decoration: underline; }
+  nav.toc ol { margin: 6px 0 0; padding-left: 20px; columns: 2; }
+  section { margin-bottom: 46px; }
+  h2 { font-size: 1.5em; border-bottom: 1px solid var(--rule); padding-bottom: 8px; margin-bottom: 18px; }
+  h3 { font-size: 1.15em; margin-bottom: 10px; color: var(--ink); }
+  p { margin: 0 0 16px; }
+  ul, ol { margin: 0 0 16px; padding-left: 24px; }
+  li { margin-bottom: 6px; }
+  .callout { background: var(--fig-bg); border-radius: 5px; padding: 16px 18px; margin: 20px 0; font-size: 0.92em; border: 1px solid var(--rule); }
+  .callout .tag { font-family: var(--mono); font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); display: block; margin-bottom: 6px; }
+  .table-wrap { overflow-x: auto; margin: 18px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.92em; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule); }
+  th { font-family: var(--mono); font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft); }
+  td a { color: var(--accent); }
+  .cta-box { background: var(--ink); color: var(--paper); border-radius: 6px; padding: 24px 26px; margin: 40px 0; text-align: center; }
+  .cta-box p { color: #e8e2d4; margin-bottom: 14px; }
+  .cta-box a.gh {
+    font-family: var(--mono); font-size: 0.92em; text-decoration: none;
+    color: var(--ink); background: var(--paper); padding: 9px 20px; border-radius: 3px; font-weight: 600;
+  }
+  .cta-box a.gh:hover { background: var(--accent-soft); color: white; }
+  footer { border-top: 1px solid var(--rule); padding: 28px 0 50px; color: var(--ink-soft); font-size: 0.85em; }
+  footer a { color: var(--accent); }
+</style>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2526876080898597" crossorigin="anonymous"></script>
+</head>
+<body>
+
+<script>
+fetch('https://lidarman-backend.onrender.com/api/visit', {
+  method: 'POST', headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ path: location.pathname, referrer: document.referrer }), keepalive: true
+}).catch(function(){});
+</script>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html">Lidarman</a>
+    <div class="nav-actions">
+      <a class="navlink" href="guides.html">Guides</a>
+      <a class="gh" href="index.html#try-it">Try It</a>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="titleblock">
+    <span class="kicker">Field guide</span>
+    <h1>Free Public LIDAR Data Sources in the US</h1>
+    <div class="dek">Almost all US LIDAR coverage is public and free — the practical question is never "can I get this data," it's "how much manual GIS work do I want to do to use it."</div>
+  </div>
+
+  <div class="abstract">
+    <span class="label">In short</span>
+    US LIDAR elevation data is overwhelmingly public, funded through federal and state mapping programs, and free to download. Lidarman's search box fetches directly from the largest of these programs (USGS 3DEP) automatically, with no download or account required — this guide is for when you want the raw data yourself, or want to understand where Lidarman's numbers actually come from.
+  </div>
+
+  <nav class="toc">
+    Contents
+    <ol>
+      <li><a href="#3dep">1. USGS 3DEP — the national baseline</a></li>
+      <li><a href="#raw">2. Getting raw data yourself</a></li>
+      <li><a href="#state">3. State and local portals</a></li>
+      <li><a href="#when">4. When raw data is actually worth it</a></li>
+    </ol>
+  </nav>
+
+  <section id="3dep">
+    <h2>1. USGS 3DEP — the national baseline</h2>
+    <p>
+      The USGS 3D Elevation Program (3DEP) is the primary federal effort to acquire consistent, high-resolution LIDAR coverage of the United States, built up over years of coordinated federal, state, and local data acquisition. It's the data source Lidarman's search actually queries — type in a place name or coordinates and the pipeline geocodes it, pulls the relevant elevation data from 3DEP's web services, and processes it, with no manual download step or API key involved on your end.
+    </p>
+    <p>
+      Coverage and resolution vary by location — some areas have multiple LIDAR acquisitions spanning years, others have thinner coverage — but for most of the continental US, 3DEP is the right first stop, which is exactly why it's the default behind Lidarman's own search.
+    </p>
+  </section>
+
+  <section id="raw">
+    <h2>2. Getting raw data yourself</h2>
+    <p>If you want the underlying files rather than a processed search result:</p>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Source</th><th>What it's good for</th></tr>
+        <tr><td>USGS The National Map downloader</td><td>Direct download of 3DEP elevation products (DEMs and point clouds) by drawing a bounding box.</td></tr>
+        <tr><td>OpenTopography</td><td>An academic-facing host for LIDAR point cloud datasets, US and international, with browser-based processing tools of its own.</td></tr>
+      </table>
+    </div>
+    <p>
+      Lidarman's underlying pipeline (available as a scriptable CLI in addition to the web app) can ingest a downloaded LAS/LAZ point cloud or a DEM GeoTIFF directly, if you'd rather run your own processing on data you sourced yourself rather than a place-name search.
+    </p>
+  </section>
+
+  <section id="state">
+    <h2>3. State and local portals</h2>
+    <p>
+      Many states run their own GIS data programs on top of the federal 3DEP baseline, and state-sourced acquisitions are sometimes newer or higher-resolution than what's reflected nationally — worth checking if 3DEP coverage in your specific area looks thin or outdated. Searching "[your state] LIDAR GIS data" or checking your state's official GIS clearinghouse is usually the fastest way to find it, since the specific program name and URL vary by state and change over time.
+    </p>
+  </section>
+
+  <section id="when">
+    <h2>4. When raw data is actually worth it</h2>
+    <p>
+      For the common case — "is there anything interesting near this place" — going straight to raw data is usually more setup than the question deserves: a bounding-box download, a coordinate system to get right, and a GIS or scripting toolchain to turn raw points into hillshade/slope/relief imagery before you can even look at it. That whole path is what Lidarman's search collapses into typing a place name and waiting under two minutes.
+    </p>
+    <p>
+      Raw data earns its extra effort when you need something a per-search tool isn't built for: custom processing parameters, a very large area at once, non-US coverage (3DEP is US-only, so anything outside it requires a different source entirely), or feeding the data into your own separate analysis pipeline.
+    </p>
+  </section>
+
+  <div class="cta-box">
+    <p>Skip the bounding-box download and coordinate-system wrangling for the common case.</p>
+    <a class="gh" href="index.html#try-it">Try a search — 3 free</a>
+  </div>
+
+  <p><a href="guides.html">&larr; Back to guides</a> &nbsp;·&nbsp; <a href="metal-detecting-permission-and-legal-basics.html">Next: Permission and Legal Basics Before You Dig &rarr;</a></p>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    &copy; Lidarman. <a href="mailto:projectsilverbeam@gmail.com">projectsilverbeam@gmail.com</a>
+  </div>
+</footer>
+
+</body>
+</html>
