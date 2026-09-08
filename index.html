@@ -852,9 +852,19 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     }
   }
 
-  function refreshTrialStatus() {
+  function refreshTrialStatus(attempt) {
+    attempt = attempt || 0;
     fetch(`${API_BASE}/api/access/status?deviceId=${encodeURIComponent(deviceId)}`)
-      .then(r => r.json()).then(renderTrialStatus).catch(() => {});
+      .then(r => r.json()).then(renderTrialStatus)
+      .catch(() => {
+        // This used to be .catch(() => {}) — a transient failure left
+        // "Loading trial status…" on screen permanently, with no message and
+        // no recovery. Confirmed reproducible against the live site. The
+        // backend sleeps on Render's free tier, so the first request of the
+        // day routinely fails or stalls while it wakes; retry, then say so.
+        if (attempt < 2) { setTimeout(() => refreshTrialStatus(attempt + 1), 4000); return; }
+        trialEl.textContent = 'Could not reach the server — it may be waking up. Reload in a moment.';
+      });
   }
 
   function showPaywall(message) {
