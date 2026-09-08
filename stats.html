@@ -179,7 +179,14 @@
 
     <div class="panel" style="grid-column: 1 / -1;">
       <h2>Server Errors <span id="errorCounts" style="font-weight:normal; opacity:.7; font-size:.8em;"></span></h2>
-      <table><tbody id="recentErrors"></tbody></table>
+      <!-- overflow-x here, matching index.html's .table-wrap convention: error
+           messages and their JSON context are long, and without this the table
+           widens the whole PAGE on a phone (measured 514px inside a 360px
+           viewport) — the same mobile-overflow bug the Sep 2 audit fixed for
+           the validation table. -->
+      <div style="overflow-x:auto;">
+        <table><tbody id="recentErrors"></tbody></table>
+      </div>
     </div>
   </div>
 </div>
