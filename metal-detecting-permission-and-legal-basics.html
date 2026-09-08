@@ -42,6 +42,12 @@
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--serif); line-height: 1.65; font-size: 18px; }
   .wrap { max-width: 780px; margin: 0 auto; padding: 0 24px; }
+  /* At ~320px (iPhone SE 1st gen, Galaxy Fold cover screen) the header row —
+     brand plus Guides / Share / Try It — comes out about 2px wider than the
+     viewport, which gives the entire page a sliver of horizontal scroll.
+     Tightening the gutter at those widths reclaims 20px, comfortably more
+     than needed, and reads better on a very narrow screen anyway. */
+  @media (max-width: 360px) { .wrap { padding: 0 14px; } }
   header.top {
     border-bottom: 1px solid var(--rule); padding: 14px 0; position: sticky; top: 0;
     background: rgba(250,247,240,0.92); backdrop-filter: blur(4px); z-index: 10;
