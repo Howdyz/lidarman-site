@@ -378,8 +378,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         <option value="35.1378,-81.8129">Cowpens, SC (1781)</option>
         <option value="45.5670,-107.4284">Little Bighorn, MT (1876)</option>
       </select>
-      <label>Search radius (meters)</label>
-      <input type="number" id="radiusInput" value="300">
+      <label>Search radius (meters) <span style="opacity:.6; font-weight:normal;">— 50 to 600</span></label>
+      <input type="number" id="radiusInput" value="300" min="50" max="600" step="50">
       <button class="primary" id="searchBtn">Search</button>
       <button class="secondary-btn" id="viewToggleBtn" type="button" disabled>🔦 Lidar view: on</button>
       <button class="secondary-btn" id="zoomLockBtn" type="button">🔓 Lock zoom</button>
