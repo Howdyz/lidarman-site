@@ -865,13 +865,31 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 
   document.getElementById('paywallCloseBtn').addEventListener('click', hidePaywall);
   document.getElementById('unlockBtn').addEventListener('click', () => {
+    // This chain previously had no .catch() and called r.json() directly.
+    // The backend is on Render's free tier and spins down, so a cold start
+    // can return an HTML 502 — r.json() would throw, the rejection went
+    // unhandled, and the pay button silently did nothing for the customer.
+    // Same unhandled-rejection class as the loadSaved() bug fixed earlier.
+    const btn = document.getElementById('unlockBtn');
+    const originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Opening checkout…';
+    const restore = () => { btn.disabled = false; btn.textContent = originalLabel; };
+
     fetch(`${API_BASE}/api/access/checkout`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ deviceId })
-    }).then(r => r.json()).then(data => {
-      if (data.url) { window.location.href = data.url; }
-      else { showPaywall(data.error || 'Payments are not available right now — try again later.'); }
-    });
+    })
+      .then(r => r.json().catch(() => ({})))
+      .then(data => {
+        if (data.url) { window.location.href = data.url; return; }
+        restore();
+        showPaywall(data.error || 'Payments are not available right now — try again in a moment.');
+      })
+      .catch(() => {
+        restore();
+        showPaywall("Couldn't reach the payment server — it may still be waking up. Give it a few seconds and try again.");
+      });
   });
 
   function runSearch() {
@@ -1166,8 +1184,36 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 
   // Returning from Stripe checkout success_url=...?unlocked=1
   if (new URLSearchParams(window.location.search).get('unlocked') === '1') {
-    document.getElementById('unlockedBanner').classList.add('show');
     history.replaceState(null, '', window.location.pathname);
+    const banner = document.getElementById('unlockedBanner');
+    banner.innerHTML = '<b>Payment received.</b> Confirming your unlock…';
+    banner.classList.add('show');
+
+    // Do NOT claim success from the URL parameter alone. The unlock only
+    // actually happens when Stripe's webhook reaches the backend, which
+    // lags a few seconds — and when that webhook was broken, this banner
+    // cheerfully told a paying customer "Payment confirmed — unlimited
+    // searches" while they were still locked out. Verify with the server,
+    // and say something honest and actionable if it doesn't land.
+    let attempts = 0;
+    (function confirmUnlock() {
+      fetch(`${API_BASE}/api/access/status?deviceId=${encodeURIComponent(deviceId)}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.unlocked) {
+            banner.innerHTML = '<b>Unlocked!</b> Payment confirmed — you have unlimited searches on this device now.';
+            renderTrialStatus(data);
+          } else if (++attempts < 12) {
+            setTimeout(confirmUnlock, 3000);
+          } else {
+            banner.innerHTML = "<b>Payment received, but the unlock hasn't come through yet.</b> " +
+              'It sometimes takes a minute. If it still hasn\'t cleared, email ' +
+              '<a href="mailto:projectsilverbeam@gmail.com">projectsilverbeam@gmail.com</a> ' +
+              'with your Stripe receipt and it\'ll be sorted out manually.';
+          }
+        })
+        .catch(() => { if (++attempts < 12) setTimeout(confirmUnlock, 3000); });
+    })();
   }
 
   // Owner comp unlock: visit ?admin=<ADMIN_SECRET> once on a device to
