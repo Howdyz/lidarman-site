@@ -178,6 +178,11 @@
     </div>
 
     <div class="panel" style="grid-column: 1 / -1;">
+      <h2>Monitor</h2>
+      <div id="monitorStatus" style="font-size:.95em; line-height:1.7;">—</div>
+    </div>
+
+    <div class="panel" style="grid-column: 1 / -1;">
       <h2>Server Errors <span id="errorCounts" style="font-weight:normal; opacity:.7; font-size:.8em;"></span></h2>
       <!-- overflow-x here, matching index.html's .table-wrap convention: error
            messages and their JSON context are long, and without this the table
@@ -249,6 +254,33 @@ function renderStats(data){
   refBody.innerHTML = (data.topReferrers || []).length ? data.topReferrers.map(r =>
     '<tr><td>' + escapeHtml(r.key) + '</td><td>' + r.count.toLocaleString() + '</td></tr>'
   ).join('') : '<tr><td style="color:var(--ink-soft);">No data yet.</td></tr>';
+
+  // Monitor — last unattended health check + Stripe reconciliation run.
+  const mon = data.monitor;
+  const monEl = document.getElementById('monitorStatus');
+  if (!mon) {
+    monEl.innerHTML = '<span style="color:var(--ink-soft);">Never run. Point a scheduled pinger at ' +
+      '<code>/api/admin/monitor</code> to enable unattended checks.</span>';
+  } else {
+    const ageMin = Math.round((Date.now() - (mon.at || 0)) / 60000);
+    const stale = ageMin > 120;
+    const h = mon.health || {}, rec = mon.reconcile || {};
+    const fixedCount = (rec.fixed || []).length;
+    monEl.innerHTML =
+      '<div>Last run: <b>' + escapeHtml(new Date(mon.at).toLocaleString()) + '</b> ' +
+        '<span style="color:' + (stale ? '#c0392b' : 'inherit') + ';">(' +
+        (ageMin < 1 ? 'just now' : ageMin + ' min ago') + (stale ? ' — stale' : '') + ')</span></div>' +
+      '<div>Backend: ' + (h.ok
+        ? '<b style="color:#1e8449;">healthy</b> (' + escapeHtml(String(h.seconds)) + 's)'
+        : '<b style="color:#c0392b;">FAILING</b> ' + escapeHtml(JSON.stringify(h))) + '</div>' +
+      '<div>Paid unlocks checked: <b>' + (rec.checked || 0) + '</b>' +
+        (fixedCount
+          ? ' — <b style="color:#c0392b;">auto-fixed ' + fixedCount + ' stuck unlock(s)</b>'
+          : ' — none stuck ✅') +
+        (rec.note ? ' <span style="opacity:.6;">(' + escapeHtml(rec.note) + ')</span>' : '') +
+        (rec.error ? ' <span style="color:#c0392b;">' + escapeHtml(rec.error) + '</span>' : '') +
+      '</div>';
+  }
 
   // Server errors — these used to be invisible unless someone read Render's
   // logs by hand, which is how two real users' failed searches went unnoticed.
