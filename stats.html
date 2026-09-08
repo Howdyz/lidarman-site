@@ -176,6 +176,11 @@
       <h2>Top Referrers</h2>
       <table><tbody id="topReferrers"></tbody></table>
     </div>
+
+    <div class="panel" style="grid-column: 1 / -1;">
+      <h2>Server Errors <span id="errorCounts" style="font-weight:normal; opacity:.7; font-size:.8em;"></span></h2>
+      <table><tbody id="recentErrors"></tbody></table>
+    </div>
   </div>
 </div>
 
@@ -237,6 +242,27 @@ function renderStats(data){
   refBody.innerHTML = (data.topReferrers || []).length ? data.topReferrers.map(r =>
     '<tr><td>' + escapeHtml(r.key) + '</td><td>' + r.count.toLocaleString() + '</td></tr>'
   ).join('') : '<tr><td style="color:var(--ink-soft);">No data yet.</td></tr>';
+
+  // Server errors — these used to be invisible unless someone read Render's
+  // logs by hand, which is how two real users' failed searches went unnoticed.
+  const err = data.errors || {};
+  const counts = document.getElementById('errorCounts');
+  const lastHour = err.lastHour || 0, lastDay = err.lastDay || 0;
+  counts.textContent = lastHour || lastDay
+    ? '— ' + lastHour + ' in the last hour, ' + lastDay + ' in the last 24h'
+    : '— none in the last 24h';
+  counts.style.color = lastHour ? '#c0392b' : '';
+
+  const errBody = document.getElementById('recentErrors');
+  const list = err.recent || [];
+  errBody.innerHTML = list.length ? list.map(function(e){
+    const when = new Date(e.at).toLocaleString();
+    const ctx = e.context && Object.keys(e.context).length
+      ? ' <span style="opacity:.6;">(' + escapeHtml(JSON.stringify(e.context)) + ')</span>' : '';
+    return '<tr><td style="white-space:nowrap; opacity:.7;">' + escapeHtml(when) + '</td>' +
+           '<td style="white-space:nowrap;"><code>' + escapeHtml(e.where || '') + '</code></td>' +
+           '<td>' + escapeHtml(e.message || '') + ctx + '</td></tr>';
+  }).join('') : '<tr><td style="color:var(--ink-soft);">No errors recorded. 🎉</td></tr>';
 }
 
 function escapeHtml(s){
