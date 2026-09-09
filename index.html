@@ -1416,7 +1416,9 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       const parks = data.parks || [];
       if (!parks.length) {
         parksPanel.style.display = 'none';
-        setParksStatus(data.error || 'No named parks found within 50 miles.');
+        // Not "there are no parks" — within 50 miles that is essentially
+        // never true. An empty list means the lookup could not answer.
+        setParksStatus(data.error || 'Park lookup came back empty — the map service may be busy. Try again in a moment.');
         return;
       }
       const rows = parks.map(p => {
