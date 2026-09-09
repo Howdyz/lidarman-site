@@ -380,6 +380,10 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       </div>
       <button class="secondary-btn" id="useLocationBtn" type="button">📍 Use my location</button>
       <div id="locationStatus"></div>
+      <button class="secondary-btn" id="parksBtn" type="button">🌳 Parks near me (50 mi)</button>
+      <div id="parksStatus"></div>
+      <div id="parksPanel" style="display:none; max-height:280px; overflow-y:auto; margin-top:6px;
+           border:1px solid rgba(255,255,255,0.12); border-radius:4px;"></div>
       <label>...or pick a famous battlefield (US only — data source coverage)</label>
       <select id="battlefieldSelect">
         <option value="">— Select a battlefield —</option>
@@ -1387,6 +1391,104 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       })
       .catch(err => { setStatus('Request failed: ' + err, true); searchBtn.disabled = false; });
   }
+
+  // ---- Parks near me ------------------------------------------------------
+  // A first-time visitor usually has nowhere to point a scan. This lists named
+  // parks within 50 miles as somewhere to start. It is deliberately framed as
+  // "somewhere to look at", never as permission to dig — access to public
+  // parks turns on local rules this cannot see.
+  (function () {
+    const parksBtn = document.getElementById('parksBtn');
+    const parksPanel = document.getElementById('parksPanel');
+    const parksStatus = document.getElementById('parksStatus');
+    if (!parksBtn) return;
+
+    const setParksStatus = (msg) => { parksStatus.textContent = msg || ''; };
+
+    function currentLatLon() {
+      const la = parseFloat(document.getElementById('latInput').value);
+      const lo = parseFloat(document.getElementById('lonInput').value);
+      if (isFinite(la) && isFinite(lo)) return Promise.resolve([la, lo]);
+      if (!navigator.geolocation) return Promise.reject(new Error('no geolocation'));
+      // Same reasoning as the Use-my-location button: a coarse network fix is
+      // plenty for centring a 50-mile radius, and demanding a GPS lock is what
+      // makes this hang in in-app browsers.
+      return new Promise((resolve, reject) => {
+        let done = false;
+        const t = setTimeout(() => { if (!done) { done = true; reject(new Error('timeout')); } }, 12000);
+        navigator.geolocation.getCurrentPosition(
+          (pos) => { if (done) return; done = true; clearTimeout(t);
+                     resolve([pos.coords.latitude, pos.coords.longitude]); },
+          (err) => { if (done) return; done = true; clearTimeout(t); reject(err); },
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 }
+        );
+      });
+    }
+
+    function render(data) {
+      const parks = data.parks || [];
+      if (!parks.length) {
+        parksPanel.style.display = 'none';
+        setParksStatus(data.error || 'No named parks found within 50 miles.');
+        return;
+      }
+      const rows = parks.map(p => {
+        const miles = (p.distance_km * 0.621371).toFixed(1);
+        const prohibited = p.land_status === 'prohibited';
+        const badge = p.land_status
+          ? `<span style="font-size:0.78em; padding:1px 5px; border-radius:2px; white-space:nowrap;
+               background:${prohibited ? '#c0392b' : '#8a5f16'}; color:#fff;">`
+            + `${prohibited ? 'do not detect' : 'restricted'}</span>`
+          : '';
+        return `<div class="park-row" data-lat="${p.lat}" data-lon="${p.lon}"
+                  title="${escapeHtml(p.land_note || 'No federal restriction found. Local rules still apply.')}"
+                  style="padding:6px 8px; cursor:pointer; display:flex; gap:8px; align-items:baseline;
+                         border-bottom:1px solid rgba(255,255,255,0.07);">
+                  <span style="opacity:0.6; font-size:0.85em; min-width:58px;">${miles} mi</span>
+                  <span style="flex:1;">${escapeHtml(p.name)}</span>${badge}
+                </div>`;
+      }).join('');
+      parksPanel.innerHTML =
+        `<div style="padding:7px 8px; font-size:0.85em; line-height:1.45; opacity:0.85;
+             border-bottom:1px solid rgba(255,255,255,0.12);">
+           ${escapeHtml(data.notice || '')}
+         </div>` + rows;
+      parksPanel.style.display = 'block';
+      setParksStatus(`${parks.length} park${parks.length === 1 ? '' : 's'} within 50 miles`
+        + (data.cached ? '' : '') + ' — click one to load it.');
+    }
+
+    parksBtn.addEventListener('click', () => {
+      parksBtn.disabled = true;
+      setParksStatus('Finding parks near you…');
+      currentLatLon()
+        .then(([la, lo]) =>
+          fetch(`${API_BASE}/api/parks?lat=${la.toFixed(6)}&lon=${lo.toFixed(6)}&radius_km=80`)
+            .then(r => r.json().then(d => ({ ok: r.ok, d }))))
+        .then(({ ok, d }) => {
+          if (!ok) { setParksStatus(d.error || 'Could not load parks.'); return; }
+          render(d);
+        })
+        .catch((err) => {
+          setParksStatus(err && err.code === 1
+            ? 'Location permission denied — enter a lat/lon above and try again.'
+            : 'Could not get your location. Enter a lat/lon above and try again.');
+        })
+        .finally(() => { parksBtn.disabled = false; });
+    });
+
+    parksPanel.addEventListener('click', (e) => {
+      const row = e.target.closest('.park-row');
+      if (!row) return;
+      document.getElementById('placeInput').value = '';
+      document.getElementById('latInput').value = row.dataset.lat;
+      document.getElementById('lonInput').value = row.dataset.lon;
+      // Deliberately does not auto-run the scan: each one costs a real USGS
+      // fetch and a minute of compute, and a mis-click should not spend that.
+      setParksStatus('Loaded — press Search to scan it.');
+      map.setView([parseFloat(row.dataset.lat), parseFloat(row.dataset.lon)], 15);
+    });
+  })();
 
   searchBtn.addEventListener('click', runSearch);
   document.getElementById('placeInput').addEventListener('keydown', e => { if (e.key === 'Enter') runSearch(); });
