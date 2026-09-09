@@ -554,8 +554,13 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       are then processed with OpenCV contour extraction. Each contour is
       scored for <i>rectangularity</i> (contour area over minimum-bounding-rectangle
       area) and <i>circularity</i> (4π·area / perimeter²) — shapes clearing
-      either threshold are classified accordingly and ranked by score; the
-      rest are kept as lower-confidence "irregular" candidates.
+      either threshold are classified accordingly; the rest are kept as
+      lower-confidence "irregular" candidates. Shape score alone is a poor
+      sort key, because a blob a few pixels across fills its own bounding
+      rectangle exactly and so scores a perfect 1.0 by construction. Ranking
+      therefore weights the shape score by a log-normal size plausibility,
+      peaking around a building-sized footprint and falling away toward both
+      specks and hillside-sized landforms.
     </p>
     <div class="callout">
       <span class="tag">Methodological note</span>
@@ -601,8 +606,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     <div class="table-wrap">
       <table>
         <tr><th>Rank</th><th>Shape</th><th>Detected area</th><th>True area</th><th>Detected size</th><th>True size</th></tr>
-        <tr><td class="num">1</td><td>rectangular</td><td class="num">751 m²</td><td class="num">800 m²</td><td class="num">20.0 × 39.5 m</td><td class="num">20 × 40 m</td></tr>
-        <tr><td class="num">2</td><td>circular</td><td class="num">238 m²</td><td class="num">~254 m²</td><td class="num">17.7 m dia.</td><td class="num">18 m dia.</td></tr>
+        <tr><td class="num">1</td><td>circular</td><td class="num">238 m²</td><td class="num">~254 m²</td><td class="num">17.7 m dia.</td><td class="num">18 m dia.</td></tr>
+        <tr><td class="num">2</td><td>rectangular</td><td class="num">751 m²</td><td class="num">800 m²</td><td class="num">20.0 × 39.5 m</td><td class="num">20 × 40 m</td></tr>
       </table>
     </div>
     <p>
@@ -1068,8 +1073,15 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
             ? `<br>${c.width_m.toFixed(1)} × ${c.height_m.toFixed(1)} m`
               + (c.angle_deg != null ? ` @ ${Math.round(c.angle_deg)}°` : '')
             : '';
+          // Ranking weights shape by size plausibility, so showing the shape
+          // score alone would make the ordering look wrong. Falls back to the
+          // plain score if the backend predates rank_score.
+          const scoreLine = (c.rank_score != null && c.size_factor != null)
+            ? `score: ${c.rank_score.toFixed(2)}`
+              + ` <span style="opacity:0.7;">(shape ${c.score.toFixed(2)} × size ${c.size_factor.toFixed(2)})</span>`
+            : `score: ${c.score.toFixed(2)}`;
           L.circleMarker([c.lat, c.lon], { radius: 6, color: shapeColor(c.shape), weight: 2, fillOpacity: 0.2 })
-            .bindPopup(`<b>#${c.rank} ${c.shape} (${c.kind})</b><br>score: ${c.score.toFixed(2)}<br>~${Math.round(c.area_m2)} m²${dims}`
+            .bindPopup(`<b>#${c.rank} ${c.shape} (${c.kind})</b><br>${scoreLine}<br>~${Math.round(c.area_m2)} m²${dims}`
               + `<br><span style="font-family:ui-monospace,monospace; font-size:0.85em; opacity:0.75;">${c.lat.toFixed(6)}, ${c.lon.toFixed(6)}</span>`
               + `<br><button class="cand-track-btn" data-lat="${c.lat}" data-lon="${c.lon}" style="margin-top:6px; padding:4px 10px; cursor:pointer;">🎯 Track this</button>`)
             .addTo(candidateMarkers);
