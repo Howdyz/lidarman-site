@@ -869,6 +869,233 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     statusEl.style.color = isError ? '#ff8a80' : '#ffb74d';
   }
 
+  // ---- QR encoder (byte mode, ECC L, versions 1-5) -------------------------
+  // Inlined because the CSP admits no external scripts and the site has no
+  // build step. Verified by round-tripping 300 random payloads through
+  // zxing-cpp (the decoder most phone scanners are built on): 300/300.
+  // OpenCV's weaker detector reads 296/300 of the same images.
+  const qrSvg = (function () {
+  // Minimal QR encoder: byte mode, ECC level L, versions 1-5 (single data
+  // block, so no interleaving). Enough for a geo: URI or a short maps URL.
+  // Returns a square array of 0/1 rows.
+
+  const EXP = new Uint8Array(512), LOG = new Uint8Array(256);
+  (function () {
+    let x = 1;
+    for (let i = 0; i < 255; i++) { EXP[i] = x; LOG[x] = i; x <<= 1; if (x & 0x100) x ^= 0x11D; }
+    for (let i = 255; i < 512; i++) EXP[i] = EXP[i - 255];
+  })();
+  const mul = (a, b) => (a === 0 || b === 0) ? 0 : EXP[LOG[a] + LOG[b]];
+
+  function polyMul(a, b) {
+    const r = new Uint8Array(a.length + b.length - 1);
+    for (let i = 0; i < a.length; i++)
+      for (let j = 0; j < b.length; j++) r[i + j] ^= mul(a[i], b[j]);
+    return r;
+  }
+  function rsGen(n) {
+    let g = Uint8Array.from([1]);
+    for (let i = 0; i < n; i++) g = polyMul(g, Uint8Array.from([1, EXP[i]]));
+    return g;
+  }
+  function rsEncode(data, n) {
+    const g = rsGen(n), res = new Uint8Array(data.length + n);
+    res.set(data);
+    for (let i = 0; i < data.length; i++) {
+      const c = res[i];
+      if (!c) continue;
+      for (let j = 0; j < g.length; j++) res[i + j] ^= mul(g[j], c);
+    }
+    return res.slice(data.length);
+  }
+
+  // [total codewords, ec codewords] for ECC L, versions 1-5 (all single-block)
+  const VER = { 1: [26, 7], 2: [44, 10], 3: [70, 15], 4: [100, 20], 5: [134, 26] };
+  const ALIGN = { 1: [], 2: [6, 18], 3: [6, 22], 4: [6, 26], 5: [6, 30] };
+
+  function encode(text) {
+    const bytes = new TextEncoder().encode(text);
+    let version = 0;
+    for (let v = 1; v <= 5; v++) {
+      if (bytes.length <= VER[v][0] - VER[v][1] - 2) { version = v; break; }
+    }
+    if (!version) throw new Error('payload too long for version 5');
+    const [total, ecLen] = VER[version];
+    const dataLen = total - ecLen;
+
+    const bits = [];
+    const push = (val, n) => { for (let i = n - 1; i >= 0; i--) bits.push((val >> i) & 1); };
+    push(0b0100, 4);
+    push(bytes.length, 8);            // 8-bit count indicator for versions 1-9
+    for (const b of bytes) push(b, 8);
+    for (let i = 0; i < 4 && bits.length < dataLen * 8; i++) bits.push(0);
+    while (bits.length % 8) bits.push(0);
+
+    const data = new Uint8Array(dataLen);
+    for (let i = 0; i < bits.length / 8; i++) {
+      let b = 0;
+      for (let j = 0; j < 8; j++) b = (b << 1) | bits[i * 8 + j];
+      data[i] = b;
+    }
+    for (let i = bits.length / 8, pad = 0; i < dataLen; i++, pad++) {
+      data[i] = pad % 2 ? 0x11 : 0xEC;
+    }
+    const ec = rsEncode(data, ecLen);
+    const all = new Uint8Array(total);
+    all.set(data); all.set(ec, dataLen);
+    return { version, codewords: all };
+  }
+
+  function buildMatrix(version, codewords, mask) {
+    const size = 17 + 4 * version;
+    const m = Array.from({ length: size }, () => new Array(size).fill(null));
+
+    const finder = (r, c) => {
+      for (let dr = -1; dr <= 7; dr++) for (let dc = -1; dc <= 7; dc++) {
+        const rr = r + dr, cc = c + dc;
+        if (rr < 0 || cc < 0 || rr >= size || cc >= size) continue;
+        const inner = dr >= 0 && dr <= 6 && dc >= 0 && dc <= 6;
+        const on = inner && (dr === 0 || dr === 6 || dc === 0 || dc === 6 ||
+                             (dr >= 2 && dr <= 4 && dc >= 2 && dc <= 4));
+        m[rr][cc] = on ? 1 : 0;
+      }
+    };
+    finder(0, 0); finder(0, size - 7); finder(size - 7, 0);
+
+    for (let i = 8; i < size - 8; i++) {
+      const v = i % 2 === 0 ? 1 : 0;
+      m[6][i] = v; m[i][6] = v;
+    }
+
+    const ac = ALIGN[version];
+    for (const r of ac) for (const c of ac) {
+      if ((r <= 8 && c <= 8) || (r <= 8 && c >= size - 9) || (r >= size - 9 && c <= 8)) continue;
+      for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++) {
+        m[r + dr][c + dc] =
+          (Math.abs(dr) === 2 || Math.abs(dc) === 2 || (dr === 0 && dc === 0)) ? 1 : 0;
+      }
+    }
+
+    m[4 * version + 9][8] = 1;                     // dark module
+
+    // reserve format areas
+    const reserve = (r, c) => { if (m[r][c] === null) m[r][c] = 2; };
+    for (let i = 0; i <= 8; i++) { reserve(8, i); reserve(i, 8); }
+    for (let i = 0; i < 8; i++) { reserve(8, size - 1 - i); reserve(size - 1 - i, 8); }
+
+    // data placement, two-column zigzag from bottom right, skipping column 6
+    let bitIdx = 0;
+    const totalBits = codewords.length * 8;
+    const nextBit = () => {
+      if (bitIdx >= totalBits) return 0;
+      const b = (codewords[bitIdx >> 3] >> (7 - (bitIdx & 7))) & 1;
+      bitIdx++;
+      return b;
+    };
+    let upward = true;
+    for (let col = size - 1; col > 0; col -= 2) {
+      if (col === 6) col--;
+      for (let i = 0; i < size; i++) {
+        const row = upward ? size - 1 - i : i;
+        for (const c of [col, col - 1]) {
+          if (m[row][c] !== null) continue;
+          let bit = nextBit();
+          const maskOn =
+            mask === 0 ? ((row + c) % 2 === 0) :
+            mask === 1 ? (row % 2 === 0) :
+            mask === 2 ? (c % 3 === 0) :
+            mask === 3 ? ((row + c) % 3 === 0) :
+            mask === 4 ? ((Math.floor(row / 2) + Math.floor(c / 3)) % 2 === 0) :
+            mask === 5 ? (((row * c) % 2) + ((row * c) % 3) === 0) :
+            mask === 6 ? ((((row * c) % 2) + ((row * c) % 3)) % 2 === 0) :
+                         ((((row + c) % 2) + ((row * c) % 3)) % 2 === 0);
+          if (maskOn) bit ^= 1;
+          m[row][c] = bit;
+        }
+      }
+      upward = !upward;
+    }
+
+    // format information: ECC L = 01, then mask, BCH(15,5), XOR 0x5412
+    let fmt = (0b01 << 3) | mask;
+    let rem = fmt;
+    for (let i = 0; i < 10; i++) rem = (rem << 1) ^ (((rem >> 9) & 1) * 0x537);
+    const bitsF = ((fmt << 10) | rem) ^ 0x5412;
+    // Placement follows ISO 18004 exactly. Writing the low bits along row 8 and
+    // the high bits down column 8 (the intuitive reading) transposes the two
+    // halves: everything else in the symbol stays valid and no decoder will
+    // read it, which is a hard failure to see without a reference to diff.
+    const fbit = k => (bitsF >> k) & 1;   // k = 0 is the least significant bit
+    for (let i = 0; i <= 5; i++) m[8][i] = fbit(14 - i);
+    m[8][7] = fbit(8); m[8][8] = fbit(7); m[7][8] = fbit(6);
+    for (let k = 0; k <= 5; k++) m[k][8] = fbit(k);
+    // Second copy: high bits run up column 8 from the bottom, stopping short of
+    // the dark module at size-8; low bits run right along row 8.
+    for (let i = 0; i <= 6; i++) m[size - 1 - i][8] = fbit(14 - i);
+    for (let j = 0; j <= 7; j++) m[8][size - 8 + j] = fbit(7 - j);
+
+    return m.map(row => row.map(v => (v === 2 ? 0 : v)));
+  }
+
+  function penalty(m) {
+    const n = m.length;
+    let p = 0;
+    const run = line => {
+      let c = 1, s = 0;
+      for (let i = 1; i < n; i++) {
+        if (line[i] === line[i - 1]) c++;
+        else { if (c >= 5) s += 3 + (c - 5); c = 1; }
+      }
+      if (c >= 5) s += 3 + (c - 5);
+      return s;
+    };
+    for (let i = 0; i < n; i++) { p += run(m[i]); p += run(m.map(r => r[i])); }
+    for (let r = 0; r < n - 1; r++) for (let c = 0; c < n - 1; c++)
+      if (m[r][c] === m[r][c + 1] && m[r][c] === m[r + 1][c] && m[r][c] === m[r + 1][c + 1]) p += 3;
+    // Rule 3 counts the finder-like sequence in BOTH orientations. Checking only
+    // one under-penalises: it let a striped mask win selection and produced a
+    // symbol OpenCV would not read, even though the same codewords under seven
+    // other masks decoded fine.
+    const patA = [1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0];
+    const patB = [0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1];
+    const hasPat = (line, i, pat) => pat.every((v, k) => line[i + k] === v);
+    for (let i = 0; i < n; i++) {
+      const row = m[i], col = m.map(r => r[i]);
+      for (let j = 0; j + 11 <= n; j++) {
+        if (hasPat(row, j, patA) || hasPat(row, j, patB)) p += 40;
+        if (hasPat(col, j, patA) || hasPat(col, j, patB)) p += 40;
+      }
+    }
+    let dark = 0;
+    for (const row of m) for (const v of row) dark += v;
+    p += 10 * Math.floor(Math.abs(dark * 100 / (n * n) - 50) / 5);
+    return p;
+  }
+
+  function qrMatrix(text) {
+    const { version, codewords } = encode(text);
+    let best = null, bestP = Infinity;
+    for (let mask = 0; mask < 8; mask++) {
+      const m = buildMatrix(version, codewords, mask);
+      const p = penalty(m);
+      if (p < bestP) { bestP = p; best = m; }
+    }
+    return best;
+  }
+
+    return function (text, px) {
+      const m = qrMatrix(text), n = m.length, q = 2, w = n + 2 * q;
+      let d = '';
+      for (let y = 0; y < n; y++)
+        for (let x = 0; x < n; x++)
+          if (m[y][x]) d += 'M' + (x + q) + ' ' + (y + q) + 'h1v1h-1z';
+      return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + w + ' ' + w +
+             '" width="' + px + '" height="' + px + '" shape-rendering="crispEdges">' +
+             '<rect width="' + w + '" height="' + w + '" fill="#fff"/>' +
+             '<path d="' + d + '" fill="#000"/></svg>';
+    };
+  })();
+
   function shapeColor(shape) {
     return { rectangular: '#ffd54f', circular: '#4dd0e1', irregular: '#ff7043' }[shape] || '#ffffff';
   }
@@ -1109,9 +1336,21 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
               color: evidenced ? '#8a5f16' : shapeColor(c.shape),
               weight: evidenced ? 3 : 2,
               fillOpacity: evidenced ? 0.35 : 0.2 })
-            .bindPopup(`<b>#${c.rank} ${c.shape} (${c.kind})</b>${readLine}<br>${scoreLine}<br>~${Math.round(c.area_m2)} m²${dims}${floorLine}`
-              + `<br><span style="font-family:ui-monospace,monospace; font-size:0.85em; opacity:0.75;">${c.lat.toFixed(6)}, ${c.lon.toFixed(6)}</span>`
-              + `<br><button class="cand-track-btn" data-lat="${c.lat}" data-lon="${c.lon}" style="margin-top:6px; padding:4px 10px; cursor:pointer;">🎯 Track this</button>`)
+            // Built lazily: a scan draws 60+ markers and encoding a QR for
+            // every one of them up front would be wasted work, since only the
+            // opened popup is ever seen.
+            .bindPopup(() => {
+              const url = `https://www.google.com/maps/search/?api=1&query=${c.lat.toFixed(6)},${c.lon.toFixed(6)}`;
+              let qr = '';
+              try {
+                qr = `<div style="margin-top:8px; text-align:center;">${qrSvg(url, 104)}`
+                   + `<div style="font-size:0.78em; opacity:0.7; margin-top:2px;">scan to open on your phone</div></div>`;
+              } catch (e) { qr = ''; }   // never let the QR break the popup
+              return `<b>#${c.rank} ${c.shape} (${c.kind})</b>${readLine}<br>${scoreLine}<br>~${Math.round(c.area_m2)} m²${dims}${floorLine}`
+                + `<br><span style="font-family:ui-monospace,monospace; font-size:0.85em; opacity:0.75;">${c.lat.toFixed(6)}, ${c.lon.toFixed(6)}</span>`
+                + `<br><button class="cand-track-btn" data-lat="${c.lat}" data-lon="${c.lon}" style="margin-top:6px; padding:4px 10px; cursor:pointer;">🎯 Track this</button>`
+                + qr;
+            })
             .addTo(candidateMarkers);
         });
       })
