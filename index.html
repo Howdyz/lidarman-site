@@ -1060,10 +1060,20 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   // "Requesting location permission…" forever with no way out. Every
   // geolocation call below therefore carries its own watchdog.
   const GEO_WATCHDOG_MS = 20000;
+  const GEO_HINT =
+    'Type a place name above or tap the map instead, or open lidarman.com in '
+    + 'Safari or Chrome.';
   const GEO_BLOCKED_MSG =
     'Location is blocked in this browser — in-app browsers (Facebook, Instagram) '
-    + 'usually block it. Type a place name above or tap the map instead, or open '
-    + 'lidarman.com in Safari or Chrome.';
+    + 'usually block it. ' + GEO_HINT;
+  // A timeout is the failure Facebook's in-app browser actually produces —
+  // confirmed on a phone on 2026-09-08, where the first version of this fix
+  // still dead-ended on "Location request timed out." From the visitor's side
+  // a timeout and a refusal are the same event: location is not going to work
+  // here, and they need to know what to do instead.
+  const GEO_FAILED_MSG =
+    "Couldn't get a location in this browser — in-app browsers (Facebook, "
+    + 'Instagram) often fail here. ' + GEO_HINT;
 
   const trackBtn = document.getElementById('trackBtn');
   const trackStatus = document.getElementById('trackStatus');
@@ -1117,9 +1127,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
           + (trend ? `<br>${trend}` : '');
       },
       (err) => {
-        const messages = { 2: 'Location unavailable right now.', 3: 'Location request timed out.' };
-        const msg = err.code === 1 ? GEO_BLOCKED_MSG
-          : (messages[err.code] || 'Could not get your location.');
+        const msg = err.code === 1 ? GEO_BLOCKED_MSG : GEO_FAILED_MSG;
         // A transient error mid-track is worth reporting but not worth tearing
         // the watch down — the next fix may well succeed. A denial, or any
         // failure before the very first fix, means tracking is going nowhere,
@@ -1168,14 +1176,16 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         map.setView([latitude, longitude], 15);
       },
       (err) => {
-        const messages = {
-          2: 'Location unavailable right now.',
-          3: 'Location request timed out.',
-        };
-        finish(err.code === 1 ? GEO_BLOCKED_MSG
-          : (messages[err.code] || 'Could not get your location.'));
+        finish(err.code === 1 ? GEO_BLOCKED_MSG : GEO_FAILED_MSG);
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
+      // Deliberately NOT enableHighAccuracy here, unlike tracking below.
+      // This button only seeds a search centre for a radius of 50-500m, so a
+      // coarse network fix is entirely good enough — and demanding a GPS-grade
+      // lock is what left this sitting for the full timeout in an in-app
+      // browser that was never going to deliver one. Coarse is faster and
+      // succeeds in more places; tracking still asks for high accuracy,
+      // because walking someone to a target genuinely needs it.
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
     );
   });
 
