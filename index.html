@@ -566,6 +566,36 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       peaking around a building-sized footprint and falling away toward both
       specks and hillside-sized landforms.
     </p>
+    <p>
+      Shape and size still only describe an outline. Whether the ground inside
+      it was <i>worked</i> is answered by the floor profile: a dug cellar or a
+      levelled pad sits at roughly one depth, so most of its interior is near
+      the extreme, while a natural hollow ramps continuously and only a small
+      core gets there. Each candidate therefore also reports depth and a
+      "floor flat" fraction — the share of its interior within 75% of its own
+      peak relief. The measure is scale-free and the geometry supplies its own
+      reference points: a flat-floored pad approaches 1.0, an ideal paraboloid
+      basin scores 0.25, a cone 0.06. It is computed on the elevation model
+      against a quadratic trend surface fitted to a ring just outside the
+      feature, which removes both regional slope and curvature; measured on
+      the Local Relief Model instead it is meaningless, for the reason in the
+      note below. Where relief falls below about three times the local noise
+      floor, no value is reported rather than a misleading one. Floor flatness
+      is the third term in the ranking, and across 693 candidates from a real
+      forested scan its median was 0.25 — precisely the paraboloid figure,
+      i.e. most terrain reads as terrain.
+    </p>
+    <p>
+      Those measurements are then read into a plain-language interpretation —
+      "possible cellar hole or dug foundation", "linear cut — possible mill
+      race, ditch or sunken lane", "bowl-shaped — reads natural" — with every
+      label gated on the evidence supporting it. Long thin earthworks are
+      classified before house-shaped rules get to them, since a race bank and
+      a building footprint are distinguished by aspect ratio and by whether
+      the top is flat rather than by outline alone. Anything failing the gates
+      is named as unclassified rather than given a flattering guess; on the
+      scan above that was 627 of 693.
+    </p>
     <div class="callout">
       <span class="tag">Methodological note</span>
       A large, perfectly flat raised feature — a big rectangular building
@@ -695,6 +725,16 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         so panning around can't accidentally change it</li>
       <li>Click anywhere to name and save your own flagged location,
         persisted locally across sessions</li>
+      <li>Each candidate reports its dimensions, orientation, depth, floor
+        flatness and coordinates, with a plain-language reading of what the
+        measurements support</li>
+      <li>A QR code on every candidate, so a spot found at a desk can be
+        opened on a phone in the field without typing coordinates</li>
+      <li>"Parks near me" lists named parks within 50 miles of your location
+        as somewhere to point a scan, nearest first</li>
+      <li>Candidates falling on National Park Service, National Forest or BLM
+        land are labelled as such, checked live against the managing agencies'
+        own boundary services</li>
     </ul>
   </section>
 
