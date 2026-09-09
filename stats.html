@@ -192,7 +192,10 @@
       <!-- overflow-x for the same reason as the errors table below. -->
       <div style="overflow-x:auto;">
         <table>
-          <thead><tr><th>Day</th><th>Searches</th><th>IPs</th><th>Over 3</th><th>Over 6</th><th>Over 10</th><th>Busiest IP</th></tr></thead>
+          <!-- Day is UTC, matching visits.py's bucketing. The Monitor panel
+               above renders in local time, so the two are not directly
+               comparable — this boundary rolls over at 8pm EDT. -->
+          <thead><tr><th>Day (UTC)</th><th>Searches</th><th>IPs</th><th>Over 3</th><th>Over 6</th><th>Over 10</th><th>Busiest IP</th></tr></thead>
           <tbody id="ipTrialRows"></tbody>
         </table>
       </div>

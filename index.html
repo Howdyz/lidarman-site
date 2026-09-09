@@ -1291,10 +1291,28 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     const name = prompt('Name this spot:');
     if (name === null) return;
     const notes = prompt('Notes (optional):') || '';
+    // No .catch() here previously, and no r.ok check either — so a cold-start
+    // failure or a 4xx both ended with loadSaved() quietly re-rendering a list
+    // that never got the new entry. The user typed a name and notes into two
+    // prompts and got no indication at all that their dig spot was lost. That
+    // is the fourth bug in this file from a fetch with no failure path; see
+    // loadSaved(), the unlock button and refreshTrialStatus for the others.
+    setStatus('Saving spot…');
     fetch(`${API_BASE}/api/saved`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ deviceId, lat, lon, name, notes })
-    }).then(() => loadSaved());
+    })
+      .then(r => {
+        if (!r.ok) {
+          setStatus('Could not save that spot — the server may still be waking up. Try again in a moment.', true);
+          return;
+        }
+        setStatus('');
+        loadSaved();
+      })
+      .catch(() => {
+        setStatus("Could not save that spot — couldn't reach the server. Try again in a moment.", true);
+      });
   }
 
   const searchPinIcon = L.divIcon({
