@@ -1052,13 +1052,28 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     return dirs[Math.round(deg / 22.5) % 16];
   }
 
+  // getCurrentPosition/watchPosition's own `timeout` option only covers
+  // *acquiring a fix* — the clock does not start until permission has been
+  // granted. In an embedded in-app browser (Facebook's, reported from a phone
+  // on 2026-09-08) the permission prompt can be suppressed or simply never
+  // resolve, so neither callback ever fires: the button stays disabled under
+  // "Requesting location permission…" forever with no way out. Every
+  // geolocation call below therefore carries its own watchdog.
+  const GEO_WATCHDOG_MS = 20000;
+  const GEO_BLOCKED_MSG =
+    'Location is blocked in this browser — in-app browsers (Facebook, Instagram) '
+    + 'usually block it. Type a place name above or tap the map instead, or open '
+    + 'lidarman.com in Safari or Chrome.';
+
   const trackBtn = document.getElementById('trackBtn');
   const trackStatus = document.getElementById('trackStatus');
   let trackWatchId = null;
   let trackLastDistance = null;
+  let trackWatchdog = null;
 
   function stopTracking() {
     if (trackWatchId !== null) navigator.geolocation.clearWatch(trackWatchId);
+    if (trackWatchdog !== null) { clearTimeout(trackWatchdog); trackWatchdog = null; }
     trackWatchId = null;
     trackLastDistance = null;
     trackBtn.textContent = '🎯 Start tracking';
@@ -1078,8 +1093,14 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     trackBtn.textContent = '⏹ Stop tracking';
     trackStatus.textContent = 'Getting your position…';
     trackLastDistance = null;
+    trackWatchdog = setTimeout(() => {
+      if (trackWatchId === null) return;
+      stopTracking();
+      trackStatus.textContent = GEO_BLOCKED_MSG;
+    }, GEO_WATCHDOG_MS);
     trackWatchId = navigator.geolocation.watchPosition(
       (pos) => {
+        if (trackWatchdog !== null) { clearTimeout(trackWatchdog); trackWatchdog = null; }
         if (!searchPin) { stopTracking(); return; }
         const target = searchPin.getLatLng();
         const dist = haversineDistanceMeters(pos.coords.latitude, pos.coords.longitude, target.lat, target.lng);
@@ -1096,8 +1117,17 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
           + (trend ? `<br>${trend}` : '');
       },
       (err) => {
-        const messages = { 1: 'Location permission denied.', 2: 'Location unavailable right now.', 3: 'Location request timed out.' };
-        trackStatus.textContent = messages[err.code] || 'Could not get your location.';
+        const messages = { 2: 'Location unavailable right now.', 3: 'Location request timed out.' };
+        const msg = err.code === 1 ? GEO_BLOCKED_MSG
+          : (messages[err.code] || 'Could not get your location.');
+        // A transient error mid-track is worth reporting but not worth tearing
+        // the watch down — the next fix may well succeed. A denial, or any
+        // failure before the very first fix, means tracking is going nowhere,
+        // and leaving the button reading "⏹ Stop tracking" would be a lie.
+        if (err.code === 1 || trackLastDistance === null) {
+          stopTracking();
+        }
+        trackStatus.textContent = msg;
       },
       { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 }
     );
@@ -1112,24 +1142,38 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     }
     useLocationBtn.disabled = true;
     locationStatusEl.textContent = 'Requesting location permission…';
+
+    // Whichever of these three arrives first wins; the other two become no-ops.
+    // Without the watchdog, a prompt that never resolves leaves the button
+    // permanently disabled — see the note by GEO_WATCHDOG_MS above.
+    let settled = false;
+    let watchdog = null;
+    const finish = (msg) => {
+      if (settled) return;
+      settled = true;
+      if (watchdog !== null) clearTimeout(watchdog);
+      locationStatusEl.textContent = msg;
+      useLocationBtn.disabled = false;
+    };
+    watchdog = setTimeout(() => finish(GEO_BLOCKED_MSG), GEO_WATCHDOG_MS);
+
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        if (settled) return;
         const { latitude, longitude } = pos.coords;
         document.getElementById('placeInput').value = '';
         document.getElementById('latInput').value = latitude.toFixed(6);
         document.getElementById('lonInput').value = longitude.toFixed(6);
-        locationStatusEl.textContent = `Located: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
-        useLocationBtn.disabled = false;
+        finish(`Located: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
         map.setView([latitude, longitude], 15);
       },
       (err) => {
         const messages = {
-          1: 'Location permission denied.',
           2: 'Location unavailable right now.',
           3: 'Location request timed out.',
         };
-        locationStatusEl.textContent = messages[err.code] || 'Could not get your location.';
-        useLocationBtn.disabled = false;
+        finish(err.code === 1 ? GEO_BLOCKED_MSG
+          : (messages[err.code] || 'Could not get your location.'));
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
     );
