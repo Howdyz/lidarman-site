@@ -1065,7 +1065,22 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         styleSelect.value = 'composite';
 
         candidateMarkers.clearLayers();
-        (data.candidates || []).slice(0, 60).forEach(c => {
+        // Draw the top 60 by rank, plus every candidate whose floor profile
+        // actually supports a structure reading. Those are rare — 8 of 693 on
+        // the Petersham test scan — and ranking alone buried all of them past
+        // rank 60, so the evidence would have been computed and never seen.
+        const all = data.candidates || [];
+        const INTERPRETED = /cellar hole|building platform/;
+        const shown = all.slice(0, 60);
+        const shownSet = new Set(shown);
+        all.forEach(c => {
+          if (!shownSet.has(c) && c.interpretation && INTERPRETED.test(c.interpretation)) {
+            shown.push(c);
+            shownSet.add(c);
+          }
+        });
+        shown.forEach(c => {
+          const evidenced = c.interpretation && INTERPRETED.test(c.interpretation);
           // width/height/angle and lat/lon are already in every candidate record
           // (see candidates.csv) — showing them lets you judge whether a hit is a
           // plausible foundation footprint or a metre-wide sliver before walking to it.
@@ -1080,8 +1095,21 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
             ? `score: ${c.rank_score.toFixed(2)}`
               + ` <span style="opacity:0.7;">(shape ${c.score.toFixed(2)} × size ${c.size_factor.toFixed(2)})</span>`
             : `score: ${c.score.toFixed(2)}`;
-          L.circleMarker([c.lat, c.lon], { radius: 6, color: shapeColor(c.shape), weight: 2, fillOpacity: 0.2 })
-            .bindPopup(`<b>#${c.rank} ${c.shape} (${c.kind})</b><br>${scoreLine}<br>~${Math.round(c.area_m2)} m²${dims}`
+          // Floor profile — the evidence that separates a dug foundation from
+          // a weathered hollow. Only shown when it was actually measurable.
+          const floorLine = (c.floor_flat != null)
+            ? `<br>floor ${Math.round(c.floor_flat * 100)}% flat`
+              + (c.relief_max_m != null ? ` · ${c.relief_max_m.toFixed(2)} m deep` : '')
+            : (c.relief_max_m != null ? `<br>${c.relief_max_m.toFixed(2)} m deep` : '');
+          const readLine = c.interpretation
+            ? `<br><span style="${evidenced ? 'color:#8a5f16; font-weight:600;' : 'opacity:0.7;'}">${c.interpretation}</span>`
+            : '';
+          L.circleMarker([c.lat, c.lon], {
+              radius: evidenced ? 9 : 6,
+              color: evidenced ? '#8a5f16' : shapeColor(c.shape),
+              weight: evidenced ? 3 : 2,
+              fillOpacity: evidenced ? 0.35 : 0.2 })
+            .bindPopup(`<b>#${c.rank} ${c.shape} (${c.kind})</b>${readLine}<br>${scoreLine}<br>~${Math.round(c.area_m2)} m²${dims}${floorLine}`
               + `<br><span style="font-family:ui-monospace,monospace; font-size:0.85em; opacity:0.75;">${c.lat.toFixed(6)}, ${c.lon.toFixed(6)}</span>`
               + `<br><button class="cand-track-btn" data-lat="${c.lat}" data-lon="${c.lon}" style="margin-top:6px; padding:4px 10px; cursor:pointer;">🎯 Track this</button>`)
             .addTo(candidateMarkers);
