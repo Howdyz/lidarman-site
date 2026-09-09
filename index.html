@@ -847,14 +847,32 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   }
 
   function renderTrialStatus(data) {
+    trialEl.textContent = '';
     if (data.unlocked) {
       trialEl.textContent = '✅ Unlocked — unlimited searches on this device.';
       trialEl.classList.add('unlocked');
-    } else {
-      trialEl.classList.remove('unlocked');
-      const used = data.scansUsed || 0;
-      const allowed = data.scansAllowed || 3;
-      trialEl.textContent = `${Math.max(0, allowed - used)} of ${allowed} free searches remaining on this device.`;
+      return;
+    }
+    trialEl.classList.remove('unlocked');
+    const used = data.scansUsed || 0;
+    const allowed = data.scansAllowed || 3;
+    const left = Math.max(0, allowed - used);
+    trialEl.textContent = `${left} of ${allowed} free searches remaining on this device.`;
+
+    // Once the trial is spent, the ONLY way to reach the unlock button used to
+    // be running a *fourth* search and catching the 402 that came back. Anyone
+    // who used their three searches and then simply looked at the page saw
+    // "0 of 3 free searches remaining" and no way to buy anything — reported
+    // from a real phone on 2026-09-08. Put the purchase option on the page
+    // itself so it does not depend on the visitor guessing to search again.
+    if (left === 0) {
+      const btn = document.createElement('button');
+      btn.className = 'primary';
+      btn.id = 'inlineUnlockBtn';
+      btn.type = 'button';
+      btn.textContent = 'Unlock — $10 one-time';
+      btn.addEventListener('click', () => startCheckout(btn));
+      trialEl.appendChild(btn);
     }
   }
 
@@ -880,13 +898,12 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   function hidePaywall() { paywallOverlay.classList.remove('show'); }
 
   document.getElementById('paywallCloseBtn').addEventListener('click', hidePaywall);
-  document.getElementById('unlockBtn').addEventListener('click', () => {
+  function startCheckout(btn) {
     // This chain previously had no .catch() and called r.json() directly.
     // The backend is on Render's free tier and spins down, so a cold start
     // can return an HTML 502 — r.json() would throw, the rejection went
     // unhandled, and the pay button silently did nothing for the customer.
     // Same unhandled-rejection class as the loadSaved() bug fixed earlier.
-    const btn = document.getElementById('unlockBtn');
     const originalLabel = btn.textContent;
     btn.disabled = true;
     btn.textContent = 'Opening checkout…';
@@ -906,7 +923,9 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         restore();
         showPaywall("Couldn't reach the payment server — it may still be waking up. Give it a few seconds and try again.");
       });
-  });
+  }
+
+  document.getElementById('unlockBtn').addEventListener('click', function () { startCheckout(this); });
 
   function runSearch() {
     const place = document.getElementById('placeInput').value.trim();
