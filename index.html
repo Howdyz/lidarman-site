@@ -1331,10 +1331,26 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
           const readLine = c.interpretation
             ? `<br><span style="${evidenced ? 'color:#8a5f16; font-weight:600;' : 'opacity:0.7;'}">${c.interpretation}</span>`
             : '';
+          // Land status leads the popup when detecting is prohibited — a
+          // terrain reading is irrelevant if you legally cannot dig there.
+          const prohibited = c.land_status === 'prohibited';
+          const landLine = c.land_status
+            ? `<div style="margin:-2px 0 6px; padding:6px 8px; border-radius:3px; `
+              + `background:${prohibited ? '#fdecea' : '#fdf4e3'}; `
+              + `border-left:3px solid ${prohibited ? '#c0392b' : '#b8860b'}; color:#333;">`
+              + `<b style="color:${prohibited ? '#c0392b' : '#8a5f16'};">`
+              + `${prohibited ? '⛔ Do not detect here' : '⚠️ Restrictions apply'}</b>`
+              + `<br>${escapeHtml(c.land_name || '')}`
+              + `<br><span style="font-size:0.88em; opacity:0.85;">${escapeHtml(c.land_note || '')}</span></div>`
+            : '';
+          // Prohibited land overrides the shape colour outright: the single
+          // most important thing about a candidate you cannot legally dig is
+          // that you cannot legally dig it.
           L.circleMarker([c.lat, c.lon], {
               radius: evidenced ? 9 : 6,
-              color: evidenced ? '#8a5f16' : shapeColor(c.shape),
-              weight: evidenced ? 3 : 2,
+              color: prohibited ? '#c0392b' : (evidenced ? '#8a5f16' : shapeColor(c.shape)),
+              weight: prohibited ? 3 : (evidenced ? 3 : 2),
+              dashArray: prohibited ? '3 3' : null,
               fillOpacity: evidenced ? 0.35 : 0.2 })
             // Built lazily: a scan draws 60+ markers and encoding a QR for
             // every one of them up front would be wasted work, since only the
@@ -1346,13 +1362,28 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
                 qr = `<div style="margin-top:8px; text-align:center;">${qrSvg(url, 104)}`
                    + `<div style="font-size:0.78em; opacity:0.7; margin-top:2px;">scan to open on your phone</div></div>`;
               } catch (e) { qr = ''; }   // never let the QR break the popup
-              return `<b>#${c.rank} ${c.shape} (${c.kind})</b>${readLine}<br>${scoreLine}<br>~${Math.round(c.area_m2)} m²${dims}${floorLine}`
+              return landLine
+                + `<b>#${c.rank} ${c.shape} (${c.kind})</b>${readLine}<br>${scoreLine}<br>~${Math.round(c.area_m2)} m²${dims}${floorLine}`
                 + `<br><span style="font-family:ui-monospace,monospace; font-size:0.85em; opacity:0.75;">${c.lat.toFixed(6)}, ${c.lon.toFixed(6)}</span>`
                 + `<br><button class="cand-track-btn" data-lat="${c.lat}" data-lon="${c.lon}" style="margin-top:6px; padding:4px 10px; cursor:pointer;">🎯 Track this</button>`
                 + qr;
             })
             .addTo(candidateMarkers);
         });
+
+        // Search-level notice, so a prohibition is visible without having to
+        // click a marker to find it.
+        const lc = data.landCheck || {};
+        const banned = shown.filter(c => c.land_status === 'prohibited').length;
+        if (banned) {
+          setStatus(`\u26d4 ${banned} candidate${banned === 1 ? '' : 's'} fall${banned === 1 ? 's' : ''} inside `
+            + `${(lc.areas || []).join(', ')} — metal detecting is prohibited on National `
+            + `Park Service land under federal law.`, true);
+        } else if ((lc.areas || []).length) {
+          setStatus(`\u26a0\ufe0f This area overlaps ${(lc.areas || []).join(', ')} — check local rules before digging.`);
+        } else if (!(lc.checked || []).length) {
+          setStatus('Land-status check unavailable — candidates are not screened against federal land.');
+        }
       })
       .catch(err => { setStatus('Request failed: ' + err, true); searchBtn.disabled = false; });
   }
