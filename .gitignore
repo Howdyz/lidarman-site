@@ -3,3 +3,7 @@
 # is publicly fetchable (this was previously live at
 # https://lidarman.com/serve_safe.py). Keep it local.
 serve_safe.py
+
+# Same reasoning: local tooling config, and the repo root is published
+# verbatim, so anything committed here is publicly fetchable.
+.claude/
