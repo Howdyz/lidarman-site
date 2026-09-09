@@ -1277,14 +1277,38 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     );
   });
 
-  function loadSaved() {
+  function loadSaved(attempt) {
+    attempt = attempt || 0;
     fetch(`${API_BASE}/api/saved?deviceId=${encodeURIComponent(deviceId)}`)
-      .then(r => r.json()).then(items => {
+      .then(r => {
+        // An error response is usually HTML, so r.json() threw and landed in
+        // the old empty catch — indistinguishable from "you have no saved
+        // spots". Fail explicitly instead.
+        if (!r.ok) { throw new Error('HTTP ' + r.status); }
+        return r.json();
+      })
+      .then(items => {
+        // clearLayers stays inside the success path on purpose: a failed
+        // reload must never wipe markers that are already on the map.
         savedMarkers.clearLayers();
         (items || []).forEach(item => {
           L.marker([item.lat, item.lon]).bindPopup(`<b>${escapeHtml(item.name)}</b><br>${escapeHtml(item.notes || '')}`).addTo(savedMarkers);
         });
-      }).catch(() => {});
+      })
+      .catch(() => {
+        // Retry before saying anything. This runs on page load, exactly when
+        // Render's free tier is most likely still waking, and an alarming
+        // message on every cold start would be worse than the silence it
+        // replaces.
+        if (attempt < 2) { setTimeout(() => loadSaved(attempt + 1), 4000); return; }
+        // Don't clobber an in-flight search's own status line.
+        if (searchBtn.disabled) { return; }
+        // Wording matters more than usual here: the failure looks identical
+        // to deletion from the user's side, and these are dig spots they
+        // went out and found. Say plainly that nothing is lost.
+        setStatus("Couldn't load your saved spots — the server may still be waking up. "
+          + 'They are not lost; reload in a moment.', true);
+      });
   }
 
   function saveSpotAt(lat, lon) {
