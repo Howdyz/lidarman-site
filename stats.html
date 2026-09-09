@@ -307,7 +307,7 @@ function renderStats(data){
       '<div>Last run: <b>' + escapeHtml(new Date(mon.at).toLocaleString()) + '</b> ' +
         '<span style="color:' + (stale ? '#c0392b' : 'inherit') + ';">(' +
         (ageMin < 1 ? 'just now' : ageMin + ' min ago') + (stale ? ' — stale' : '') + ')</span></div>' +
-      '<div>Backend: ' + (h.ok
+      '<div>' + escapeHtml(h.check ? h.check.replace(/^./, c => c.toUpperCase()) : 'Backend') + ': ' + (h.ok
         ? '<b style="color:#1e8449;">healthy</b> (' + escapeHtml(String(h.seconds)) + 's)'
         : '<b style="color:#c0392b;">FAILING</b> ' + escapeHtml(JSON.stringify(h))) + '</div>' +
       '<div>Paid unlocks checked: <b>' + (rec.checked || 0) + '</b>' +
