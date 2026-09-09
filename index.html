@@ -1418,22 +1418,18 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         parksPanel.style.display = 'none';
         // Not "there are no parks" — within 50 miles that is essentially
         // never true. An empty list means the lookup could not answer.
-        setParksStatus(data.error || 'Park lookup came back empty — the map service may be busy. Try again in a moment.');
+        setParksStatus('Park lookup came back empty — the map service may be busy. Try again in a moment.');
         return;
       }
       const rows = parks.map(p => {
-        const miles = (p.distance_km * 0.621371).toFixed(1);
-        const prohibited = p.land_status === 'prohibited';
-        const badge = p.land_status
+        const badge = p.land
           ? `<span style="font-size:0.78em; padding:1px 5px; border-radius:2px; white-space:nowrap;
-               background:${prohibited ? '#c0392b' : '#8a5f16'}; color:#fff;">`
-            + `${prohibited ? 'do not detect' : 'restricted'}</span>`
+               background:#8a5f16; color:#fff;">${escapeHtml(p.land)}</span>`
           : '';
         return `<div class="park-row" data-lat="${p.lat}" data-lon="${p.lon}"
-                  title="${escapeHtml(p.land_note || 'No federal restriction found. Local rules still apply.')}"
                   style="padding:6px 8px; cursor:pointer; display:flex; gap:8px; align-items:baseline;
                          border-bottom:1px solid rgba(255,255,255,0.07);">
-                  <span style="opacity:0.6; font-size:0.85em; min-width:58px;">${miles} mi</span>
+                  <span style="opacity:0.6; font-size:0.85em; min-width:58px;">${p.mi.toFixed(1)} mi</span>
                   <span style="flex:1;">${escapeHtml(p.name)}</span>${badge}
                 </div>`;
       }).join('');
@@ -1447,21 +1443,95 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         + (data.cached ? '' : '') + ' — click one to load it.');
     }
 
+    // Overpass is queried straight from the browser, not through our API.
+    // Render's egress is a shared cloud range that Overpass throttles into the
+    // ground: identical code answered in 14s from a workstation and timed out
+    // at 55s from production, every time. Each visitor's own IP has its own
+    // rate-limit slots, and Overpass sets Access-Control-Allow-Origin: * so
+    // that clients can do exactly this.
+    const OVERPASS = [
+      'https://overpass-api.de/api/interpreter',
+      'https://overpass.kumi.systems/api/interpreter',
+      'https://overpass.private.coffee/api/interpreter'
+    ];
+    const PARK_TTL_MS = 30 * 24 * 60 * 60 * 1000;   // parks do not move
+
+    function cacheKey(la, lo) {
+      // ~5.5 km buckets, so re-pressing the button never re-queries.
+      return `lidarman_parks_${(Math.round(la / 0.05) * 0.05).toFixed(2)}_${(Math.round(lo / 0.05) * 0.05).toFixed(2)}`;
+    }
+
+    function askOverpass(url, query) {
+      return fetch(url, { method: 'POST', body: new URLSearchParams({ data: query }) })
+        .then(r => r.json())
+        .then(d => {
+          // Overpass reports failures as HTTP 200 with a "remark", and a
+          // region-locked mirror answers emptily rather than erroring — both
+          // are misses, not answers.
+          if (d.remark) throw new Error(d.remark);
+          if (!d.elements || !d.elements.length) throw new Error('empty');
+          return d;
+        });
+    }
+
+    function fetchParks(la, lo) {
+      const key = cacheKey(la, lo);
+      try {
+        const hit = JSON.parse(localStorage.getItem(key) || 'null');
+        if (hit && Date.now() - hit.t < PARK_TTL_MS) return Promise.resolve(hit.d);
+      } catch (e) { /* cache is an optimisation */ }
+
+      const q = `[out:json][timeout:50];nwr["leisure"="park"]["name"](around:80000,${la},${lo});out center tags;`;
+      // Primary alone first; race the rest only if it misses, so the healthy
+      // instance is not left waiting behind a sick one.
+      return askOverpass(OVERPASS[0], q)
+        .catch(() => Promise.any(OVERPASS.slice(1).map(u => askOverpass(u, q))))
+        .then(d => {
+          const seen = new Set(), out = [];
+          (d.elements || []).forEach(el => {
+            const t = el.tags || {};
+            if (!t.name) return;
+            const plat = el.type === 'node' ? el.lat : (el.center || {}).lat;
+            const plon = el.type === 'node' ? el.lon : (el.center || {}).lon;
+            if (plat == null || plon == null) return;
+            const k = `${t.name.toLowerCase()}|${plat.toFixed(3)}|${plon.toFixed(3)}`;
+            if (seen.has(k)) return;
+            seen.add(k);
+            const title = (t.protection_title || '').toLowerCase();
+            const op = (t.operator || '').toLowerCase();
+            const owner = (t.ownership || '').toLowerCase();
+            let land = null;
+            if (title.includes('state park') || t.name.toLowerCase().includes('state park')) land = 'state park';
+            else if (owner === 'state' || op.includes('department of natural resources')) land = 'state land';
+            out.push({ name: t.name, lat: plat, lon: plon, land,
+                       mi: haversineMi(la, lo, plat, plon) });
+          });
+          out.sort((a, b) => a.mi - b.mi);
+          const trimmed = out.slice(0, 300);
+          try { localStorage.setItem(key, JSON.stringify({ t: Date.now(), d: trimmed })); }
+          catch (e) { /* quota — fine */ }
+          return trimmed;
+        });
+    }
+
+    function haversineMi(la1, lo1, la2, lo2) {
+      const R = 3958.7613, rad = Math.PI / 180;
+      const dp = (la2 - la1) * rad, dl = (lo2 - lo1) * rad;
+      const a = Math.sin(dp / 2) ** 2 +
+                Math.cos(la1 * rad) * Math.cos(la2 * rad) * Math.sin(dl / 2) ** 2;
+      return 2 * R * Math.asin(Math.sqrt(a));
+    }
+
     parksBtn.addEventListener('click', () => {
       parksBtn.disabled = true;
-      setParksStatus('Finding parks near you…');
+      setParksStatus('Finding parks near you… (first look-up can take a moment)');
       currentLatLon()
-        .then(([la, lo]) =>
-          fetch(`${API_BASE}/api/parks?lat=${la.toFixed(6)}&lon=${lo.toFixed(6)}&radius_km=80`)
-            .then(r => r.json().then(d => ({ ok: r.ok, d }))))
-        .then(({ ok, d }) => {
-          if (!ok) { setParksStatus(d.error || 'Could not load parks.'); return; }
-          render(d);
-        })
+        .then(([la, lo]) => fetchParks(la, lo))
+        .then(parks => render({ parks }))
         .catch((err) => {
           setParksStatus(err && err.code === 1
             ? 'Location permission denied — enter a lat/lon above and try again.'
-            : 'Could not get your location. Enter a lat/lon above and try again.');
+            : 'Park look-up is busy right now. Try again in a moment.');
         })
         .finally(() => { parksBtn.disabled = false; });
     });
