@@ -230,7 +230,7 @@
     #map { width: 100%; min-height: 380px; }
   }
   #toolSidebar label { display: block; font-size: 0.78em; color: #aaa; margin: 10px 0 3px; }
-  #toolSidebar input[type=text], #toolSidebar input[type=number], #toolSidebar select {
+  #toolSidebar input[type=text], #toolSidebar input[type=number], #toolSidebar input[type=email], #toolSidebar select {
     width: 100%; box-sizing: border-box; padding: 7px; border-radius: 4px; border: 1px solid #444;
     background: #262626; color: #eee; font-size: 0.9em;
   }
@@ -251,6 +251,17 @@
   #trackStatus b { font-size: 1.15em; color: #fff; }
   #trialStatus { font-size: 0.8em; color: #ffb74d; margin-top: 10px; line-height: 1.5; }
   #trialStatus.unlocked { color: #81c784; }
+  #paywallRestore { margin-top: 12px; font-size: 0.8em; }
+  #paywallRestore a { color: #8ab4f8; text-decoration: none; cursor: pointer; }
+  #paywallRestore a:hover { text-decoration: underline; }
+  #restoreRow { margin-top: 7px; font-size: 0.75em; }
+  #restoreRow a { color: #8ab4f8; text-decoration: none; cursor: pointer; }
+  #restoreRow a:hover { text-decoration: underline; }
+  #restoreBox { margin-top: 8px; }
+  #restoreBox button { margin-top: 6px; }
+  #restoreStatus { font-size: 0.75em; color: #999; margin-top: 6px; line-height: 1.5; }
+  #restoreStatus.ok { color: #81c784; }
+  #restoreStatus.err { color: #ffb74d; }
   #toolStatus { font-size: 0.82em; color: #ffb74d; margin-top: 8px; min-height: 1.2em; }
   .cand-legend { font-size: 0.75em; color: #999; margin-top: 14px; line-height: 1.6; }
   .cand-legend .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; }
@@ -416,6 +427,17 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       <div id="trackStatus"></div>
       <div id="toolStatus"></div>
       <div id="trialStatus">Loading trial status…</div>
+      <!-- Someone who paid and then lost their browser storage comes back
+           looking exactly like a brand-new visitor — full trial, no paywall —
+           so this has to be reachable from the normal state, not just from
+           the "trial spent" one. -->
+      <div id="restoreRow" hidden><a id="restoreLink">Already paid? Restore access</a></div>
+      <div id="restoreBox" hidden>
+        <input type="email" id="restoreEmail" placeholder="email used at checkout"
+               autocomplete="email" inputmode="email">
+        <button class="secondary-btn" id="restoreBtn" type="button">Restore access</button>
+        <div id="restoreStatus"></div>
+      </div>
       <div class="cand-legend">
         <span class="dot" style="background:#ffd54f;"></span>rectangular&nbsp;&nbsp;
         <span class="dot" style="background:#4dd0e1;"></span>circular&nbsp;&nbsp;
@@ -441,6 +463,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     <p id="paywallMessage">You've used your free searches for this device.</p>
     <button class="primary" id="unlockBtn">Unlock — $10 one-time</button>
     <button class="secondary" id="paywallCloseBtn">Maybe later</button>
+    <div id="paywallRestore"><a id="paywallRestoreLink">Already paid? Restore access</a></div>
   </div>
 </div>
 
@@ -846,11 +869,17 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     }[ch]));
   }
 
+  const restoreRow = document.getElementById('restoreRow');
+  const restoreBox = document.getElementById('restoreBox');
+  const restoreStatus = document.getElementById('restoreStatus');
+
   function renderTrialStatus(data) {
     trialEl.textContent = '';
+    restoreRow.hidden = !!data.unlocked;
     if (data.unlocked) {
       trialEl.textContent = '✅ Unlocked — unlimited searches on this device.';
       trialEl.classList.add('unlocked');
+      restoreBox.hidden = true;
       return;
     }
     trialEl.classList.remove('unlocked');
@@ -926,6 +955,65 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   }
 
   document.getElementById('unlockBtn').addEventListener('click', function () { startCheckout(this); });
+
+  function openRestoreBox() {
+    restoreBox.hidden = false;
+    restoreBox.scrollIntoView({ block: 'center' });
+    document.getElementById('restoreEmail').focus();
+  }
+
+  document.getElementById('restoreLink').addEventListener('click', () => {
+    if (restoreBox.hidden) { openRestoreBox(); } else { restoreBox.hidden = true; }
+  });
+
+  // The paywall covers the sidebar, so the same route out has to exist here
+  // too — this is the moment a customer with wiped storage realises they are
+  // being asked to pay twice.
+  document.getElementById('paywallRestoreLink').addEventListener('click', () => {
+    hidePaywall();
+    openRestoreBox();
+  });
+
+  document.getElementById('restoreBtn').addEventListener('click', () => {
+    const btn = document.getElementById('restoreBtn');
+    const email = document.getElementById('restoreEmail').value.trim();
+    if (!email) {
+      restoreStatus.className = 'err';
+      restoreStatus.textContent = 'Enter the email address you used at checkout.';
+      return;
+    }
+    btn.disabled = true;
+    restoreStatus.className = '';
+    restoreStatus.textContent = 'Checking…';
+
+    fetch(`${API_BASE}/api/access/restore`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceId, email })
+    })
+      .then(r => r.json().catch(() => ({})).then(d => ({ ok: r.ok, d })))
+      .then(({ ok, d }) => {
+        btn.disabled = false;
+        if (ok && d.unlocked) {
+          restoreStatus.className = 'ok';
+          restoreStatus.textContent = 'Access restored — unlimited searches on this device.';
+          hidePaywall();
+          refreshTrialStatus();
+          return;
+        }
+        restoreStatus.className = 'err';
+        restoreStatus.textContent = d.error || "Couldn't restore access. Try again in a moment.";
+      })
+      .catch(() => {
+        // Same cold-start trap as the pay button: the backend sleeps on
+        // Render's free tier and can answer with non-JSON while waking, so
+        // this must never end as an unhandled rejection that silently does
+        // nothing — that is how the unlock button used to fail.
+        btn.disabled = false;
+        restoreStatus.className = 'err';
+        restoreStatus.textContent = "Couldn't reach the server — it may still be waking up. "
+          + 'Give it a few seconds and try again.';
+      });
+  });
 
   function runSearch() {
     const place = document.getElementById('placeInput').value.trim();
