@@ -1061,8 +1061,16 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 
         candidateMarkers.clearLayers();
         (data.candidates || []).slice(0, 60).forEach(c => {
+          // width/height/angle and lat/lon are already in every candidate record
+          // (see candidates.csv) — showing them lets you judge whether a hit is a
+          // plausible foundation footprint or a metre-wide sliver before walking to it.
+          const dims = (c.width_m != null && c.height_m != null)
+            ? `<br>${c.width_m.toFixed(1)} × ${c.height_m.toFixed(1)} m`
+              + (c.angle_deg != null ? ` @ ${Math.round(c.angle_deg)}°` : '')
+            : '';
           L.circleMarker([c.lat, c.lon], { radius: 6, color: shapeColor(c.shape), weight: 2, fillOpacity: 0.2 })
-            .bindPopup(`<b>#${c.rank} ${c.shape} (${c.kind})</b><br>score: ${c.score.toFixed(2)}<br>~${Math.round(c.area_m2)} m²`
+            .bindPopup(`<b>#${c.rank} ${c.shape} (${c.kind})</b><br>score: ${c.score.toFixed(2)}<br>~${Math.round(c.area_m2)} m²${dims}`
+              + `<br><span style="font-family:ui-monospace,monospace; font-size:0.85em; opacity:0.75;">${c.lat.toFixed(6)}, ${c.lon.toFixed(6)}</span>`
               + `<br><button class="cand-track-btn" data-lat="${c.lat}" data-lon="${c.lon}" style="margin-top:6px; padding:4px 10px; cursor:pointer;">🎯 Track this</button>`)
             .addTo(candidateMarkers);
         });
