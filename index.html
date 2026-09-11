@@ -1360,6 +1360,34 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     setStatus('Fetching + processing LIDAR data (can take 30-90s)...');
     searchBtn.disabled = true;
 
+    // Move the map to the typed place immediately, alongside the scan rather
+    // than after it. A scan takes 40-90 seconds and nothing on the map changed
+    // for any of it: the view sat on its opening zoom-4 picture of the whole
+    // country while one line of grey status text did all the talking. Typing a
+    // city and pressing Enter therefore looked like it did nothing at all, and
+    // it is the first thing anyone does here. Geocoding in the browser answers
+    // in well under a second, so the map now goes where you asked right away
+    // and the scan lands on top of it.
+    //
+    // Failures are swallowed on purpose. The backend geocodes the same string
+    // itself, so a Nominatim blip must never sink a search that would
+    // otherwise succeed — this only decides what you look at while waiting.
+    let framedByResult = false;
+    const myTurn = ++searchSeq;
+    if (place && place !== lastAppliedPlace) {
+      geocodePlace(place).then(([lat, lon, label]) => {
+        // A slow geocode must not yank the map off a finished scan's framing,
+        // or off a newer search that started meanwhile.
+        if (framedByResult || myTurn !== searchSeq) return;
+        if (document.getElementById('placeInput').value.trim() !== place) return;
+        map.setView([lat, lon], 14);
+        placeSearchPin(lat, lon, false);
+        document.getElementById('placeInput').value = place;
+        lastAppliedPlace = place;
+        document.getElementById('locationStatus').textContent = label;
+      }).catch(() => {});
+    }
+
     fetch(`${API_BASE}/api/search`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
     })
@@ -1377,6 +1405,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         compositeOverlay = L.imageOverlay(`${API_BASE}${data.composite_url}`, data.bounds, { opacity: 0.7 });
         compositeOverlay.addTo(map);
         map.invalidateSize();
+        framedByResult = true;
         map.fitBounds(data.bounds);
         // A completed search has moved the map to this place as surely as the
         // Show-it button would have. Recording that stops a later map-centre
@@ -1490,6 +1519,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   // browser's own Referer identifies the caller, which is what its usage policy
   // asks for. Results are cached because a place name does not move.
   let lastAppliedPlace = '';
+  let searchSeq = 0;
   const geocodeCache = new Map();
 
   function geocodePlace(text) {
@@ -1501,7 +1531,15 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     const url = 'https://nominatim.openstreetmap.org/search?' + new URLSearchParams({
       q: text, format: 'jsonv2', limit: '1', countrycodes: 'us,pr,vi'
     });
-    return fetch(url)
+    // fetch has no timeout of its own, and this is a free shared service whose
+    // cold lookups are not fast: "Bonneyville Mill, Indiana" took 6.7s on a
+    // first ask against 27ms on the repeat. Without a deadline a hung
+    // connection leaves the button disabled under "Looking up that place…"
+    // with no way back except a reload. 20s is past the slowest real answer
+    // measured and still short of the point a visitor concludes it is broken.
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(), 20000);
+    return fetch(url, { signal: abort.signal })
       .then(r => r.json())
       .then(list => {
         if (!Array.isArray(list) || !list.length) {
@@ -1510,7 +1548,15 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         const hit = [parseFloat(list[0].lat), parseFloat(list[0].lon), list[0].display_name];
         geocodeCache.set(key, hit);
         return hit;
-      });
+      })
+      .catch(err => {
+        if (err.name === 'AbortError') {
+          throw new Error('The place-name lookup did not answer. Try again, or '
+            + 'type a lat and lon instead.');
+        }
+        throw err;
+      })
+      .finally(() => clearTimeout(timer));
   }
 
   // Resolves whatever the boxes currently hold to a point, and moves the map
