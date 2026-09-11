@@ -392,6 +392,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         <input type="text" id="latInput" placeholder="lat">
         <input type="text" id="lonInput" placeholder="lon">
       </div>
+      <button class="secondary-btn" id="goPlaceBtn" type="button">🔎 Show it on the map (no scan)</button>
       <button class="secondary-btn" id="useLocationBtn" type="button">📍 Use my location</button>
       <div id="locationStatus"></div>
       <button class="secondary-btn" id="parksBtn" type="button">🌳 Parks near me (50 mi)</button>
@@ -1377,6 +1378,11 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         compositeOverlay.addTo(map);
         map.invalidateSize();
         map.fitBounds(data.bounds);
+        // A completed search has moved the map to this place as surely as the
+        // Show-it button would have. Recording that stops a later map-centre
+        // lookup treating the still-filled box as unapplied and re-geocoding,
+        // which would throw away the framing fitBounds just chose.
+        lastAppliedPlace = place;
 
         lidarViewOn = true;
         viewToggleBtn.disabled = false;
@@ -1467,6 +1473,101 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       })
       .catch(err => { setStatus('Request failed: ' + err, true); searchBtn.disabled = false; });
   }
+
+  // ---- Move the map to a typed place, without spending a search ------------
+  // Typing a place used to move nothing at all. The only code that panned the
+  // map for a place name lived inside the search response handler, so until you
+  // spent a scan the map sat at its opening zoom-4 view of the whole country —
+  // and everything that reads the map's centre then answered about the middle
+  // of Kansas. Typing "Gettysburg, PA" and pressing Historic maps returned
+  // sheets for Smith Center: a confidently wrong answer rather than a visible
+  // no-op, which is the worse of the two failures.
+  //
+  // Geocoding runs in the browser against Nominatim, for the same reason the
+  // parks lookup queries Overpass there: Render's egress is a shared cloud
+  // range these free services throttle, while each visitor's own IP carries its
+  // own budget. Nominatim sends Access-Control-Allow-Origin: *, and the
+  // browser's own Referer identifies the caller, which is what its usage policy
+  // asks for. Results are cached because a place name does not move.
+  let lastAppliedPlace = '';
+  const geocodeCache = new Map();
+
+  function geocodePlace(text) {
+    const key = text.toLowerCase();
+    if (geocodeCache.has(key)) return Promise.resolve(geocodeCache.get(key));
+    // Biased to US territory on purpose: the elevation data behind every other
+    // feature here is USGS 3DEP, so a bare "Bristol" resolving to England would
+    // only send someone to a coverage error by a longer route.
+    const url = 'https://nominatim.openstreetmap.org/search?' + new URLSearchParams({
+      q: text, format: 'jsonv2', limit: '1', countrycodes: 'us,pr,vi'
+    });
+    return fetch(url)
+      .then(r => r.json())
+      .then(list => {
+        if (!Array.isArray(list) || !list.length) {
+          throw new Error(`Couldn't find "${text}" — try adding the state.`);
+        }
+        const hit = [parseFloat(list[0].lat), parseFloat(list[0].lon), list[0].display_name];
+        geocodeCache.set(key, hit);
+        return hit;
+      });
+  }
+
+  // Resolves whatever the boxes currently hold to a point, and moves the map
+  // there. Typed coordinates win over a typed place only when the place box is
+  // empty, matching runSearch's own precedence so the two can never disagree.
+  function goToTypedLocation() {
+    const placeEl = document.getElementById('placeInput');
+    const place = placeEl.value.trim();
+    const latVal = parseFloat(document.getElementById('latInput').value);
+    const lonVal = parseFloat(document.getElementById('lonInput').value);
+    const locationStatus = document.getElementById('locationStatus');
+
+    if (!place) {
+      if (!isFinite(latVal) || !isFinite(lonVal)) {
+        locationStatus.textContent = 'Type a place name, or a lat and lon.';
+        return Promise.reject(new Error('nothing to resolve'));
+      }
+      map.setView([latVal, lonVal], 15);
+      placeSearchPin(latVal, lonVal, false);
+      lastAppliedPlace = '';
+      locationStatus.textContent = '';
+      return Promise.resolve([latVal, lonVal]);
+    }
+
+    locationStatus.textContent = 'Looking up that place…';
+    return geocodePlace(place).then(([lat, lon, label]) => {
+      map.setView([lat, lon], 14);
+      // placeSearchPin clears the place box, on the reasoning that a dropped
+      // pin supersedes a typed name. Here the name is what produced the pin,
+      // so put it back — losing the text the moment it works reads as a bug.
+      placeSearchPin(lat, lon, false);
+      placeEl.value = place;
+      lastAppliedPlace = place;
+      locationStatus.textContent = label;
+      return [lat, lon];
+    }).catch(err => {
+      locationStatus.textContent = err.message;
+      throw err;
+    });
+  }
+
+  // The point any map-centre lookup should actually ask about. A place sitting
+  // unapplied in the box is what the visitor means, even though the map has not
+  // caught up with it yet; once it has been applied, a later pan is deliberate
+  // and wins.
+  function lookupTarget() {
+    const typed = document.getElementById('placeInput').value.trim();
+    if (typed && typed !== lastAppliedPlace) return goToTypedLocation();
+    const c = map.getCenter();
+    return Promise.resolve([c.lat, c.lng]);
+  }
+
+  document.getElementById('goPlaceBtn').addEventListener('click', () => {
+    const btn = document.getElementById('goPlaceBtn');
+    btn.disabled = true;
+    goToTypedLocation().catch(() => {}).finally(() => { btn.disabled = false; });
+  });
 
   // ---- Historic USGS topographic map overlays ------------------------------
   // The single cheapest confirmation step this tool can offer. Lidar says the
@@ -1677,13 +1778,15 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     }
 
     histBtn.addEventListener('click', () => {
-      // The map's centre, not the search box: the point of this is to check
-      // whatever you are currently looking at, which is often a candidate you
-      // just panned to rather than the place you originally typed.
-      const c = map.getCenter();
+      // lookupTarget, not map.getCenter() directly: a place typed but not yet
+      // applied gets geocoded and the map moved to it first. Reading the centre
+      // raw meant a visitor who had only typed got sheets for wherever the map
+      // still sat, which on a fresh load is the zoom-4 view of the whole
+      // country — "Gettysburg, PA" answered with Smith Center, Kansas.
       histBtn.disabled = true;
       setHistStatus('Looking up historic sheets…');
-      fetchSheets(c.lat, c.lng)
+      lookupTarget()
+        .then(([lat, lon]) => fetchSheets(lat, lon))
         .then(render)
         .catch(err => {
           histPanel.style.display = 'none';
@@ -1926,6 +2029,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   const clearBtn = document.getElementById('clearBtn');
   clearBtn.addEventListener('click', () => {
     document.getElementById('placeInput').value = '';
+    lastAppliedPlace = '';
     document.getElementById('latInput').value = '';
     document.getElementById('lonInput').value = '';
     document.getElementById('battlefieldSelect').value = '';
