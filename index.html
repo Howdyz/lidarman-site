@@ -262,6 +262,20 @@
   #restoreStatus { font-size: 0.75em; color: #999; margin-top: 6px; line-height: 1.5; }
   #restoreStatus.ok { color: #81c784; }
   #restoreStatus.err { color: #ffb74d; }
+  #histStatus { font-size: 0.78em; color: #999; margin-top: 5px; min-height: 1.1em; line-height: 1.45; }
+  #histPanel { display: none; max-height: 260px; overflow-y: auto; margin-top: 6px;
+    border: 1px solid rgba(255,255,255,0.12); border-radius: 4px; }
+  .hist-row { padding: 6px 8px; cursor: pointer; display: flex; gap: 8px; align-items: baseline;
+    border-bottom: 1px solid rgba(255,255,255,0.07); font-size: 0.85em; }
+  .hist-row:hover { background: #2b2b2b; }
+  .hist-row.on { background: #33404f; }
+  .hist-row .yr { font-weight: 600; min-width: 40px; font-variant-numeric: tabular-nums; }
+  .hist-row .sc { opacity: 0.55; font-size: 0.88em; font-variant-numeric: tabular-nums;
+    min-width: 62px; white-space: nowrap; }
+  .hist-row .nm { flex: 1; }
+  .hist-row .pdf { color: #8ab4f8; text-decoration: none; font-size: 0.88em; }
+  .hist-row .pdf:hover { text-decoration: underline; }
+  #toolSidebar input[type=range] { width: 100%; box-sizing: border-box; margin: 0; accent-color: #3a7bd5; }
   #toolStatus { font-size: 0.82em; color: #ffb74d; margin-top: 8px; min-height: 1.2em; }
   .cand-legend { font-size: 0.75em; color: #999; margin-top: 14px; line-height: 1.6; }
   .cand-legend .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; }
@@ -424,6 +438,24 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
           <p>🧱 <b>Foundations (old wall stubs)</b> — Local relief or Composite, look for a thin red outline.</p>
           <p>🪨 <b>Walls, berms &amp; mounds</b> — Composite or Local relief — these are raised, so they read warm/red on both.</p>
           <p style="margin-top:10px;">Quick workflow: start with <b>Slope</b> to catch every edge in view, switch to <b>Local relief</b> to figure out if what you found is raised or sunken, then <b>Hillshade</b> as a gut-check that it looks like real terrain.</p>
+        </div>
+      </details>
+      <button class="secondary-btn" id="histBtn" type="button">🗺️ Historic maps here</button>
+      <div id="histStatus"></div>
+      <div id="histPanel"></div>
+      <div id="histControls" hidden>
+        <label>Historic map opacity <span id="histOpacityVal">70%</span></label>
+        <input type="range" id="histOpacity" min="0" max="100" step="5" value="70">
+        <button class="secondary-btn" id="histOffBtn" type="button">✖ Turn historic map off</button>
+      </div>
+      <details class="legend-details">
+        <summary>ℹ️ What are the historic maps?</summary>
+        <div class="legend-details-body">
+          <p>Every USGS topographic sheet ever printed — about 180,000 of them, going back to 1884 — laid over the map at whatever opacity you like. Press the button and you get the sheets that cover wherever the map is currently centred, oldest first.</p>
+          <p><b>Why this matters more than any other layer here.</b> Lidar tells you the ground has a rectangular dip in it. A 1902 topo sheet with a black square drawn on that exact spot tells you it was a building. One is a candidate; the two together are a target. This is the cheapest confirmation step available, and it costs nothing.</p>
+          <p>Things worth hunting for on an old sheet: solid black squares (buildings), hollow squares (unoccupied or ruins by the surveyor's convention), a <i>school</i> or <i>church</i> or <i>P.O.</i> label with nothing there today, roads that no longer exist, mill symbols on a stream, and cemeteries.</p>
+          <p><b>Coverage.</b> Each sheet only covers its own quadrangle — a rectangle, outlined on the map when a sheet is on. Pan outside that rectangle and the overlay stops; press the button again to list the sheets for the new spot. Older maps come at coarser scales (1:125,000 or 1:62,500), so zoom out a little if a very old sheet looks blurry — that is the paper, not the screen.</p>
+          <p>Source: the USGS Historical Topographic Map Collection. <b>TIF</b> next to a sheet downloads the original full-resolution georeferenced scan — several megabytes, and the thing to take if you want it offline or in QGIS.</p>
         </div>
       </details>
       <button class="secondary-btn" id="clearBtn" type="button">🧹 Clear</button>
@@ -704,6 +736,19 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       a live map overlay; the CLI additionally emits a standalone,
       self-contained HTML file for offline viewing.
     </p>
+    <p>
+      The comparison also runs the other way, against the documentary record
+      rather than the terrain. The web application can lay any sheet from the
+      USGS Historical Topographic Map Collection — every quadrangle the survey
+      ever printed, back to 1884 — over the same view at adjustable opacity.
+      This matters because a terrain anomaly and a cartographic one are
+      independent kinds of evidence: the detector can only report that the
+      ground holds a rectangular depression of a plausible size with a flat
+      floor, whereas a black square inked on that spot in 1902 reports that a
+      surveyor stood there and saw a building. Either alone is a candidate.
+      Together they are a target, and the distinction is the difference between
+      a day spent walking and a day spent digging.
+    </p>
   </section>
 
   <section id="webapp">
@@ -735,6 +780,10 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       <li>Candidates falling on National Park Service, National Forest or BLM
         land are labelled as such, checked live against the managing agencies'
         own boundary services</li>
+      <li>Historic USGS topographic sheets — the full Historical Topographic Map
+        Collection, roughly 180,000 sheets back to 1884 — laid over the map at
+        adjustable opacity, listed oldest first for wherever the map is centred,
+        each linking to its original full-resolution georeferenced scan</li>
     </ul>
   </section>
 
@@ -1418,6 +1467,261 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       })
       .catch(err => { setStatus('Request failed: ' + err, true); searchBtn.disabled = false; });
   }
+
+  // ---- Historic USGS topographic map overlays ------------------------------
+  // The single cheapest confirmation step this tool can offer. Lidar says the
+  // ground has a rectangular dip in it; a 1902 topo sheet with a black square
+  // drawn on that exact spot says it was a building. A candidate plus a map
+  // symbol is a target, and neither half alone is.
+  //
+  // Source is Esri's hosting of the USGS Historical Topographic Map Collection
+  // (HTMC) — every sheet the USGS ever printed, ~180,000 of them back to 1884.
+  // Public, no key, and it sends Access-Control-Allow-Origin, so the browser
+  // talks to it directly. That is deliberate and matches the parks lookup: our
+  // Render egress is a shared cloud range that upstreams throttle, and routing
+  // scanned-map tiles through a 512MB free-tier box would be absurd anyway.
+  (function () {
+    const histBtn = document.getElementById('histBtn');
+    if (!histBtn) return;
+    const histPanel = document.getElementById('histPanel');
+    const histStatus = document.getElementById('histStatus');
+    const histControls = document.getElementById('histControls');
+    const histOpacity = document.getElementById('histOpacity');
+    const histOpacityVal = document.getElementById('histOpacityVal');
+    const histOffBtn = document.getElementById('histOffBtn');
+
+    const SERVICE = 'https://historical1.arcgis.com/arcgis/rest/services/'
+                  + 'USGS_Historical_Topographic_Maps/ImageServer';
+    const R = 20037508.342789244;   // half the Web Mercator world, in metres
+
+    const setHistStatus = (msg) => { histStatus.textContent = msg || ''; };
+
+    // An ImageServer is not an XYZ tile service, so each tile is fetched as its
+    // own exportImage call with the tile's own bbox. The coords -> bbox maths
+    // is the standard XYZ definition rather than Leaflet's _tileCoordsToBounds,
+    // so this does not depend on a private method surviving a Leaflet upgrade.
+    const HistLayer = L.TileLayer.extend({
+      initialize: function (objectId, options) {
+        this._objectId = objectId;
+        L.TileLayer.prototype.initialize.call(this, '', options);
+      },
+      getTileUrl: function (coords) {
+        const span = (2 * R) / Math.pow(2, coords.z);
+        const xmin = -R + coords.x * span;
+        const ymax = R - coords.y * span;
+        const bbox = [xmin, ymax - span, xmin + span, ymax]
+          .map(v => v.toFixed(4)).join(',');
+        // format=jpgpng is the whole reason this is affordable on a phone: the
+        // service returns JPEG where a tile sits wholly inside the sheet and
+        // PNG-with-alpha only at the sheet's ragged edge. Measured on one tile:
+        // 21KB as jpgpng against 167KB as png32, same pixels.
+        const mosaic = encodeURIComponent(JSON.stringify({
+          mosaicMethod: 'esriMosaicLockRaster',
+          lockRasterIds: [this._objectId],
+          ascending: true
+        }));
+        return SERVICE + '/exportImage?f=image&format=jpgpng&transparent=true'
+          + '&bboxSR=3857&imageSR=3857&size=256,256'
+          + '&bbox=' + bbox + '&mosaicRule=' + mosaic;
+      }
+    });
+
+    let histLayer = null;      // the tile overlay itself
+    let histFrame = null;      // the chosen sheet's quadrangle outline
+    let activeId = null;
+    const sheetCache = new Map();
+
+    function opacityFraction() { return (parseInt(histOpacity.value, 10) || 0) / 100; }
+
+    function turnOff() {
+      if (histLayer) { map.removeLayer(histLayer); histLayer = null; }
+      if (histFrame) { map.removeLayer(histFrame); histFrame = null; }
+      activeId = null;
+      histControls.hidden = true;
+      histPanel.querySelectorAll('.hist-row.on').forEach(el => el.classList.remove('on'));
+    }
+
+    function showSheet(a, row) {
+      turnOff();
+      activeId = a.OBJECTID;
+      histLayer = new HistLayer(a.OBJECTID, {
+        opacity: opacityFraction(),
+        maxZoom: 20,
+        // Past roughly 1.2 m/px there is no more paper to show — the scan runs
+        // out before the screen does, so asking for deeper tiles only costs
+        // requests. Leaflet upscales the z17 tiles instead.
+        maxNativeZoom: 17,
+        attribution: 'USGS Historical Topographic Map Collection'
+      });
+      // Above the basemap, below the lidar composite. The composite is an
+      // imageOverlay and so lives in overlayPane, which already sits above the
+      // tilePane; this z-index only settles the order against the basemap.
+      histLayer.setZIndex(10);
+      histLayer.addTo(map);
+
+      // A sheet stops at its own quadrangle, and an overlay that silently ends
+      // mid-pan reads as a broken feature rather than a finite map. Drawing the
+      // edge makes the boundary the map's statement instead of a surprise.
+      if ([a.S_Lat, a.W_Long, a.N_Lat, a.E_Long].every(v => typeof v === 'number')) {
+        histFrame = L.rectangle([[a.S_Lat, a.W_Long], [a.N_Lat, a.E_Long]], {
+          color: '#ffd54f', weight: 1, opacity: 0.8, fill: false, interactive: false,
+          dashArray: '5,5'
+        }).addTo(map);
+      }
+
+      histControls.hidden = false;
+      histPanel.querySelectorAll('.hist-row.on').forEach(el => el.classList.remove('on'));
+      if (row) row.classList.add('on');
+      setHistStatus(`${a.Map_Name || 'Sheet'} ${yearOf(a) || ''}`.trim()
+        + ' — dashed outline shows how far this sheet reaches.');
+    }
+
+    // Year lives in two fields and neither is reliably populated: Date_On_Map
+    // is the date printed on the sheet and is the one a detectorist cares
+    // about, Year is the catalogue's own and is frequently null.
+    function yearOf(a) {
+      const y = a.Date_On_Map || a.Year;
+      return (typeof y === 'number' && y > 1800 && y < 2100) ? y : null;
+    }
+
+    function scaleLabel(a) {
+      const sc = a.Map_Scale;
+      return (typeof sc === 'number' && sc > 0) ? '1:' + sc.toLocaleString() : '';
+    }
+
+    function render(sheets) {
+      if (!sheets.length) {
+        histPanel.style.display = 'none';
+        setHistStatus('No historic sheets indexed for this spot. Coverage is the '
+          + 'United States only — try centring the map on land.');
+        return;
+      }
+      histPanel.innerHTML = sheets.map(a => {
+        const dl = a.DownloadG
+          ? `<a class="pdf" href="${escapeHtml(a.DownloadG)}" target="_blank" rel="noopener"
+                title="Download the original full-resolution scan (georeferenced TIFF, several MB)">TIF</a>`
+          : '';
+        return `<div class="hist-row" data-oid="${a.OBJECTID}">
+                  <span class="yr">${yearOf(a) || '—'}</span>
+                  <span class="sc">${escapeHtml(scaleLabel(a))}</span>
+                  <span class="nm">${escapeHtml(a.Map_Name || 'Unnamed sheet')}</span>${dl}
+                </div>`;
+      }).join('');
+      histPanel.style.display = 'block';
+      setHistStatus(`${sheets.length} sheet${sheets.length === 1 ? '' : 's'} cover this spot`
+        + ' — oldest first. Click one to lay it over the map.');
+    }
+
+    // Sheets are catalogued per scan, so a single printing shows up several
+    // times over — the 1894 Framingham quad is ten rows, one per contributed
+    // scan of the same paper, and Gettysburg's 1951 7.5-minute sheet is six.
+    //
+    // Keying on the catalogue's own ids does not collapse those, because two
+    // populations share this service: fully attributed rows, and a thinner set
+    // whose Cell_ID, Year and GeoPDF link are all null. They describe the same
+    // printings, so any key touching a field one population leaves blank lists
+    // every such sheet twice — Gettysburg came back as 18 entries containing
+    // two identical-looking "1951 1:24,000 Gettysburg" rows. Name plus printed
+    // year plus scale is the identity the reader can actually see on screen,
+    // which makes it the right granularity: rows nobody could tell apart merge.
+    // Where duplicates disagree, keep whichever one carries the GeoPDF link.
+    function dedupe(features) {
+      const byKey = new Map();
+      for (const f of features) {
+        const a = f.attributes || {};
+        const key = [a.Map_Name, yearOf(a), a.Map_Scale].join('|');
+        const prev = byKey.get(key);
+        if (!prev || (!prev.DownloadG && a.DownloadG)) byKey.set(key, a);
+      }
+      return [...byKey.values()]
+        .sort((p, q) => (yearOf(p) || 9999) - (yearOf(q) || 9999));
+    }
+
+    // DownloadG, not Download_GeoPDF. The catalogue carries both, and the
+    // GeoPDF one points at ims.er.usgs.gov, a host that no longer has a DNS
+    // record at all — every one of those links is dead. DownloadG resolves to
+    // the current USGS staged-products bucket and was checked returning the
+    // real file (8MB GeoTIFF for the 1908 Gettysburg sheet). Do not "restore"
+    // the GeoPDF field because its name reads better.
+    const OUT_FIELDS = ['OBJECTID', 'Map_Name', 'Year', 'Date_On_Map', 'Map_Scale',
+      'DownloadG', 'N_Lat', 'S_Lat', 'W_Long', 'E_Long'].join(',');
+
+    function fetchSheets(lat, lon) {
+      // ~2km buckets. Sheets do not move and a pan of a few blocks lands on the
+      // same quadrangle, so this keeps re-pressing the button free.
+      const key = lat.toFixed(2) + ',' + lon.toFixed(2);
+      if (sheetCache.has(key)) return Promise.resolve(sheetCache.get(key));
+
+      const x = lon * R / 180;
+      const y = Math.log(Math.tan((90 + lat) * Math.PI / 360)) / (Math.PI / 180) * R / 180;
+      const params = new URLSearchParams({
+        geometry: JSON.stringify({ x: x, y: y, spatialReference: { wkid: 102100 } }),
+        geometryType: 'esriGeometryPoint',
+        spatialRel: 'esriSpatialRelIntersects',
+        outFields: OUT_FIELDS,
+        returnGeometry: 'false',
+        f: 'json'
+      });
+      return fetch(SERVICE + '/query?' + params.toString())
+        .then(r => r.json())
+        .then(d => {
+          // An ArcGIS service reports its own failures inside a 200 response,
+          // so a plain r.ok check would read an error object as an empty result
+          // and this would claim there are no maps when the service is simply
+          // unhappy. Same trap the parks lookup hit with Overpass remarks.
+          if (d && d.error) throw new Error(d.error.message || 'map service error');
+          const sheets = dedupe(d.features || []);
+          if (sheets.length) sheetCache.set(key, sheets);
+          return sheets;
+        });
+    }
+
+    histBtn.addEventListener('click', () => {
+      // The map's centre, not the search box: the point of this is to check
+      // whatever you are currently looking at, which is often a candidate you
+      // just panned to rather than the place you originally typed.
+      const c = map.getCenter();
+      histBtn.disabled = true;
+      setHistStatus('Looking up historic sheets…');
+      fetchSheets(c.lat, c.lng)
+        .then(render)
+        .catch(err => {
+          histPanel.style.display = 'none';
+          setHistStatus('Historic map index did not answer (' + err.message
+            + '). Try again in a moment.');
+        })
+        .finally(() => { histBtn.disabled = false; });
+    });
+
+    histPanel.addEventListener('click', (e) => {
+      if (e.target.closest('.pdf')) return;   // let the download link through
+      const row = e.target.closest('.hist-row');
+      if (!row) return;
+      const oid = parseInt(row.dataset.oid, 10);
+      if (oid === activeId) { turnOff(); setHistStatus('Historic map off.'); return; }
+      for (const sheets of sheetCache.values()) {
+        const a = sheets.find(s => s.OBJECTID === oid);
+        if (a) { showSheet(a, row); return; }
+      }
+    });
+
+    histOpacity.addEventListener('input', () => {
+      histOpacityVal.textContent = histOpacity.value + '%';
+      if (histLayer) histLayer.setOpacity(opacityFraction());
+    });
+
+    histOffBtn.addEventListener('click', () => { turnOff(); setHistStatus('Historic map off.'); });
+
+    // Clear wipes the map, and leaving a historic sheet behind would make the
+    // button a liar. Its own listener rather than a call from the main clear
+    // handler, so this tool stays self-contained.
+    const clearBtn = document.getElementById('clearBtn');
+    if (clearBtn) clearBtn.addEventListener('click', () => {
+      turnOff();
+      histPanel.style.display = 'none';
+      setHistStatus('');
+    });
+  })();
 
   // ---- Parks near me ------------------------------------------------------
   // A first-time visitor usually has nowhere to point a scan. This lists named
