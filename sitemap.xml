@@ -11,6 +11,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://lidarman.com/historical-maps-for-metal-detecting.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://lidarman.com/reading-lidar-hillshade-maps.html</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>

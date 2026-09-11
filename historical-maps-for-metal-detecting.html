@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#7a3b2e">
+<title>Historical Maps for Metal Detecting — Lidarman</title>
+<link rel="canonical" href="https://lidarman.com/historical-maps-for-metal-detecting.html">
+<link rel="icon" type="image/png" href="assets/icon-192.png">
+<meta name="description" content="How to use old USGS topographic sheets to find vanished buildings, mills and roads — where to get them free, what the symbols mean, and how to line an old map up with the ground today.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://lidarman.com/historical-maps-for-metal-detecting.html">
+<meta property="og:title" content="Historical Maps for Metal Detecting">
+<meta property="og:description" content="Where to get old maps free, what the symbols mean, and how to line a century-old sheet up with the ground you're standing on.">
+<meta property="og:image" content="https://lidarman.com/assets/hero-background.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Historical Maps for Metal Detecting">
+<meta name="twitter:description" content="Where to get old maps free, what the symbols mean, and how to line a century-old sheet up with the ground you're standing on.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Historical Maps for Metal Detecting",
+  "description": "How to use old USGS topographic sheets to find vanished buildings, mills and roads — where to get them free, what the symbols mean, and how to line an old map up with the ground today.",
+  "author": { "@type": "Organization", "name": "Lidarman" },
+  "publisher": { "@type": "Organization", "name": "Lidarman", "url": "https://lidarman.com/" },
+  "mainEntityOfPage": "https://lidarman.com/historical-maps-for-metal-detecting.html"
+}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #faf7f0; --ink: #1c1a17; --ink-soft: #4a453e; --rule: #d8d0c0;
+    --accent: #7a3b2e; --accent-soft: #ac6a52; --fig-bg: #f0ebe0; --code-bg: #efe9db;
+    --shadow: rgba(28, 26, 23, 0.08);
+    --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --mono: "JetBrains Mono", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--serif); line-height: 1.65; font-size: 18px; }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 0 24px; }
+  /* At ~320px (iPhone SE 1st gen, Galaxy Fold cover screen) the header row —
+     brand plus Guides / Share / Try It — comes out about 2px wider than the
+     viewport, which gives the entire page a sliver of horizontal scroll.
+     Tightening the gutter at those widths reclaims 20px, comfortably more
+     than needed, and reads better on a very narrow screen anyway. */
+  @media (max-width: 360px) { .wrap { padding: 0 14px; } }
+  header.top {
+    border-bottom: 1px solid var(--rule); padding: 14px 0; position: sticky; top: 0;
+    background: rgba(250,247,240,0.92); backdrop-filter: blur(4px); z-index: 10;
+  }
+  header.top .wrap { display: flex; justify-content: space-between; align-items: center; }
+  header.top .brand { font-weight: 700; font-size: 1.05em; letter-spacing: 0.02em; text-decoration: none; color: var(--ink); }
+  header.top .nav-actions { display: flex; align-items: center; gap: 10px; }
+  header.top a.navlink { font-family: var(--mono); font-size: 0.85em; text-decoration: none; color: var(--ink-soft); }
+  header.top a.navlink:hover { color: var(--accent); }
+  header.top a.gh {
+    font-family: var(--mono); font-size: 0.85em; text-decoration: none;
+    color: var(--paper); background: var(--ink); padding: 7px 14px; border-radius: 3px;
+  }
+  header.top a.gh:hover { background: var(--accent); }
+  .titleblock { padding: 48px 0 8px; }
+  .titleblock .kicker { font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.78em; color: var(--accent); }
+  .titleblock h1 { font-size: 2.1em; margin: 10px 0 8px; line-height: 1.25; }
+  .titleblock .dek { font-size: 1.1em; color: var(--ink-soft); font-style: italic; }
+  .abstract { background: var(--fig-bg); border-left: 3px solid var(--accent); padding: 20px 24px; margin: 24px 0 44px; font-size: 0.97em; }
+  .abstract .label { font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.75em; color: var(--accent); display: block; margin-bottom: 10px; }
+  nav.toc { font-size: 0.88em; color: var(--ink-soft); margin-bottom: 48px; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding: 14px 0; }
+  nav.toc a { color: var(--ink-soft); text-decoration: none; margin-right: 4px; }
+  nav.toc a:hover { color: var(--accent); text-decoration: underline; }
+  nav.toc ol { margin: 6px 0 0; padding-left: 20px; columns: 2; }
+  section { margin-bottom: 46px; }
+  h2 { font-size: 1.5em; border-bottom: 1px solid var(--rule); padding-bottom: 8px; margin-bottom: 18px; }
+  h3 { font-size: 1.15em; margin-bottom: 10px; color: var(--ink); }
+  p { margin: 0 0 16px; }
+  ul, ol { margin: 0 0 16px; padding-left: 24px; }
+  li { margin-bottom: 6px; }
+  .callout { background: var(--fig-bg); border-radius: 5px; padding: 16px 18px; margin: 20px 0; font-size: 0.92em; border: 1px solid var(--rule); }
+  .callout .tag { font-family: var(--mono); font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); display: block; margin-bottom: 6px; }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 0.85em; color: var(--ink-soft); margin: 8px 0 18px; }
+  .legend span.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+  .cta-box {
+    background: var(--ink); color: var(--paper); border-radius: 6px; padding: 24px 26px; margin: 40px 0;
+    text-align: center;
+  }
+  .cta-box p { color: #e8e2d4; margin-bottom: 14px; }
+  .cta-box a.gh {
+    font-family: var(--mono); font-size: 0.92em; text-decoration: none;
+    color: var(--ink); background: var(--paper); padding: 9px 20px; border-radius: 3px; font-weight: 600;
+  }
+  .cta-box a.gh:hover { background: var(--accent-soft); color: white; }
+  footer { border-top: 1px solid var(--rule); padding: 28px 0 50px; color: var(--ink-soft); font-size: 0.85em; }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<script>
+fetch('https://lidarman-backend.onrender.com/api/visit', {
+  method: 'POST', headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ path: location.pathname, referrer: document.referrer }), keepalive: true
+}).catch(function(){});
+</script>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html">Lidarman</a>
+    <div class="nav-actions">
+      <a class="navlink" href="guides.html">Guides</a>
+      <a class="gh" href="index.html#try-it">Try It</a>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="titleblock">
+    <span class="kicker">Field guide</span>
+    <h1>Historical Maps for Metal Detecting</h1>
+    <div class="dek">A century-old map is the cheapest research you will ever do. It tells you where somebody lived, worked and walked, at a time when the ground you are standing on looked nothing like it does now.</div>
+  </div>
+
+  <div class="abstract">
+    <span class="label">In short</span>
+    Terrain data tells you the ground has a rectangular dip in it. An old map with a black square inked on that exact spot tells you a surveyor stood there and saw a building. Neither is worth much alone — a dip could be anything, and a map symbol could point at ground that was bulldozed in 1974 — but together they are the difference between a day spent walking and a day spent digging. The United States happens to have an unusually good free archive for this: roughly 180,000 topographic sheets going back to 1884, every one of them public.
+  </div>
+
+  <nav class="toc">
+    Contents
+    <ol>
+      <li><a href="#why">1. Why an old map beats a hunch</a></li>
+      <li><a href="#where">2. Where to get old maps free</a></li>
+      <li><a href="#symbols">3. What you are actually looking for</a></li>
+      <li><a href="#scale">4. Scale and date, and why both matter</a></li>
+      <li><a href="#matching">5. Matching an old map to the ground today</a></li>
+      <li><a href="#limits">6. What a map will not tell you</a></li>
+    </ol>
+  </nav>
+
+  <section id="why">
+    <h2>1. Why an old map beats a hunch</h2>
+    <p>
+      Most detecting research starts with a story — somebody's grandfather said there used to be a schoolhouse up that road. Stories are worth having, but they are unreliable about the one thing that matters most, which is <i>where</i>. A map is a dated, positioned record made by somebody whose entire job was getting the position right.
+    </p>
+    <p>
+      The reason this pairs so well with terrain data is that the two kinds of evidence fail in different directions. Elevation data is objective but mute: it can tell you there is a flat-floored rectangular depression twelve metres across, and it cannot tell you whether that is a cellar, a stock pond, or the hole left by a tree that came down in a storm forty years ago. A map is the opposite — it is confident about meaning and vague about everything else. It says <i>building</i>, and it says it at a spot that might be off by a hundred feet.
+    </p>
+    <p>
+      Put them together and each covers the other's weakness. A terrain anomaly with a map symbol on it is not a guess any more. Nothing else you can do from a kitchen table narrows a search this much.
+    </p>
+  </section>
+
+  <section id="where">
+    <h2>2. Where to get old maps free</h2>
+    <h3>USGS historical topographic maps</h3>
+    <p>
+      This is the big one, and it is completely free. The USGS Historical Topographic Map Collection is a scan of essentially every topographic sheet the survey ever printed — on the order of 180,000 of them, the earliest from 1884. For most of the country you can get several editions of the same quadrangle spanning a century, which means you can watch a farm appear, get a road, lose the road, and vanish.
+    </p>
+    <p>
+      There are two ways in. The USGS runs a browser called topoView, which lets you click a location and download individual sheets. Or, if you would rather not leave the terrain view, Lidarman has the whole collection built in — press <b>Historic maps here</b> and it lists every sheet covering wherever the map is centred, oldest first, and lays whichever one you pick over the terrain at whatever opacity you like.
+    </p>
+
+    <h3>County atlases and plat maps</h3>
+    <p>
+      Between roughly 1860 and 1910, commercial publishers produced county atlases that did something topographic maps never did: they printed the <i>landowner's name</i> beside the house. If you are trying to connect a foundation to a family, or a family to a piece of ground, this is the record that does it. Coverage is patchy and depends entirely on whether your county was surveyed and whether somebody has since scanned it — the Library of Congress, state archives, and university map libraries are the usual places to look.
+    </p>
+
+    <h3>Sanborn fire insurance maps</h3>
+    <p>
+      Sanborn maps cover towns rather than countryside, at a detail level nothing else touches — individual buildings with construction material and use noted. The Library of Congress has a very large collection online and free. The practical catch is that they are scans, not georeferenced data, so you cannot drape one over a modern map without doing the alignment work yourself.
+    </p>
+
+    <h3>Land patents</h3>
+    <p>
+      The Bureau of Land Management's General Land Office records hold the original federal land patents — who was granted which parcel, and when. They are searchable by name and by legal description rather than by clicking a map, which makes them awkward for browsing but very good for confirming that somebody was on a specific piece of ground by a specific year.
+    </p>
+
+    <div class="callout">
+      <span class="tag">Worth knowing</span>
+      The historical topographic collection is the only one of these four that is national, complete, and already aligned to real-world coordinates. The others are richer but patchier. If you only ever use one, use the topo sheets — and reach for the others when you have a specific question the topo cannot answer.
+    </div>
+  </section>
+
+  <section id="symbols">
+    <h2>3. What you are actually looking for</h2>
+    <p>
+      Scanning an old sheet is a different skill from reading a modern one, because you are not navigating — you are hunting for things that are no longer there. What earns a second look:
+    </p>
+    <ul>
+      <li><b>Solid black squares.</b> Buildings. Small structures get a plain square; larger ones are drawn to their actual footprint. A square sitting in what is now woods or an empty field is the single most useful thing an old map can show you.</li>
+      <li><b>Printed labels.</b> <i>School</i>, <i>Ch</i> for church, <i>P.O.</i> for post office, <i>Cem</i> for cemetery, <i>Mill</i>. These mark places where people gathered repeatedly rather than passed through once, which matters more than the size of the building.</li>
+      <li><b>The word <i>Ruins</i>.</b> When a surveyor bothered to print it, something was already standing derelict at the time of the survey — meaning the site is older than the map, sometimes by a long way.</li>
+      <li><b>Roads that no longer exist.</b> A road on an 1890 sheet that is absent from a 1950 one had buildings along it, and the roadbed itself often survives in the terrain as a shallow sunken lane long after the surface is gone.</li>
+      <li><b>Mills on streams.</b> Mills need falling water, so they sit at predictable places, and they leave unusually durable earthworks — races, dams, foundations — because the works were cut into the ground rather than built on it.</li>
+    </ul>
+    <p>
+      One caution on symbols: the conventions were not fixed. They shifted between eras, between scales, and between map series, and a sheet from 1908 does not necessarily use the same marks as one from 1955. Every sheet carries its own legend in the margin. When something matters, read that legend rather than assuming — and treat any confident-sounding rule you read online, including the list above, as a starting point rather than gospel.
+    </p>
+  </section>
+
+  <section id="scale">
+    <h2>4. Scale and date, and why both matter</h2>
+    <p>
+      Two numbers on a topographic sheet decide whether it is any use to you.
+    </p>
+    <p>
+      <b>Scale</b> sets how much detail survived the drawing. A 1:24,000 sheet — the 7.5-minute quadrangle, the most common modern series — shows individual buildings clearly. A 1:62,500 sheet covers four times the area at half the detail, and 1:125,000 and 1:250,000 sheets are regional overviews where a whole village may be a smudge. Older maps are generally coarser, simply because the early survey worked at 1:62,500 and 1:125,000 across most of the country. If a very old sheet looks blurry when you zoom in, that is the paper running out, not the screen.
+    </p>
+    <p>
+      <b>Date</b> is more slippery than it looks, because a topographic sheet can carry several. There is the date the survey was done, the date of the printing, and on many sheets a later revision date where aerial photographs were used to update an older base without resurveying it. The date you care about is the one describing when somebody actually looked at the ground. A 1951 sheet photo-revised in 1970 is a 1951 map with some 1970 corrections, and a building that appears on it was standing in 1951.
+    </p>
+    <div class="callout">
+      <span class="tag">Practical</span>
+      Do not settle for one sheet. The useful move is to pull the oldest and the newest available for the same quadrangle and compare them. Anything present on the old one and gone from the new one is a site that existed and then stopped existing — which is exactly the population you are trying to find.
+    </div>
+  </section>
+
+  <section id="matching">
+    <h2>5. Matching an old map to the ground today</h2>
+    <p>
+      This is where most people give up, and it is a real problem rather than an imagined one. You have a scan of a 1908 map and a modern satellite view, and nothing obvious connects them. Early surveys were also done to looser positional standards than modern ones, so even a perfectly aligned old sheet can place a building somewhat off from where it truly stood.
+    </p>
+    <p>
+      Two approaches, and they work together.
+    </p>
+    <p>
+      <b>Anchor on what persists.</b> Some things move very little across a century: stream courses and their confluences, major road intersections, railway grades, township and section lines, and the shape of a lake or pond. Find two or three of those on both the old map and the modern view and you can eyeball the rest of the transfer surprisingly well.
+    </p>
+    <p>
+      <b>Or overlay it properly.</b> The USGS historical scans are georeferenced — the collection ships with real-world coordinates attached — which means software can place them on a modern map automatically rather than making you do it by eye. That is what the historic map layer in Lidarman does: pick a sheet and it draws directly over the terrain view, at an opacity you control, already aligned. Slide it up and down and you are looking at the same patch of ground in two centuries.
+    </p>
+    <p>
+      Whichever way you do it, expect to work in an area rather than at a point. Treat a map symbol as saying "within a hundred feet or so of here", not as an X. The terrain data is the more precise of the two records; let the map tell you <i>which</i> anomaly to care about, and let the terrain tell you <i>exactly where</i> it is.
+    </p>
+  </section>
+
+  <section id="limits">
+    <h2>6. What a map will not tell you</h2>
+    <p>
+      Three honest limits.
+    </p>
+    <p>
+      <b>It cannot tell you the site survived.</b> A building on a 1908 sheet may have been demolished, ploughed flat, built over, or buried under a road in any of the years since. The map proves something was there once, not that anything is there now. This is precisely why the terrain check is worth doing rather than driving straight out.
+    </p>
+    <p>
+      <b>It cannot tell you the site is worth anything.</b> A tenant shack occupied for six years and a farmhouse lived in for four generations look identical on a topographic sheet. Duration and use matter far more than presence, and the map is silent on both. Older is generally better, and buildings that appear on several successive editions are better than one-offs.
+    </p>
+    <p>
+      <b>It has nothing to do with permission.</b> Finding a site tells you nothing about who owns the ground or what the rules are for searching it, and a map from 1908 has no bearing on either. That is a separate piece of work, and it comes before the shovel rather than after — we have <a href="metal-detecting-permission-and-legal-basics.html">a guide on the general ground rules</a>.
+    </p>
+  </section>
+
+  <section id="more">
+    <h2>More guides</h2>
+    <ul>
+      <li><b><a href="reading-lidar-hillshade-maps.html">How to Read LIDAR Terrain Maps</a></b> — Hillshade, slope, Local Relief Model and sky-view openness, what each one is showing you, and when to reach for which.</li>
+      <li><b><a href="finding-old-homesteads-with-lidar.html">Finding Old Homestead Sites With LIDAR</a></b> — What a vanished foundation, root cellar or filled-in farm road looks like in elevation data, and how to tell them from natural ground.</li>
+      <li><b><a href="free-public-lidar-data-sources.html">Free Public LIDAR Data Sources</a></b> — Where LIDAR elevation data comes from in the US — USGS 3DEP, OpenTopography and state GIS portals — and what each is good for.</li>
+      <li><b><a href="metal-detecting-permission-and-legal-basics.html">Permission and Legal Basics Before You Dig</a></b> — Private land, public land and protected sites are three very different situations. General ground rules, not legal advice.</li>
+    </ul>
+  </section>
+
+  <div class="cta-box">
+    <p>Every historical sheet described above is built into the search — pick a year and it lays over the terrain, already aligned.</p>
+    <a class="gh" href="index.html#try-it">Try a search — 3 free</a>
+  </div>
+
+  <p><a href="guides.html">&larr; Back to guides</a> &nbsp;·&nbsp; <a href="finding-old-homesteads-with-lidar.html">Next: Finding Old Homestead Sites With LIDAR &rarr;</a></p>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    &copy; Lidarman. <a href="mailto:projectsilverbeam@gmail.com">projectsilverbeam@gmail.com</a>
+  </div>
+</footer>
+
+</body>
+</html>
