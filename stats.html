@@ -184,10 +184,9 @@
 
     <div class="panel" style="grid-column: 1 / -1;">
       <h2>Free Searches per IP <span id="ipTrialMode" style="font-weight:normal; opacity:.7; font-size:.8em;"></span></h2>
-      <p style="font-size:.85em; opacity:.7; margin:0 0 10px;">
-        Observation only — no per-IP limit is enforced. "Over N" counts how many
-        addresses that day exceeded N free searches, i.e. how many a cap of N
-        would have turned away.
+      <p id="ipTrialNote" style="font-size:.85em; opacity:.7; margin:0 0 10px;">
+        "Over N" counts how many addresses that day exceeded N free searches,
+        i.e. how many a cap of N would have turned away.
       </p>
       <!-- overflow-x for the same reason as the errors table below. -->
       <div style="overflow-x:auto;">
@@ -279,7 +278,15 @@ function renderStats(data){
   // refuse real people; if it stays at 0, resets are rarer than assumed.
   const ipt = data.ipTrial || {};
   document.getElementById('ipTrialMode').textContent =
-    ipt.enforcing ? '(enforcing)' : '(counting only — no limit applied)';
+    ipt.enforcing ? `(enforcing — cap ${ipt.limit})` : '(counting only — no limit applied)';
+  // Kept in step with the badge above: this paragraph used to state flatly
+  // that nothing was enforced, which silently became untrue the day a cap
+  // was switched on.
+  document.getElementById('ipTrialNote').textContent = (ipt.enforcing
+      ? `Enforcing: an address is refused further free searches after ${ipt.limit} in 24h. `
+      : 'Observation only — no per-IP limit is enforced. ')
+    + '"Over N" counts how many addresses that day exceeded N free searches, '
+    + 'i.e. how many a cap of N would have turned away.';
   const iptBody = document.getElementById('ipTrialRows');
   iptBody.innerHTML = (ipt.days || []).length ? ipt.days.map(d => {
     const warn = n => n > 0 ? ' style="color:#c0392b; font-weight:600;"' : '';
