@@ -2340,6 +2340,31 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 
     const setParksStatus = (msg) => { parksStatus.textContent = msg || ''; };
 
+    // Overpass is a free public service and the query allows it 50s, so this
+    // regularly runs past half a minute — measured at 30s+ for 300 parks. One
+    // unchanging line for that long is the same silence the scan used to have,
+    // and it reads as a hung button. Elapsed seconds are the honest signal:
+    // Overpass reports no progress, so nothing here invents any.
+    let parksTimer = null, parksT0 = 0, parksSearching = false;
+    function parksTick() {
+      if (!parksSearching) { setParksStatus('Getting your location…'); return; }
+      const s = Math.floor((Date.now() - parksT0) / 1000);
+      let m = `Searching parks within 50 miles… ${s}s`;
+      if (s >= 15) m += ' — the public map service is slow to answer, still waiting.';
+      setParksStatus(m);
+    }
+    function startParksTicker() {
+      stopParksTicker();
+      parksSearching = false;
+      parksTick();
+      parksTimer = setInterval(parksTick, 1000);
+    }
+    function beginParksSearch() { parksSearching = true; parksT0 = Date.now(); parksTick(); }
+    function stopParksTicker() {
+      if (parksTimer) { clearInterval(parksTimer); parksTimer = null; }
+      parksSearching = false;
+    }
+
     function currentLatLon() {
       const la = parseFloat(document.getElementById('latInput').value);
       const lo = parseFloat(document.getElementById('lonInput').value);
@@ -2472,16 +2497,17 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 
     parksBtn.addEventListener('click', () => {
       parksBtn.disabled = true;
-      setParksStatus('Finding parks near you… (first look-up can take a moment)');
+      startParksTicker();
       currentLatLon()
-        .then(([la, lo]) => fetchParks(la, lo))
-        .then(parks => render({ parks }))
+        .then(([la, lo]) => { beginParksSearch(); return fetchParks(la, lo); })
+        .then(parks => { stopParksTicker(); return render({ parks }); })
         .catch((err) => {
+          stopParksTicker();
           setParksStatus(err && err.code === 1
             ? 'Location permission denied — enter a lat/lon above and try again.'
             : 'Park look-up is busy right now. Try again in a moment.');
         })
-        .finally(() => { parksBtn.disabled = false; });
+        .finally(() => { stopParksTicker(); parksBtn.disabled = false; });
     });
 
     parksPanel.addEventListener('click', (e) => {
