@@ -288,6 +288,11 @@
     #map { width: 100%; min-height: 380px; }
   }
   #toolSidebar label { display: block; font-size: 0.78em; color: #aaa; margin: 10px 0 3px; }
+  .alt-ways { margin-top: 18px; padding-top: 12px; border-top: 1px solid #333; }
+  .alt-ways-label {
+    display: block; font-family: var(--mono); font-size: 0.72em; color: #888;
+    text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 8px;
+  }
   #toolSidebar input[type=text], #toolSidebar input[type=number], #toolSidebar input[type=email], #toolSidebar select {
     width: 100%; box-sizing: border-box; padding: 7px; border-radius: 4px; border: 1px solid #444;
     background: #262626; color: #eee; font-size: 0.9em;
@@ -461,20 +466,31 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     <div id="toolSidebar">
       <label>Place name</label>
       <input type="text" id="placeInput" placeholder="e.g. Gettysburg, PA">
-      <label>...or lat, lon</label>
-      <div style="display:flex; gap:6px;">
-        <input type="text" id="latInput" placeholder="lat">
-        <input type="text" id="lonInput" placeholder="lon">
-      </div>
-      <button class="secondary-btn" id="goPlaceBtn" type="button">🔎 Show it on the map (no scan)</button>
-      <button class="secondary-btn" id="useLocationBtn" type="button">📍 Use my location</button>
-      <div id="locationStatus"></div>
-      <button class="secondary-btn" id="parksBtn" type="button">🌳 Parks near me (50 mi)</button>
-      <div id="parksStatus"></div>
-      <div id="parksPanel" style="display:none; max-height:280px; overflow-y:auto; margin-top:6px;
+      <label>Search radius (meters) <span style="opacity:.6; font-weight:normal;">— 50 to 500</span></label>
+      <input type="number" id="radiusInput" value="300" min="50" max="500" step="50">
+      <button class="primary" id="searchBtn">Search</button>
+      <!-- Everything below is a secondary path. Search used to sit under
+           all of it: on a phone the primary action was 435px and three
+           buttons below the place field, and the button nearest the field was
+           "Show it on the map (no scan)" — the one that deliberately does not
+           search. Someone typing a place and pressing the obvious button got a
+           map pan and no result. -->
+      <div class="alt-ways">
+        <span class="alt-ways-label">Other ways to pick a spot</span>
+        <label>Lat, lon</label>
+        <div style="display:flex; gap:6px;">
+          <input type="text" id="latInput" placeholder="lat">
+          <input type="text" id="lonInput" placeholder="lon">
+        </div>
+        <button class="secondary-btn" id="goPlaceBtn" type="button">🔎 Show it on the map (no scan)</button>
+        <button class="secondary-btn" id="useLocationBtn" type="button">📍 Use my location</button>
+        <div id="locationStatus"></div>
+        <button class="secondary-btn" id="parksBtn" type="button">🌳 Parks near me (50 mi)</button>
+        <div id="parksStatus"></div>
+        <div id="parksPanel" style="display:none; max-height:280px; overflow-y:auto; margin-top:6px;
            border:1px solid rgba(255,255,255,0.12); border-radius:4px;"></div>
-      <label>...or pick a famous battlefield (US only — data source coverage)</label>
-      <select id="battlefieldSelect">
+        <label>...or pick a famous battlefield (US only — data source coverage)</label>
+        <select id="battlefieldSelect">
         <option value="">— Select a battlefield —</option>
         <option value="39.8309,-77.2311">Gettysburg, PA (1863)</option>
         <option value="39.4762,-77.7517">Antietam, MD (1862)</option>
@@ -487,10 +503,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         <option value="43.0117,-73.6459">Saratoga, NY (1777)</option>
         <option value="35.1378,-81.8129">Cowpens, SC (1781)</option>
         <option value="45.5670,-107.4284">Little Bighorn, MT (1876)</option>
-      </select>
-      <label>Search radius (meters) <span style="opacity:.6; font-weight:normal;">— 50 to 500</span></label>
-      <input type="number" id="radiusInput" value="300" min="50" max="500" step="50">
-      <button class="primary" id="searchBtn">Search</button>
+        </select>
+      </div>
       <button class="secondary-btn" id="viewToggleBtn" type="button" disabled>🔦 Lidar view: on</button>
       <button class="secondary-btn" id="zoomLockBtn" type="button">🔓 Lock zoom</button>
       <label>Color style</label>
