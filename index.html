@@ -557,10 +557,10 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
           <span id="spPhase">Fetching elevation data…</span>
           <span class="sp-elapsed" id="spElapsed">0s</span>
         </div>
-        <div class="sp-foot">Steps are the usual order and timing — the server
-          only reports back when the whole scan is done.</div>
+        <div class="sp-foot">These are the usual steps and timings — the server
+          only reports back once the scan finishes.</div>
         <div class="sp-note" id="spNote" hidden>Taking longer than usual — the
-          server may have been asleep. It is still working; don't reload.</div>
+          server may have been asleep. It's still working, so don't reload.</div>
       </div>
       <div id="trialStatus">Loading trial status…</div>
       <!-- Someone who paid and then lost their browser storage comes back
@@ -957,10 +957,9 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   <section id="access">
     <h2>7. Get access</h2>
     <p>
-      Lidarman is a hosted tool — each search runs real LIDAR fetch,
-      terrain-derivative, and detection compute server-side, which costs
-      real time and resources per query rather than being a one-time
-      download. Try it free — the first three searches on a device are on
+      Lidarman runs on a server, not on your phone. Every search pulls fresh
+      elevation data for your spot and processes it, which takes real time and
+      real compute — that's why it isn't just a file you download once. Try it free — the first three searches on a device are on
       the house, then a one-time $10 payment unlocks the tool on that device,
       no subscription. There's a fair-use limit of 100 searches a day on paid
       devices — far more than anyone hunting real ground will use, and it's
@@ -1464,7 +1463,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         // backend sleeps on Render's free tier, so the first request of the
         // day routinely fails or stalls while it wakes; retry, then say so.
         if (attempt < 2) { setTimeout(() => refreshTrialStatus(attempt + 1), 4000); return; }
-        trialEl.textContent = 'Could not reach the server — it may be waking up. Reload in a moment.';
+        trialEl.textContent = "Couldn't reach the server — it may be waking up. Reload in a moment.";
       });
   }
 
@@ -2382,7 +2381,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       return;
     }
     if (!navigator.geolocation) {
-      trackStatus.textContent = 'Geolocation is not supported by this browser.';
+      trackStatus.textContent = "This browser can't share your location.";
       return;
     }
     trackBtn.textContent = '⏹ Stop tracking';
@@ -2430,7 +2429,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   const locationStatusEl = document.getElementById('locationStatus');
   useLocationBtn.addEventListener('click', () => {
     if (!navigator.geolocation) {
-      locationStatusEl.textContent = 'Geolocation is not supported by this browser.';
+      locationStatusEl.textContent = "This browser can't share your location.";
       return;
     }
     useLocationBtn.disabled = true;
@@ -2525,14 +2524,14 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     })
       .then(r => {
         if (!r.ok) {
-          setStatus('Could not save that spot — the server may still be waking up. Try again in a moment.', true);
+          setStatus("Couldn't save that spot — the server may still be waking up. Try again in a moment.", true);
           return;
         }
         setStatus('');
         loadSaved();
       })
       .catch(() => {
-        setStatus("Could not save that spot — couldn't reach the server. Try again in a moment.", true);
+        setStatus("Couldn't save that spot — couldn't reach the server. Try again in a moment.", true);
       });
   }
 
