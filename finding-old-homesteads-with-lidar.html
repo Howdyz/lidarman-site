@@ -84,6 +84,15 @@
   table { width: 100%; border-collapse: collapse; font-size: 0.92em; }
   th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule); }
   th { font-family: var(--mono); font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft); }
+  /* An early way through to the tool. The only in-body link used to be the
+     closing cta-box, ~8 screens down on a phone: a reader convinced by the
+     summary had to scroll the entire guide to act on it. Deliberately a line
+     of text, not a second cta-box, so it reads as a note rather than an ad. */
+  .quick-cta {
+    font-size: 0.9em; margin: -28px 0 34px; padding-left: 14px;
+    border-left: 2px solid var(--accent); color: var(--ink-soft);
+  }
+  .quick-cta a { color: var(--accent); }
   .cta-box { background: var(--ink); color: var(--paper); border-radius: 6px; padding: 24px 26px; margin: 40px 0; text-align: center; }
   .cta-box p { color: #e8e2d4; margin-bottom: 14px; }
   .cta-box a.gh {
@@ -127,6 +136,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     <span class="label">In short</span>
     Homesteads are good LIDAR targets precisely because they're small and low-relief — a stone or poured foundation, a root cellar, a filled-in well, and the lane that connected them to the road all disturb the ground by a few centimeters to a couple of feet, which is exactly the scale LIDAR's bare-earth elevation model is sensitive to. The harder part usually isn't spotting a candidate once you're looking in the right place — it's narrowing down <i>where</i> to look in the first place.
   </div>
+
+  <p class="quick-cta">Have an area in mind already? <a href="index.html#try-it">Run it against real LIDAR data</a> — 3 free searches, no account.</p>
 
   <nav class="toc">
     Contents

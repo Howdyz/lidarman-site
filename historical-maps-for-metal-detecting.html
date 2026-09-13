@@ -82,6 +82,15 @@
   .callout .tag { font-family: var(--mono); font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); display: block; margin-bottom: 6px; }
   .legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 0.85em; color: var(--ink-soft); margin: 8px 0 18px; }
   .legend span.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+  /* An early way through to the tool. The only in-body link used to be the
+     closing cta-box, ~8 screens down on a phone: a reader convinced by the
+     summary had to scroll the entire guide to act on it. Deliberately a line
+     of text, not a second cta-box, so it reads as a note rather than an ad. */
+  .quick-cta {
+    font-size: 0.9em; margin: -28px 0 34px; padding-left: 14px;
+    border-left: 2px solid var(--accent); color: var(--ink-soft);
+  }
+  .quick-cta a { color: var(--accent); }
   .cta-box {
     background: var(--ink); color: var(--paper); border-radius: 6px; padding: 24px 26px; margin: 40px 0;
     text-align: center;
@@ -127,6 +136,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     <span class="label">In short</span>
     Terrain data tells you the ground has a rectangular dip in it. An old map with a black square inked on that exact spot tells you a surveyor stood there and saw a building. Neither is worth much alone — a dip could be anything, and a map symbol could point at ground that was bulldozed in 1974 — but together they are the difference between a day spent walking and a day spent digging. The United States happens to have an unusually good free archive for this: roughly 180,000 topographic sheets going back to 1884, every one of them public.
   </div>
+
+  <p class="quick-cta">Got a spot off an old map? <a href="index.html#try-it">Check it against the terrain</a> — 3 free searches, no account.</p>
 
   <nav class="toc">
     Contents

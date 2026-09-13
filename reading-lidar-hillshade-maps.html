@@ -82,6 +82,26 @@
   .callout .tag { font-family: var(--mono); font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); display: block; margin-bottom: 6px; }
   .legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 0.85em; color: var(--ink-soft); margin: 8px 0 18px; }
   .legend span.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+  /* An early way through to the tool. The only in-body link used to be the
+     closing cta-box, ~8 screens down on a phone: a reader convinced by the
+     summary had to scroll the entire guide to act on it. Deliberately a line
+     of text, not a second cta-box, so it reads as a note rather than an ad. */
+  .quick-cta {
+    font-size: 0.9em; margin: -28px 0 34px; padding-left: 14px;
+    border-left: 2px solid var(--accent); color: var(--ink-soft);
+  }
+  .quick-cta a { color: var(--accent); }
+  /* This guide explained four visualization styles without showing one of
+     them. Both images are real output already in the repo, from the paper's
+     validation and case-study sections. */
+  figure.guide-fig { margin: 26px 0; }
+  figure.guide-fig img {
+    display: block; width: 100%; height: auto; border-radius: 4px;
+    border: 1px solid var(--rule);
+  }
+  figure.guide-fig figcaption {
+    font-size: 0.85em; color: var(--ink-soft); margin-top: 8px; line-height: 1.5;
+  }
   .cta-box {
     background: var(--ink); color: var(--paper); border-radius: 6px; padding: 24px 26px; margin: 40px 0;
     text-align: center;
@@ -129,6 +149,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     Raw elevation numbers rarely show anything to the eye — a foundation reduced to a few centimeters of relief is invisible at normal color scales. Hillshade, slope, Local Relief Model, and sky-view openness are all just different math applied to the same digital elevation model to exaggerate exactly that kind of small, local relief. None of them is strictly "better" — they surface different failure modes, which is why Lidarman lets you switch between them on the same search without re-running it.
   </div>
 
+  <p class="quick-cta">Want to see these styles on your own ground? <a href="index.html#try-it">Run a search</a> — 3 free, no account.</p>
+
   <nav class="toc">
     Contents
     <ol>
@@ -169,6 +191,14 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     <p>
       LRM is the clearest style for sorting <i>raised</i> from <i>sunken</i> at a glance, typically rendered on a diverging color scale: warm/red for higher than the immediate surroundings, cool/blue for lower. It's also the layer Lidarman's automatic candidate-detector itself analyzes (thresholded, then run through contour extraction and shape scoring) — when the tool flags a rectangular or circular candidate, LRM is what it actually looked at.
     </p>
+    <figure class="guide-fig">
+      <img src="assets/synthetic_lrm.jpg" width="800" height="791"
+           alt="Local Relief Model of a test elevation model, raised features red and sunken features blue">
+      <figcaption>A Local Relief Model on the diverging scale described above —
+        red where the ground sits higher than its immediate surroundings, blue
+        where it sits lower. This is the validation DEM, where the buried
+        shapes are known in advance.</figcaption>
+    </figure>
     <div class="callout">
       <span class="tag">Limitation worth knowing</span>
       A large, perfectly flat raised feature — a big building pad, for instance — can be nearly invisible in the <i>interior</i> of an LRM, because the smoothing radius only lights up the <i>edges</i> of a plateau much bigger than itself. The interior blends back into the smoothed baseline. If you're looking at a large flat-topped feature, cross-check it against slope or hillshade rather than trusting LRM's interior reading alone.
@@ -187,6 +217,15 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 
   <section id="workflow">
     <h2>5. A practical workflow</h2>
+    <figure class="guide-fig">
+      <img src="assets/gettysburg_composite.jpg" width="800" height="791"
+           alt="RGB composite of LIDAR terrain data over downtown Gettysburg, Pennsylvania">
+      <figcaption>The composite Lidarman shows by default — positive openness,
+        inverted negative openness and hillshade combined into one image. Real
+        data over downtown Gettysburg, PA; building outlines, streets and the
+        Lincoln Square circle all resolve.</figcaption>
+    </figure>
+
     <p>Rather than picking one style and sticking with it, treat them as a sequence:</p>
     <ol>
       <li><b>Start with slope</b> to catch every edge in view — this is your net, cast wide.</li>

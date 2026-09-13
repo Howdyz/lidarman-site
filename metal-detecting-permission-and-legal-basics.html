@@ -82,6 +82,15 @@
   .callout .tag { font-family: var(--mono); font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); display: block; margin-bottom: 6px; }
   .callout.warn { border-color: var(--accent); }
   .callout.warn .tag { color: var(--accent); }
+  /* An early way through to the tool. The only in-body link used to be the
+     closing cta-box, ~8 screens down on a phone: a reader convinced by the
+     summary had to scroll the entire guide to act on it. Deliberately a line
+     of text, not a second cta-box, so it reads as a note rather than an ad. */
+  .quick-cta {
+    font-size: 0.9em; margin: -28px 0 34px; padding-left: 14px;
+    border-left: 2px solid var(--accent); color: var(--ink-soft);
+  }
+  .quick-cta a { color: var(--accent); }
   .cta-box { background: var(--ink); color: var(--paper); border-radius: 6px; padding: 24px 26px; margin: 40px 0; text-align: center; }
   .cta-box p { color: #e8e2d4; margin-bottom: 14px; }
   .cta-box a.gh {
@@ -125,6 +134,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     <span class="label">In short</span>
     This is general background, not legal advice, and it isn't a substitute for checking the specific rules that apply to a specific parcel. Private land, public land, and protected historical/archaeological sites are three genuinely different situations with different rules — treating them as interchangeable is the most common way hobbyists end up in trouble.
   </div>
+
+  <p class="quick-cta">Working out where to ask permission? <a href="index.html#try-it">Scan the area first</a> — 3 free searches, no account.</p>
 
   <nav class="toc">
     Contents
