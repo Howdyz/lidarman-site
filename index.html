@@ -354,6 +354,8 @@
   .hist-row .pdf:hover { text-decoration: underline; }
   #toolSidebar input[type=range] { width: 100%; box-sizing: border-box; margin: 0; accent-color: #3a7bd5; }
   #toolStatus { font-size: 0.82em; color: #ffb74d; margin-top: 8px; min-height: 1.2em; }
+  #locMaps { font-size: 0.82em; margin-top: 8px; color: #aaa; }
+  #locMaps a { color: #8ab4f8; }
   /* The scan is one POST that returns only when it is finished — the server
      reports no progress, so nothing here pretends to know a percentage. The
      elapsed count is the honest signal; the bar is an easing curve over the
@@ -567,6 +569,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       <button class="secondary-btn" id="trackBtn" type="button">🎯 Start tracking</button>
       <div id="trackStatus"></div>
       <div id="toolStatus"></div>
+      <div id="locMaps" hidden>📜 <a id="locMapsLink" href="#" target="_blank" rel="noopener noreferrer"></a></div>
       <div id="searchProgress" hidden>
         <div class="sp-bar"><div class="sp-fill" id="spFill"></div></div>
         <div class="sp-line">
@@ -1273,6 +1276,47 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   const paywallOverlay = document.getElementById('paywallOverlay');
   const paywallMessage = document.getElementById('paywallMessage');
 
+  // After a search, point at what the Library of Congress holds for the same
+  // place. LOC's Geography and Map Division states its digitized collections
+  // are free to use and reuse, and a link costs nothing either way — but the
+  // reason this is a link rather than an overlay is that LOC records carry no
+  // coordinates, bounding box or scale, so there is nothing to georeference
+  // against. Checked on a real record: only location_city / location_state.
+  // The georeferenced historic layer is the USGS HTMC one further down.
+  const locMapsBox = document.getElementById('locMaps');
+  const locMapsLink = document.getElementById('locMapsLink');
+
+  // "Gettysburg, PA" is the natural thing to type and the worst thing to send:
+  // LOC reads the comma form literally. Measured against their API —
+  //   "Guernsey, WY"  0 results     "Guernsey WY"  0     "Guernsey Wyoming"  3
+  //   "Gettysburg, PA" 149          "Gettysburg Pennsylvania" 157
+  // — so the comma goes and the abbreviation is spelled out. Bare "Guernsey"
+  // finds 27, but most of them are the Channel Island, which is worse than
+  // fewer and right.
+  const US_STATES = {
+    AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',CO:'Colorado',
+    CT:'Connecticut',DE:'Delaware',DC:'District of Columbia',FL:'Florida',GA:'Georgia',
+    HI:'Hawaii',ID:'Idaho',IL:'Illinois',IN:'Indiana',IA:'Iowa',KS:'Kansas',KY:'Kentucky',
+    LA:'Louisiana',ME:'Maine',MD:'Maryland',MA:'Massachusetts',MI:'Michigan',MN:'Minnesota',
+    MS:'Mississippi',MO:'Missouri',MT:'Montana',NE:'Nebraska',NV:'Nevada',NH:'New Hampshire',
+    NJ:'New Jersey',NM:'New Mexico',NY:'New York',NC:'North Carolina',ND:'North Dakota',
+    OH:'Ohio',OK:'Oklahoma',OR:'Oregon',PA:'Pennsylvania',RI:'Rhode Island',SC:'South Carolina',
+    SD:'South Dakota',TN:'Tennessee',TX:'Texas',UT:'Utah',VT:'Vermont',VA:'Virginia',
+    WA:'Washington',WV:'West Virginia',WI:'Wisconsin',WY:'Wyoming'
+  };
+  function locQueryFor(place) {
+    const m = place.match(/^(.*?),\s*([A-Za-z]{2})\.?$/);
+    if (m && US_STATES[m[2].toUpperCase()]) return m[1].trim() + ' ' + US_STATES[m[2].toUpperCase()];
+    return place.replace(/,/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  function showLocMaps(place) {
+    if (!place) { locMapsBox.hidden = true; return; }
+    locMapsLink.href = 'https://www.loc.gov/maps/?q=' + encodeURIComponent(locQueryFor(place));
+    locMapsLink.textContent = 'Historic maps of ' + place + ' — Library of Congress';
+    locMapsBox.hidden = false;
+  }
+
   function setStatus(msg, isError) {
     statusEl.textContent = msg || '';
     statusEl.style.color = isError ? '#ff8a80' : '#ffb74d';
@@ -1720,6 +1764,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     else { setStatus('Enter a place name or lat/lon.', true); return; }
 
     setStatus('Fetching + processing LIDAR data (usually 30-90s)…');
+    showLocMaps('');
     startSearchProgress();
     searchBtn.disabled = true;
 
@@ -1863,6 +1908,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         const lc = data.landCheck || {};
         const areas = lc.areas || [];
         if (areas.length) setStatus(`Note: this area includes ${areas.join(', ')}.`);
+
+        showLocMaps((placeInput.value || '').trim() || areas[0] || '');
       })
       .catch(err => { setStatus('Request failed: ' + err, true); stopSearchProgress(); searchBtn.disabled = false; });
   }
