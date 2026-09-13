@@ -195,6 +195,23 @@
     .hero .subtitle { font-size: 1.08em; margin-bottom: 14px; }
   }
 
+  /* Placed after the tool, not above it: the search field's position on a
+     phone was the whole point of the landing rework and nothing goes back in
+     front of it. Deliberately names no competitor — their prices change,
+     and the range is what stays true of the category. */
+  .cost-compare {
+    max-width: 780px; margin: 0 auto 56px; padding: 22px 24px;
+    box-sizing: border-box;
+    background: var(--fig-bg); border-left: 3px solid var(--accent);
+  }
+  .cost-compare h2 {
+    font-family: var(--serif); font-size: 1.25em; margin: 0 0 12px;
+  }
+  .cost-compare p { margin: 0 0 12px; }
+  .cost-compare p:last-child { margin-bottom: 0; }
+  .cost-compare .price { font-weight: 600; white-space: nowrap; }
+  .cost-compare .cc-foot { font-size: 0.85em; color: var(--ink-soft); }
+
   nav.toc {
     font-size: 0.88em; color: var(--ink-soft); margin-bottom: 48px;
     border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding: 14px 0;
@@ -545,6 +562,27 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     </div>
     <div id="map"></div>
   </div>
+</div>
+
+<div class="cost-compare">
+  <h2>What this costs</h2>
+  <p>
+    Lidarman is <span class="price">$10, once</span>. Three free searches
+    first — no account, no card.
+  </p>
+  <p>
+    The research platforms in this space run
+    <span class="price">$150–$240 a year</span>, every year: bundles of
+    twenty-odd tools, billed whether you get out twice a month or twice a
+    season.
+  </p>
+  <p>
+    Lidarman does one thing — it reads the terrain and shows you what is
+    shaped like it does not belong. If that is the part you wanted, you
+    should not have to rent it.
+  </p>
+  <p class="cc-foot">Range reflects advertised annual and month-to-month
+    pricing for subscription detecting-research platforms, September 2026.</p>
 </div>
 
 <div id="paywallOverlay">
