@@ -1090,7 +1090,47 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   const streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
   });
-  L.control.layers({ 'Satellite': satellite, 'Streets': streets }).addTo(map);
+  // State outlines, as an overlay you switch on rather than a permanent
+  // fixture: at a 300m search radius they are almost never in frame, and the
+  // point of the map most of the time is the terrain underneath.
+  //
+  // assets/us-states.geojson is simplified state boundaries (50 states, DC and
+  // Puerto Rico; 3,539 vertices total, 71KB), fetched from
+  // github.com/PublicaMundi/MappingAPI and derived from US Census cartographic
+  // boundary data, which is public domain. Coordinates are rounded to 4dp —
+  // about 11m, far finer than a line this coarse can honestly claim.
+  //
+  // Loaded on first use, not at startup: most visitors never turn it on, and
+  // the whole point of this morning's work was not putting weight in front of
+  // someone trying to run their first search.
+  const stateOutlines = L.layerGroup();
+  let stateOutlinesLoaded = false;
+  map.on('overlayadd', function (e) {
+    if (e.layer !== stateOutlines || stateOutlinesLoaded) return;
+    stateOutlinesLoaded = true;
+    fetch('assets/us-states.geojson')
+      .then(r => r.json())
+      .then(gj => {
+        L.geoJSON(gj, {
+          // interactive:false matters — the map's own click handler drops a
+          // pin, and a GeoJSON layer laid over the whole country would
+          // otherwise swallow every one of those clicks.
+          interactive: false,
+          style: { color: '#ffd54f', weight: 1.2, opacity: 0.85, fill: false }
+        }).addTo(stateOutlines);
+      })
+      .catch(() => {
+        stateOutlinesLoaded = false;   // let a later toggle retry
+        if (typeof setStatus === 'function') {
+          setStatus("Couldn't load the state outlines — try that toggle again.", true);
+        }
+      });
+  });
+
+  L.control.layers(
+    { 'Satellite': satellite, 'Streets': streets },
+    { 'State outlines': stateOutlines }
+  ).addTo(map);
 
   // Zoom lock: pins minZoom/maxZoom to the current zoom level, which makes
   // Leaflet itself refuse every zoom trigger (scroll wheel, pinch,
