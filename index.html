@@ -1231,8 +1231,16 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   function wireOverlayButton(btnId, layer, onLabel, offLabel) {
     const btn = document.getElementById(btnId);
     btn.addEventListener('click', () => {
-      if (map.hasLayer(layer)) map.removeLayer(layer);
-      else map.addLayer(layer);
+      if (map.hasLayer(layer)) { map.removeLayer(layer); return; }
+      map.addLayer(layer);
+      // Same trap the historic-map button fell into: below 900px the sidebar
+      // stacks above the map, so switching a layer on from here changes
+      // something roughly 1,100px off the bottom of a phone screen and reads
+      // as a dead button. Instant, not smooth — smooth silently no-ops here.
+      const mapEl = document.getElementById('map');
+      if (mapEl && mapEl.getBoundingClientRect().top > window.innerHeight * 0.75) {
+        mapEl.scrollIntoView({ block: 'center' });
+      }
     });
     const sync = (e) => { if (e.layer === layer) btn.textContent = map.hasLayer(layer) ? onLabel : offLabel; };
     map.on('overlayadd', sync);
@@ -2130,6 +2138,20 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       histControls.hidden = false;
       histPanel.querySelectorAll('.hist-row.on').forEach(el => el.classList.remove('on'));
       if (row) row.classList.add('on');
+
+      // Bring the map to the reader. Below 900px the sidebar stacks above the
+      // map, and by the time you have scrolled to this button the map is about
+      // 1,100px past the bottom of a phone screen — so picking a sheet loaded
+      // it perfectly and changed nothing you could see. Reported as "I click
+      // historic maps and nothing happens", and it was the truthful
+      // description: the only thing that moved was off-screen.
+      const mapEl = document.getElementById('map');
+      if (mapEl && mapEl.getBoundingClientRect().top > window.innerHeight * 0.75) {
+        // Instant, not smooth: measured in the emulator, behavior:'smooth'
+        // silently did nothing here while the default scrolled correctly
+        // (map top 1209px -> 216px). A fix that no-ops is worse than none.
+        mapEl.scrollIntoView({ block: 'center' });
+      }
       setHistStatus(`${a.Map_Name || 'Sheet'} ${yearOf(a) || ''}`.trim()
         + ' — dashed outline shows how far this sheet reaches.');
     }
