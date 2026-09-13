@@ -211,6 +211,21 @@
   .cost-compare p:last-child { margin-bottom: 0; }
   .cost-compare .price { font-weight: 600; white-space: nowrap; }
   .cost-compare .cc-foot { font-size: 0.85em; color: var(--ink-soft); }
+  .cc-table { margin: 16px 0 18px; }
+  .cc-row {
+    display: grid; grid-template-columns: 1fr auto; gap: 2px 12px;
+    padding: 10px 0; border-top: 1px solid var(--rule);
+  }
+  .cc-row:last-child { border-bottom: 1px solid var(--rule); }
+  .cc-name { font-weight: 600; }
+  .cc-price { font-weight: 600; white-space: nowrap; text-align: right; }
+  .cc-terms {
+    grid-column: 1 / -1; font-size: 0.84em; color: var(--ink-soft);
+    line-height: 1.45;
+  }
+  /* Ours reads as the answer to the three above it, not another row of them. */
+  .cc-row.cc-mine { background: rgba(0,0,0,0.035); }
+  .cc-row.cc-mine .cc-name, .cc-row.cc-mine .cc-price { color: var(--accent); }
 
   nav.toc {
     font-size: 0.88em; color: var(--ink-soft); margin-bottom: 48px;
@@ -571,19 +586,45 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     first — no account, no card.
   </p>
   <p>
-    The research platforms in this space charge
-    <span class="price">$90–$150 a year</span> for the tier that unlocks
-    LIDAR — up to <span class="price">$240</span> billed month to month.
-    Every year, whether you get out twice a month or twice a season.
+    Here is what the alternatives cost, from their own pricing pages:
+  </p>
+
+  <div class="cc-table">
+    <div class="cc-row">
+      <span class="cc-name">Rodek Pro</span>
+      <span class="cc-price">$89.90/yr</span>
+      <span class="cc-terms">$9.99/mo · LIDAR relief is Pro-only · free tier without it</span>
+    </div>
+    <div class="cc-row">
+      <span class="cc-name">Detector Maps Pro</span>
+      <span class="cc-price">$99.99/yr</span>
+      <span class="cc-terms">$11.99/mo · LIDAR hillshade is Pro-only · cheaper tier without it</span>
+    </div>
+    <div class="cc-row">
+      <span class="cc-name">Subterrix Elite</span>
+      <span class="cc-price">$149/yr</span>
+      <span class="cc-terms">$19.99/mo · credit-metered · has a free tier, LIDAR view included</span>
+    </div>
+    <div class="cc-row cc-mine">
+      <span class="cc-name">Lidarman</span>
+      <span class="cc-price">$10 once</span>
+      <span class="cc-terms">Three free searches first · no account · no card · no renewal</span>
+    </div>
+  </div>
+
+  <p>
+    Every one of those is a rental. Stop paying and the terrain goes with it,
+    however many years you have put in. Lidarman is ten dollars, one time —
+    the unlock stays on your device and there is nothing to cancel.
   </p>
   <p>
-    Lidarman does one thing — it reads the terrain and shows you what is
-    shaped like it does not belong. If that is the part you wanted, you
-    should not have to rent it.
+    It does one thing: it reads the terrain and shows you what is shaped like
+    it does not belong. If that is the part you wanted, you should not have to
+    rent it by the month.
   </p>
-  <p class="cc-foot">Range covers the advertised LIDAR-inclusive tiers of
-    three subscription detecting-research platforms, checked September 2026;
-    the upper figure is month-to-month billing.</p>
+  <p class="cc-foot">Prices as advertised on each company's own pricing page,
+    checked 13 September 2026. They set their prices and can change them —
+    worth checking before you take our word for it.</p>
 </div>
 
 <div id="paywallOverlay">
