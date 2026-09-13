@@ -169,6 +169,32 @@
   }
   .abstract .label { font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.75em; color: var(--accent); display: block; margin-bottom: 10px; }
 
+  .lede {
+    max-width: 780px; margin: 26px auto 4px; padding: 0 24px;
+    display: grid; gap: 16px; align-items: center;
+  }
+  .lede p { margin: 0; font-size: 1.05em; line-height: 1.45; }
+  .lede figure { margin: 0; }
+  .lede img {
+    display: block; width: 100%; height: auto; border-radius: 4px;
+    /* Cropped on phones purely to keep the search field near the top; the
+       full square is restored the moment there is width to spare. */
+    max-height: 150px; object-fit: cover;
+  }
+  .lede figcaption { font-size: 0.8em; opacity: 0.72; margin-top: 6px; }
+  @media (min-width: 760px) {
+    .lede { grid-template-columns: 1.05fr 1fr; gap: 26px; max-width: 1000px; }
+    .lede img { max-height: none; }
+  }
+  /* The hero used to eat three quarters of a phone screen before anything
+     interactive appeared. See .lede above for the rest of that fix. */
+  @media (max-width: 759px) {
+    .hero { min-height: 46vh; }
+    .hero-inner { padding: 36px 24px 26px; }
+    .hero h1 { font-size: 2.1em; }
+    .hero .subtitle { font-size: 1.08em; margin-bottom: 14px; }
+  }
+
   nav.toc {
     font-size: 0.88em; color: var(--ink-soft); margin-bottom: 48px;
     border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding: 14px 0;
@@ -355,28 +381,18 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   </div>
 </div>
 
-<div class="wrap">
-
-  <div class="abstract">
-    <span class="label">Abstract</span>
-    Lidarman is a software pipeline for surfacing archaeological and
-    historical structures — building foundations, mounds, berms, sunken
-    paths — from airborne LIDAR elevation data, aimed primarily at
-    metal-detector hobbyists and independent researchers rather than
-    institutional archaeology teams. The tool fetches or ingests a
-    bare-earth digital elevation model, derives a set of established
-    terrain-visualization products (multi-directional hillshade, slope,
-    Local Relief Model, positive/negative sky-view openness), and applies
-    contour-based geometric analysis to automatically rank candidate
-    structure locations by how rectangular or circular they are — man-made
-    features tend toward one or the other; natural terrain rarely does. We
-    validate the detection pipeline against a synthetic DEM with known
-    ground-truth structures, demonstrate the full pipeline against a
-    real-world LIDAR tile, and provide both a scriptable CLI and an
-    interactive map-based web application with a present/past "flicker
-    comparator" for visually locating a structure's present-day position.
-  </div>
-
+<div class="lede">
+  <p>
+    Type in a place. Lidarman reads public LIDAR terrain data and flags the
+    shapes that look man-made — foundations, mounds, berms, sunken roads —
+    the kind trees and grass hide from aerial photos.
+  </p>
+  <figure>
+    <img src="assets/gettysburg_candidates.jpg" width="800" height="791"
+         alt="Auto-flagged candidate structures over downtown Gettysburg, Pennsylvania">
+    <figcaption>Real output — downtown Gettysburg, PA, fetched by place name
+      alone. Each marker is a flagged shape.</figcaption>
+  </figure>
 </div>
 
 <div id="unlockedBanner"><b>Unlocked!</b> Payment confirmed — you have unlimited searches on this device now.</div>
@@ -522,6 +538,26 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       <li><a href="guides.html">Field guides</a></li>
     </ol>
   </nav>
+
+  <div class="abstract">
+    <span class="label">Abstract</span>
+    Lidarman is a software pipeline for surfacing archaeological and
+    historical structures — building foundations, mounds, berms, sunken
+    paths — from airborne LIDAR elevation data, aimed primarily at
+    metal-detector hobbyists and independent researchers rather than
+    institutional archaeology teams. The tool fetches or ingests a
+    bare-earth digital elevation model, derives a set of established
+    terrain-visualization products (multi-directional hillshade, slope,
+    Local Relief Model, positive/negative sky-view openness), and applies
+    contour-based geometric analysis to automatically rank candidate
+    structure locations by how rectangular or circular they are — man-made
+    features tend toward one or the other; natural terrain rarely does. We
+    validate the detection pipeline against a synthetic DEM with known
+    ground-truth structures, demonstrate the full pipeline against a
+    real-world LIDAR tile, and provide both a scriptable CLI and an
+    interactive map-based web application with a present/past "flicker
+    comparator" for visually locating a structure's present-day position.
+  </div>
 
   <section id="motivation">
     <h2>1. Motivation</h2>
