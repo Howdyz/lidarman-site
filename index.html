@@ -33,7 +33,7 @@
     "@type": "Offer",
     "price": "10.00",
     "priceCurrency": "USD",
-    "description": "One-time payment for unlimited searches, after 3 free trial searches."
+    "description": "One-time payment, then up to 100 searches a day. Three free trial searches first."
   }
 }
 </script>
@@ -50,7 +50,7 @@
     {
       "@type": "Question",
       "name": "How much does Lidarman cost?",
-      "acceptedAnswer": { "@type": "Answer", "text": "The first three searches on a device are free, no account required. After that, a one-time $10 payment unlocks unlimited searches on that device — no subscription, no recurring charge." }
+      "acceptedAnswer": { "@type": "Answer", "text": "The first three searches on a device are free, no account required. After that, a one-time $10 payment unlocks the tool on that device, up to a fair-use ceiling of 100 searches a day — no subscription, no recurring charge." }
     },
     {
       "@type": "Question",
@@ -453,7 +453,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   </figure>
 </div>
 
-<div id="unlockedBanner"><b>Unlocked!</b> Payment confirmed — you have unlimited searches on this device now.</div>
+<div id="unlockedBanner"><b>Unlocked!</b> Payment confirmed — this device is unlocked, no subscription.</div>
 
 <div id="tool">
   <h2 id="try-it">Try it</h2>
@@ -948,8 +948,10 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       terrain-derivative, and detection compute server-side, which costs
       real time and resources per query rather than being a one-time
       download. Try it free — the first three searches on a device are on
-      the house, then a one-time $10 payment unlocks unlimited searches on
-      that device, no subscription.
+      the house, then a one-time $10 payment unlocks the tool on that device,
+      no subscription. Paid devices get a fair-use ceiling of 100 searches a
+      day — high enough that ordinary use never meets it, and there only so
+      one scripted client cannot run the meter forever on a single payment.
     </p>
     <p><a href="#try-it">↑ Jump to the tool</a></p>
   </section>
@@ -993,8 +995,9 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     <h3>How much does Lidarman cost?</h3>
     <p>
       The first three searches on a device are free, no account required.
-      After that, a one-time $10 payment unlocks unlimited searches on that
-      device — no subscription, no recurring charge.
+      After that, a one-time $10 payment unlocks that device — no
+      subscription, no recurring charge, with a fair-use ceiling of 100
+      searches a day.
     </p>
 
     <h3>What is LIDAR, and why does it reveal things aerial photos don't?</h3>
@@ -1409,7 +1412,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     trialEl.textContent = '';
     restoreRow.hidden = !!data.unlocked;
     if (data.unlocked) {
-      trialEl.textContent = '✅ Unlocked — unlimited searches on this device.';
+      trialEl.textContent = '✅ Unlocked on this device — no subscription.';
       trialEl.classList.add('unlocked');
       restoreBox.hidden = true;
       return;
@@ -1527,7 +1530,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         btn.disabled = false;
         if (ok && d.unlocked) {
           restoreStatus.className = 'ok';
-          restoreStatus.textContent = 'Access restored — unlimited searches on this device.';
+          restoreStatus.textContent = 'Access restored — this device is unlocked.';
           hidePaywall();
           refreshTrialStatus();
           return;
@@ -2601,7 +2604,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         .then(r => r.json())
         .then(data => {
           if (data.unlocked) {
-            banner.innerHTML = '<b>Unlocked!</b> Payment confirmed — you have unlimited searches on this device now.';
+            banner.innerHTML = '<b>Unlocked!</b> Payment confirmed — this device is unlocked, no subscription.';
             renderTrialStatus(data);
           } else if (++attempts < 12) {
             setTimeout(confirmUnlock, 3000);
@@ -2629,7 +2632,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       .then(r => r.json().then(d => ({ ok: r.ok, d })))
       .then(({ ok, d }) => {
         if (ok && d.unlocked) {
-          document.getElementById('unlockedBanner').innerHTML = '<b>Admin unlock applied.</b> This device now has unlimited searches.';
+          document.getElementById('unlockedBanner').innerHTML = '<b>Admin unlock applied.</b> This device is now unlocked.';
           document.getElementById('unlockedBanner').classList.add('show');
           refreshTrialStatus();
         } else {
@@ -2653,7 +2656,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       .then(r => r.json().then(d => ({ ok: r.ok, d })))
       .then(({ ok, d }) => {
         if (ok && d.ok) {
-          document.getElementById('unlockedBanner').innerHTML = '<b>Unlocked!</b> This device now has unlimited searches.';
+          document.getElementById('unlockedBanner').innerHTML = '<b>Unlocked!</b> This device is now unlocked.';
           document.getElementById('unlockedBanner').classList.add('show');
           refreshTrialStatus();
         } else {
