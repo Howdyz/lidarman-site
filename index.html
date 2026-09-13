@@ -302,6 +302,14 @@
     margin-top: 4px; padding-top: 4px; border-top: 1px solid #444;
     color: #aaa; font-size: 10px; white-space: normal;
   }
+  .layer-group {
+    margin-top: 16px; padding: 10px 10px 12px; border-radius: 5px;
+    background: #202020; border: 1px solid #333;
+  }
+  .layer-group-label {
+    display: block; font-family: var(--mono); font-size: 0.72em; color: #9ecbff;
+    text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 8px;
+  }
   .alt-ways { margin-top: 18px; padding-top: 12px; border-top: 1px solid #333; }
   .alt-ways-label {
     display: block; font-family: var(--mono); font-size: 0.72em; color: #888;
@@ -485,6 +493,25 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       <label>Search radius (meters) <span style="opacity:.6; font-weight:normal;">— 50 to 500</span></label>
       <input type="number" id="radiusInput" value="300" min="50" max="500" step="50">
       <button class="primary" id="searchBtn">Search</button>
+
+      <!-- One place for everything that puts something ON the map. These were
+           scattered: state lines and trails sat with the lidar view controls,
+           while historic maps was stranded further down behind the colour
+           picker and a legend block. Reported three times as "I can't find
+           them" — by the site's own owner, which settles it. -->
+      <div class="layer-group">
+        <span class="layer-group-label">Map layers</span>
+  <button class="secondary-btn" id="stateLinesBtn" type="button">🗺️ Show state lines</button>
+  <button class="secondary-btn" id="trailsBtn" type="button">🥾 Show trails west</button>
+        <button class="secondary-btn" id="histBtn" type="button">🗺️ Historic maps here</button>
+        <div id="histStatus"></div>
+        <div id="histPanel"></div>
+        <div id="histControls" hidden>
+          <label>Historic map opacity <span id="histOpacityVal">70%</span></label>
+          <input type="range" id="histOpacity" min="0" max="100" step="5" value="70">
+          <button class="secondary-btn" id="histOffBtn" type="button">✖ Turn historic map off</button>
+        </div>
+      </div>
       <!-- Everything below is a secondary path. Search used to sit under
            all of it: on a phone the primary action was 435px and three
            buttons below the place field, and the button nearest the field was
@@ -523,8 +550,6 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       </div>
       <button class="secondary-btn" id="viewToggleBtn" type="button" disabled>🔦 Lidar view: on</button>
       <button class="secondary-btn" id="zoomLockBtn" type="button">🔓 Lock zoom</button>
-      <button class="secondary-btn" id="stateLinesBtn" type="button">🗺️ Show state lines</button>
-      <button class="secondary-btn" id="trailsBtn" type="button">🥾 Show trails west</button>
       <label>Color style</label>
       <select id="styleSelect" disabled>
         <option value="composite">Composite (default)</option>
@@ -547,14 +572,6 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
           <p style="margin-top:10px;">Quick workflow: start with <b>Slope</b> to catch every edge in view, switch to <b>Local relief</b> to figure out if what you found is raised or sunken, then <b>Hillshade</b> as a gut-check that it looks like real terrain.</p>
         </div>
       </details>
-      <button class="secondary-btn" id="histBtn" type="button">🗺️ Historic maps here</button>
-      <div id="histStatus"></div>
-      <div id="histPanel"></div>
-      <div id="histControls" hidden>
-        <label>Historic map opacity <span id="histOpacityVal">70%</span></label>
-        <input type="range" id="histOpacity" min="0" max="100" step="5" value="70">
-        <button class="secondary-btn" id="histOffBtn" type="button">✖ Turn historic map off</button>
-      </div>
       <details class="legend-details">
         <summary>ℹ️ What are the historic maps?</summary>
         <div class="legend-details-body">
