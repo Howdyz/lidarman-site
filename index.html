@@ -1139,6 +1139,18 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   // Loaded on first use, not at startup: most visitors never turn it on, and
   // the whole point of this morning's work was not putting weight in front of
   // someone trying to run their first search.
+  // Below 900px the sidebar stacks above the map, so a control near the bottom
+  // of it changes something roughly 1,100px off the bottom of a phone screen.
+  // Every button here that moves the map or adds a layer calls this, or it
+  // reads as a dead button — which is exactly how it was reported.
+  // Instant, not smooth: behavior:'smooth' measured as a silent no-op here.
+  window.revealMap = function () {
+    const el = document.getElementById('map');
+    if (el && el.getBoundingClientRect().top > window.innerHeight * 0.75) {
+      el.scrollIntoView({ block: 'center' });
+    }
+  };
+
   const stateOutlines = L.layerGroup();
   let stateOutlinesLoaded = false;
   map.on('overlayadd', function (e) {
@@ -1254,10 +1266,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       // stacks above the map, so switching a layer on from here changes
       // something roughly 1,100px off the bottom of a phone screen and reads
       // as a dead button. Instant, not smooth — smooth silently no-ops here.
-      const mapEl = document.getElementById('map');
-      if (mapEl && mapEl.getBoundingClientRect().top > window.innerHeight * 0.75) {
-        mapEl.scrollIntoView({ block: 'center' });
-      }
+      window.revealMap();
     });
     const sync = (e) => { if (e.layer === layer) btn.textContent = map.hasLayer(layer) ? onLabel : offLabel; };
     map.on('overlayadd', sync);
@@ -2011,6 +2020,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         return Promise.reject(new Error('nothing to resolve'));
       }
       map.setView([latVal, lonVal], 15);
+      window.revealMap();
       placeSearchPin(latVal, lonVal, false);
       lastAppliedPlace = '';
       locationStatus.textContent = '';
@@ -2020,6 +2030,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     locationStatus.textContent = 'Looking up that place…';
     return geocodePlace(place).then(([lat, lon, label]) => {
       map.setView([lat, lon], 14);
+      window.revealMap();
       // placeSearchPin clears the place box, on the reasoning that a dropped
       // pin supersedes a typed name. Here the name is what produced the pin,
       // so put it back — losing the text the moment it works reads as a bug.
@@ -2162,13 +2173,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       // it perfectly and changed nothing you could see. Reported as "I click
       // historic maps and nothing happens", and it was the truthful
       // description: the only thing that moved was off-screen.
-      const mapEl = document.getElementById('map');
-      if (mapEl && mapEl.getBoundingClientRect().top > window.innerHeight * 0.75) {
-        // Instant, not smooth: measured in the emulator, behavior:'smooth'
-        // silently did nothing here while the default scrolled correctly
-        // (map top 1209px -> 216px). A fix that no-ops is worse than none.
-        mapEl.scrollIntoView({ block: 'center' });
-      }
+      window.revealMap();
       setHistStatus(`${a.Map_Name || 'Sheet'} ${yearOf(a) || ''}`.trim()
         + ' — dashed outline shows how far this sheet reaches.');
     }
@@ -2489,6 +2494,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       // fetch and a minute of compute, and a mis-click should not spend that.
       setParksStatus('Loaded — press Search to scan it.');
       map.setView([parseFloat(row.dataset.lat), parseFloat(row.dataset.lon)], 15);
+      window.revealMap();
     });
   })();
 
@@ -2520,6 +2526,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     document.getElementById('lonInput').value = lon.toFixed(6);
     map.invalidateSize();
     map.setView([lat, lon], 14);
+    window.revealMap();
   });
 
   const clearBtn = document.getElementById('clearBtn');
@@ -2690,6 +2697,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         document.getElementById('lonInput').value = longitude.toFixed(6);
         finish(`Located: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
         map.setView([latitude, longitude], 15);
+        window.revealMap();
       },
       (err) => {
         finish(err.code === 1 ? GEO_BLOCKED_MSG : GEO_FAILED_MSG);
