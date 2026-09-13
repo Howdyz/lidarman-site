@@ -303,6 +303,32 @@
   .hist-row .pdf:hover { text-decoration: underline; }
   #toolSidebar input[type=range] { width: 100%; box-sizing: border-box; margin: 0; accent-color: #3a7bd5; }
   #toolStatus { font-size: 0.82em; color: #ffb74d; margin-top: 8px; min-height: 1.2em; }
+  /* The scan is one POST that returns only when it is finished — the server
+     reports no progress, so nothing here pretends to know a percentage. The
+     elapsed count is the honest signal; the bar is an easing curve over the
+     typical duration that approaches but never reaches full, so it cannot
+     sit at 100% while the request is still running. */
+  /* #aaa on the panel's #1a1a1a, matching its own label colour — the paper
+     palette's --ink-soft is a dark brown and vanishes against this panel. */
+  #searchProgress { margin-top: 10px; font-size: 0.8em; color: #aaa; }
+  #searchProgress .sp-bar {
+    height: 5px; border-radius: 3px; overflow: hidden;
+    background: rgba(255,255,255,0.13);
+  }
+  #searchProgress .sp-fill {
+    height: 100%; width: 0%; border-radius: 3px; background: #ffb74d;
+    transition: width 0.3s linear;
+  }
+  #searchProgress .sp-line {
+    display: flex; justify-content: space-between; gap: 10px; margin-top: 6px;
+  }
+  /* The measured value, so it stays the brightest thing in the block. */
+  #searchProgress .sp-elapsed { font-variant-numeric: tabular-nums; color: #ccc; }
+  #searchProgress .sp-foot { margin-top: 4px; opacity: 0.75; font-size: 0.92em; }
+  #searchProgress .sp-note { margin-top: 6px; color: #ffb74d; opacity: 0.85; }
+  @media (prefers-reduced-motion: reduce) {
+    #searchProgress .sp-fill { transition: none; }
+  }
   .cand-legend { font-size: 0.75em; color: #999; margin-top: 14px; line-height: 1.6; }
   .cand-legend .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; }
   .legend-details { margin: 6px 0; }
@@ -479,6 +505,17 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       <button class="secondary-btn" id="trackBtn" type="button">🎯 Start tracking</button>
       <div id="trackStatus"></div>
       <div id="toolStatus"></div>
+      <div id="searchProgress" hidden>
+        <div class="sp-bar"><div class="sp-fill" id="spFill"></div></div>
+        <div class="sp-line">
+          <span id="spPhase">Fetching elevation data…</span>
+          <span class="sp-elapsed" id="spElapsed">0s</span>
+        </div>
+        <div class="sp-foot">Steps are the usual order and timing — the server
+          only reports back when the whole scan is done.</div>
+        <div class="sp-note" id="spNote" hidden>Taking longer than usual — the
+          server may have been asleep. It is still working; don't reload.</div>
+      </div>
       <div id="trialStatus">Loading trial status…</div>
       <!-- Someone who paid and then lost their browser storage comes back
            looking exactly like a brand-new visitor — full trial, no paywall —
@@ -1000,6 +1037,53 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     statusEl.style.color = isError ? '#ff8a80' : '#ffb74d';
   }
 
+  // ---- scan progress -------------------------------------------------------
+  // A scan is 30-90s of silence: one POST, no streaming, no intermediate
+  // reply. Before this it was a single unchanging line of text, which on a
+  // phone is indistinguishable from a page that has hung — and a reload
+  // spends another free search for nothing.
+  const spProgress = document.getElementById('searchProgress');
+  const spFill = document.getElementById('spFill');
+  const spPhase = document.getElementById('spPhase');
+  const spElapsed = document.getElementById('spElapsed');
+  const spNote = document.getElementById('spNote');
+  // Boundaries are the real pipeline order at roughly its usual pace. They
+  // are estimates and the footnote in the markup says so; the elapsed clock
+  // beside them is measured, so nothing here can quietly stall while looking
+  // alive.
+  const SP_PHASES = [
+    [0,  'Fetching elevation data…'],
+    [12, 'Building terrain visualizations…'],
+    [40, 'Scanning for candidate shapes…'],
+  ];
+  const SP_SLEEP_HINT_AFTER = 75;   // past the top of the usual 30-90s range
+  let spTimer = null;
+
+  function startSearchProgress() {
+    const t0 = Date.now();
+    stopSearchProgress();
+    spProgress.hidden = false;
+    spNote.hidden = true;
+    spFill.style.width = '0%';
+    const tick = () => {
+      const secs = (Date.now() - t0) / 1000;
+      // Asymptotic: 60% at 30s, 82% at 60s, 90% at 90s, never 100% while waiting.
+      spFill.style.width = (95 * (1 - Math.exp(-secs / 30))).toFixed(1) + '%';
+      spElapsed.textContent = Math.floor(secs) + 's';
+      for (let i = SP_PHASES.length - 1; i >= 0; i--) {
+        if (secs >= SP_PHASES[i][0]) { spPhase.textContent = SP_PHASES[i][1]; break; }
+      }
+      if (secs >= SP_SLEEP_HINT_AFTER) spNote.hidden = false;
+    };
+    tick();
+    spTimer = setInterval(tick, 250);
+  }
+
+  function stopSearchProgress() {
+    if (spTimer) { clearInterval(spTimer); spTimer = null; }
+    spProgress.hidden = true;
+  }
+
   // ---- QR encoder (byte mode, ECC L, versions 1-5) -------------------------
   // Inlined because the CSP admits no external scripts and the site has no
   // build step. Verified by round-tripping 300 random payloads through
@@ -1394,7 +1478,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     else if (latVal && lonVal) { body.lat = parseFloat(latVal); body.lon = parseFloat(lonVal); }
     else { setStatus('Enter a place name or lat/lon.', true); return; }
 
-    setStatus('Fetching + processing LIDAR data (can take 30-90s)...');
+    setStatus('Fetching + processing LIDAR data (usually 30-90s)…');
+    startSearchProgress();
     searchBtn.disabled = true;
 
     // Move the map to the typed place immediately, alongside the scan rather
@@ -1430,10 +1515,11 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     })
       .then(async r => {
         const data = await r.json();
-        if (r.status === 402) { setStatus(''); searchBtn.disabled = false; showPaywall(data.message); renderTrialStatus(data); return; }
-        if (!r.ok) { setStatus(data.error || 'Search failed.', true); searchBtn.disabled = false; return; }
+        if (r.status === 402) { setStatus(''); stopSearchProgress(); searchBtn.disabled = false; showPaywall(data.message); renderTrialStatus(data); return; }
+        if (!r.ok) { setStatus(data.error || 'Search failed.', true); stopSearchProgress(); searchBtn.disabled = false; return; }
 
         setStatus('');
+        stopSearchProgress();
         searchBtn.disabled = false;
         renderTrialStatus(data);
 
@@ -1537,7 +1623,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         const areas = lc.areas || [];
         if (areas.length) setStatus(`Note: this area includes ${areas.join(', ')}.`);
       })
-      .catch(err => { setStatus('Request failed: ' + err, true); searchBtn.disabled = false; });
+      .catch(err => { setStatus('Request failed: ' + err, true); stopSearchProgress(); searchBtn.disabled = false; });
   }
 
   // ---- Move the map to a typed place, without spending a search ------------
