@@ -521,6 +521,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       </div>
       <button class="secondary-btn" id="viewToggleBtn" type="button" disabled>🔦 Lidar view: on</button>
       <button class="secondary-btn" id="zoomLockBtn" type="button">🔓 Lock zoom</button>
+      <button class="secondary-btn" id="stateLinesBtn" type="button">🗺️ Show state lines</button>
+      <button class="secondary-btn" id="trailsBtn" type="button">🥾 Show trails west</button>
       <label>Color style</label>
       <select id="styleSelect" disabled>
         <option value="composite">Composite (default)</option>
@@ -1213,6 +1215,28 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     { 'Satellite': satellite, 'Streets': streets },
     { 'State outlines': stateOutlines, 'Trails west': historicTrails }
   ).addTo(map);
+
+  // Both overlays are also reachable from Leaflet's layers control, but that
+  // control is a collapsed icon in the corner of the map — you have to know to
+  // hover or tap it. A feature nobody can find is a feature nobody has, which
+  // is the same mistake the Search button was making before it moved up here.
+  // So they get real buttons, in the sidebar, where every other control is.
+  //
+  // Both paths drive the same layer objects and both stay in step, because the
+  // button labels are updated from the map's own overlayadd/overlayremove
+  // events rather than from the click handlers.
+  function wireOverlayButton(btnId, layer, onLabel, offLabel) {
+    const btn = document.getElementById(btnId);
+    btn.addEventListener('click', () => {
+      if (map.hasLayer(layer)) map.removeLayer(layer);
+      else map.addLayer(layer);
+    });
+    const sync = (e) => { if (e.layer === layer) btn.textContent = map.hasLayer(layer) ? onLabel : offLabel; };
+    map.on('overlayadd', sync);
+    map.on('overlayremove', sync);
+  }
+  wireOverlayButton('stateLinesBtn', stateOutlines, '🗺️ State lines: on', '🗺️ Show state lines');
+  wireOverlayButton('trailsBtn', historicTrails, '🥾 Trails west: on', '🥾 Show trails west');
 
   // Zoom lock: pins minZoom/maxZoom to the current zoom level, which makes
   // Leaflet itself refuse every zoom trigger (scroll wheel, pinch,
