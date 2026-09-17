@@ -1939,9 +1939,46 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 
         // Search-level notice, so a prohibition is visible without having to
         // click a marker to find it.
+        //
+        // A failed check has to be said out loud. The backend reports which
+        // sources answered and which did not, and until this was added the
+        // page used only `areas` — so when the National Park Service lookup
+        // timed out, an area full of unflagged candidates looked exactly like
+        // an area with nothing to flag. That happened: a Harpers Ferry search
+        // on 2026-09-17 returned 138 candidates inside a national park with
+        // no warning on any of them, because silence was doing double duty
+        // for "nothing found" and "could not look".
         const lc = data.landCheck || {};
         const areas = lc.areas || [];
-        if (areas.length) setStatus(`Note: this area includes ${areas.join(', ')}.`);
+        const failed = lc.failed || [];
+
+        // Only NPS carries an outright prohibition; the rest are advisory, so
+        // losing one is worth mentioning but is not the same kind of gap.
+        const SOURCE_NAMES = {
+          nps: 'National Park Service',
+          blm_nlcs: 'BLM monuments and conservation areas',
+          blm_wild: 'BLM wilderness',
+          usfs: 'National Forest',
+          blm: 'BLM public land'
+        };
+        const failedKeys = failed.map(f => f && f.source).filter(Boolean);
+        const npsFailed = failedKeys.includes('nps');
+        const otherFailed = failedKeys.filter(k => k !== 'nps');
+
+        const parts = [];
+        if (areas.length) parts.push(`This area includes ${areas.join(', ')}.`);
+        if (npsFailed) {
+          parts.push('The National Park Service check didn\u2019t answer, so nothing here has been checked against park boundaries. Treat that as unknown, not as all clear \u2014 detecting on park land is a federal offence.');
+        }
+        if (otherFailed.length) {
+          const names = otherFailed.map(k => SOURCE_NAMES[k] || k);
+          const verb = names.length > 1 ? 'checks didn\u2019t' : 'check didn\u2019t';
+          parts.push(`The ${names.join(' and ')} ${verb} answer, so some public-land notes may be missing.`);
+        }
+        // Red for a missing prohibition check, amber otherwise: the one case
+        // where a visitor could get in real trouble should not look like the
+        // ordinary "heads up, there's a park nearby" line.
+        if (parts.length) setStatus(parts.join(' '), npsFailed);
 
         showLocMaps((placeInput.value || '').trim() || areas[0] || '');
       })
