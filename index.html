@@ -549,6 +549,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         </select>
       </div>
       <button class="secondary-btn" id="viewToggleBtn" type="button" disabled>🔦 Lidar view: on</button>
+      <button class="secondary-btn" id="circlesToggleBtn" type="button" disabled>⭕ Circles: on</button>
       <button class="secondary-btn" id="zoomLockBtn" type="button">🔓 Lock zoom</button>
       <label>Color style</label>
       <select id="styleSelect" disabled>
@@ -1913,6 +1914,12 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         styleSelect.value = 'composite';
 
         candidateMarkers.clearLayers();
+        // A fresh scan always shows its circles. Leaving them hidden because
+        // the last search was toggled off would silently drop the result of
+        // the search just paid for.
+        if (!map.hasLayer(candidateMarkers)) map.addLayer(candidateMarkers);
+        circlesToggleBtn.disabled = false;
+        setCirclesLabel();
         // Draw the top 60 by rank, plus every candidate whose floor profile
         // actually supports a structure reading. Those are rare — 8 of 693 on
         // the Petersham test scan — and ranking alone buried all of them past
@@ -2623,6 +2630,29 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     viewToggleBtn.textContent = lidarViewOn ? '🔦 Lidar view: on' : '🛰️ Lidar view: off';
   });
 
+  // Circles on/off. Kept separate from "Lidar view", which fades the raster:
+  // wanting to see the bare ground without 60 rings drawn over it is a
+  // different thing from wanting the satellite image back.
+  //
+  // This toggles layer membership rather than each marker's opacity, so the
+  // circles stop intercepting clicks as well as stop being drawn — a
+  // transparent ring still swallows a tap on whatever is underneath it.
+  //
+  // Not wired through wireOverlayButton: that helper syncs its label from
+  // Leaflet's overlayadd/overlayremove, which only fire for layers registered
+  // with a layers control. candidateMarkers is added straight to the map, so
+  // the label is set here instead.
+  const circlesToggleBtn = document.getElementById('circlesToggleBtn');
+  function setCirclesLabel() {
+    circlesToggleBtn.textContent = map.hasLayer(candidateMarkers)
+      ? '\u2b55 Circles: on' : '\u2b55 Circles: off';
+  }
+  circlesToggleBtn.addEventListener('click', () => {
+    if (map.hasLayer(candidateMarkers)) map.removeLayer(candidateMarkers);
+    else map.addLayer(candidateMarkers);
+    setCirclesLabel();
+  });
+
   const styleSelect = document.getElementById('styleSelect');
   let currentStyles = {};
   styleSelect.addEventListener('change', () => {
@@ -2655,6 +2685,9 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     if (compositeOverlay) { map.removeLayer(compositeOverlay); compositeOverlay = null; }
     if (searchPin) { map.removeLayer(searchPin); searchPin = null; }
     candidateMarkers.clearLayers();
+    if (!map.hasLayer(candidateMarkers)) map.addLayer(candidateMarkers);
+    circlesToggleBtn.disabled = true;
+    setCirclesLabel();
     stopTracking();
 
     lidarViewOn = true;
