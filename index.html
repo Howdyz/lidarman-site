@@ -522,8 +522,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         <span class="alt-ways-label">Other ways to pick a spot</span>
         <label>Lat, lon</label>
         <div style="display:flex; gap:6px;">
-          <input type="text" id="latInput" placeholder="lat">
-          <input type="text" id="lonInput" placeholder="lon">
+          <input type="text" id="latInput" placeholder="lat \u2014 39.0262 or 39\u00B001\u203234&quot;N">
+          <input type="text" id="lonInput" placeholder="lon \u2014 -83.4285 or 83\u00B025\u203242&quot;W">
         </div>
         <button class="secondary-btn" id="goPlaceBtn" type="button">🔎 Show it on the map (no scan)</button>
         <button class="secondary-btn" id="useLocationBtn" type="button">📍 Use my location</button>
@@ -1786,6 +1786,45 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       });
   });
 
+  // ---- coordinate input ----------------------------------------------------
+  // Accepts plain decimal ("39.026225", "-83.428478") and the degrees-minutes
+  // -seconds forms people actually paste from Google Earth, Wikipedia or a
+  // Facebook post (39\u00B001'34.41"N, 83\u00B025'42.52"W).
+  //
+  // Plain parseFloat handled the first and quietly wrecked the second: it
+  // stops at the degree sign, so 39\u00B001'34.41"N became 39 and
+  // 83\u00B025'42.52"W became +83 \u2014 losing the minutes, the seconds, and
+  // the W. Serpent Mound in Ohio arrived as a point in western China and came
+  // back as "outside coverage", which is a true statement about the wrong
+  // place. A plausible-looking wrong number is worse than a rejected one.
+  function parseCoord(text) {
+    if (typeof text !== 'string') return NaN;
+    let s = text.trim();
+    if (!s) return NaN;
+
+    // The hemisphere letter can lead or trail. Take it, then remove it, so
+    // what's left is only numbers and separators.
+    let hemi = null;
+    const h = s.match(/^([NSEW])(?![a-z])/i) || s.match(/([NSEW])\s*$/i);
+    if (h) { hemi = h[1].toUpperCase(); s = s.replace(h[0], ' '); }
+
+    const nums = (s.match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
+    if (!nums.length || nums.length > 3 || nums.some(n => !isFinite(n))) return NaN;
+
+    // Minutes and seconds are sixtieths. Anything at or past 60 is not a
+    // coordinate \u2014 it's usually a decimal typed with a comma
+    // ("39,026225"), which would otherwise come out as a wild number rather
+    // than an error.
+    if (nums.length > 1 && (Math.abs(nums[1]) >= 60 || nums[1] < 0)) return NaN;
+    if (nums.length > 2 && (Math.abs(nums[2]) >= 60 || nums[2] < 0)) return NaN;
+
+    let val = Math.abs(nums[0]);
+    if (nums.length > 1) val += nums[1] / 60;
+    if (nums.length > 2) val += nums[2] / 3600;
+    // A leading minus and an S/W both mean south/west; either is enough.
+    return (nums[0] < 0 || hemi === 'S' || hemi === 'W') ? -val : val;
+  }
+
   function runSearch() {
     const place = document.getElementById('placeInput').value.trim();
     const latVal = document.getElementById('latInput').value.trim();
@@ -1794,7 +1833,18 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 
     const body = { deviceId, radius, detect: true };
     if (place) { body.place = place; }
-    else if (latVal && lonVal) { body.lat = parseFloat(latVal); body.lon = parseFloat(lonVal); }
+    else if (latVal && lonVal) {
+      const la = parseCoord(latVal), lo = parseCoord(lonVal);
+      if (!isFinite(la) || !isFinite(lo)) {
+        setStatus('That doesn\u2019t look like a coordinate. Use 39.026225 and -83.428478, or 39\u00B001\u203234.41\u2033N and 83\u00B025\u203242.52\u2033W.', true);
+        return;
+      }
+      if (Math.abs(la) > 90 || Math.abs(lo) > 180) {
+        setStatus('Those numbers are out of range \u2014 lat is -90 to 90, lon is -180 to 180.', true);
+        return;
+      }
+      body.lat = la; body.lon = lo;
+    }
     else { setStatus('Enter a place name or lat/lon.', true); return; }
 
     setStatus('Fetching + processing LIDAR data (usually 30-90s)…');
@@ -2047,8 +2097,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   function goToTypedLocation() {
     const placeEl = document.getElementById('placeInput');
     const place = placeEl.value.trim();
-    const latVal = parseFloat(document.getElementById('latInput').value);
-    const lonVal = parseFloat(document.getElementById('lonInput').value);
+    const latVal = parseCoord(document.getElementById('latInput').value);
+    const lonVal = parseCoord(document.getElementById('lonInput').value);
     const locationStatus = document.getElementById('locationStatus');
 
     if (!place) {
@@ -2403,8 +2453,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     }
 
     function currentLatLon() {
-      const la = parseFloat(document.getElementById('latInput').value);
-      const lo = parseFloat(document.getElementById('lonInput').value);
+      const la = parseCoord(document.getElementById('latInput').value);
+      const lo = parseCoord(document.getElementById('lonInput').value);
       if (isFinite(la) && isFinite(lo)) return Promise.resolve([la, lo]);
       if (!navigator.geolocation) return Promise.reject(new Error('no geolocation'));
       // Same reasoning as the Use-my-location button: a coarse network fix is
