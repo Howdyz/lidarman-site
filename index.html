@@ -2023,9 +2023,21 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         const otherFailed = failedKeys.filter(k => k !== 'nps');
 
         const parts = [];
+
+        // 3DEP hydro-flattens water: a river or lake arrives as one constant
+        // elevation, so it renders as a blank field with a traced edge. That
+        // reads as the tool failing rather than as a river, which is exactly
+        // how it was reported. Say which it is.
+        const water = data.water;
+        if (water && water.fraction >= 0.5) {
+          parts.push(`Most of this scan (${Math.round(water.fraction * 100)}%) is water \u2014 that flat blank area is the surface of a river or lake, and there's no terrain under it to read. Move the pin onto higher ground.`);
+        } else if (water && water.fraction >= 0.15) {
+          parts.push(`About ${Math.round(water.fraction * 100)}% of this scan is water \u2014 the flat blank part is a river or lake surface, so there's nothing to find there. Moving the pin upslope will put more ground in the box.`);
+        }
+
         if (areas.length) parts.push(`This area includes ${areas.join(', ')}.`);
         if (npsFailed) {
-          parts.push('The National Park Service check didn\u2019t answer, so nothing here has been checked against park boundaries. Treat that as unknown, not as all clear \u2014 detecting on park land is a federal offence.');
+          parts.push('The National Park Service check didn\u2019t answer, so nothing here has been checked against park boundaries. Treat that as unknown rather than all clear \u2014 worth checking yourself before you go.');
         }
         if (otherFailed.length) {
           const names = otherFailed.map(k => SOURCE_NAMES[k] || k);
