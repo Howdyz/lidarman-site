@@ -140,6 +140,40 @@
   }
   header.top a.guides-link:hover { color: var(--accent); }
 
+  /* On a phone this row is exactly as wide as the space it has — measured at
+     375px, brand + nav came to 327px inside 327px of usable width. With no
+     slack, space-between had none to distribute: the brand and the Guides
+     link ended up touching and read as one word, "LidarmanGuides", while the
+     buttons wrapped onto two lines to fit ("Try" / "It").
+
+     A gap alone would have made that worse, so the room is bought back from
+     padding instead — nothing is dropped out of the nav. */
+  @media (max-width: 430px) {
+    header.top .wrap { gap: 12px; padding-left: 14px; padding-right: 14px; }
+    /* One uniform gap between nav items beats three hand-tuned margins —
+       zeroing them individually is what put Guides against the Share button. */
+    header.top .nav-actions { gap: 10px; }
+    header.top a.guides-link,
+    header.top button.share-btn,
+    header.top button.install-btn { margin-right: 0; }
+    header.top button.share-btn,
+    header.top button.install-btn,
+    header.top a.gh {
+      padding-left: 10px; padding-right: 10px; white-space: nowrap;
+    }
+  }
+
+  /* Below ~340px (iPhone SE 1st gen and similar) even the trimmed row does not
+     fit on one line. Before the rule above, the buttons quietly wrapped to two
+     lines to cope; nowrap takes that escape hatch away, so something has to
+     give. The Guides link goes, because it is the only item here that is
+     reachable twice more on this same page — the contents list and the
+     "all guides" link at the end of the guides section. Share and Try It have
+     no other home. */
+  @media (max-width: 340px) {
+    header.top a.guides-link { display: none; }
+  }
+
   .hero {
     position: relative;
     min-height: 62vh;
