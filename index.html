@@ -298,6 +298,11 @@
     display: inline-block; width: 14px; height: 3px; margin-right: 6px;
     vertical-align: middle; border-radius: 2px;
   }
+  /* The vanished-places key marks points, not routes, so its swatch is a dot
+     rather than the trails' line segment. */
+  .trail-legend i.dot {
+    width: 8px; height: 8px; margin: 0 9px 0 3px; border-radius: 50%;
+  }
   .trail-legend .trail-legend-src {
     margin-top: 4px; padding-top: 4px; border-top: 1px solid #444;
     color: #aaa; font-size: 10px; white-space: normal;
@@ -474,6 +479,11 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     shapes that look man-made — foundations, mounds, berms, sunken roads —
     the kind trees and grass hide from aerial photos.
   </p>
+  <p>
+    It keeps growing, too. New layers and tools go in regularly, so what you
+    open today does more than it did a month ago — ghost towns and lost sites
+    are the newest.
+  </p>
   <figure>
     <img src="assets/gettysburg_candidates.jpg" width="800" height="791"
          alt="Auto-flagged candidate structures over downtown Gettysburg, Pennsylvania">
@@ -503,6 +513,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         <span class="layer-group-label">Map layers</span>
   <button class="secondary-btn" id="stateLinesBtn" type="button">🗺️ Show state lines</button>
   <button class="secondary-btn" id="trailsBtn" type="button">🥾 Show trails west</button>
+        <button class="secondary-btn" id="vanishedBtn" type="button">🏚️ Show ghost towns</button>
         <button class="secondary-btn" id="histBtn" type="button">🗺️ Historic maps here</button>
         <div id="histStatus"></div>
         <div id="histPanel"></div>
@@ -1244,9 +1255,115 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     if (e.layer === historicTrails) trailLegend.remove();
   });
 
+  // assets/gnis-historical.json is the USGS GNIS historical-features file —
+  // places the Board on Geographic Names has retired because they are not
+  // there any more. Trimmed to the four classes worth walking to: vanished
+  // towns, old military sites, river crossings and former civil divisions.
+  // 16,525 of them; the ~4,400 GNIS carries by name with no coordinates at
+  // all can't be mapped and aren't in the file.
+  //
+  // This is the layer that answers "where did everyone go" — the fairground
+  // that fell off the map, the town the railroad killed. It pairs with the
+  // lidar rather than competing with it: GNIS says a place was here, the
+  // hillshade says what is still standing in the dirt.
+  const VANISHED_STYLE = {
+    town:  { color: '#ffd54f', label: 'Ghost town' },
+    mil:   { color: '#ff7043', label: 'Old military site' },
+    xing:  { color: '#4dd0e1', label: 'Old crossing' },
+    civil: { color: '#81c784', label: 'Former civil division' },
+  };
+  // Below this, the whole country is in view and 16,000 dots is a smear that
+  // renders slowly and says nothing. Leaflet also has no business building
+  // markers that are 2px apart.
+  const VANISHED_MIN_ZOOM = 9;
+  const VANISHED_MAX_DRAWN = 600;
+
+  const vanishedPlaces = L.layerGroup();
+  let vanishedData = null;
+  let vanishedLoading = false;
+
+  const vanishedLegend = L.control({ position: 'bottomleft' });
+  vanishedLegend.onAdd = function () {
+    const div = L.DomUtil.create('div', 'trail-legend');
+    div.id = 'vanishedLegend';
+    return div;
+  };
+
+  function vanishedLegendHtml(note) {
+    return Object.values(VANISHED_STYLE)
+        .map(v => `<span><i class="dot" style="background:${v.color}"></i>${v.label}</span>`)
+        .join('')
+      + `<span class="trail-legend-src">${note}</span>`;
+  }
+
+  // Only ever draws what is actually on screen. Re-runs on every pan and zoom,
+  // which is why it clears first rather than trying to diff what moved.
+  function drawVanished() {
+    if (!map.hasLayer(vanishedPlaces)) return;
+    vanishedPlaces.clearLayers();
+    const el = document.getElementById('vanishedLegend');
+    if (!vanishedData) {
+      if (el) el.innerHTML = vanishedLegendHtml('Loading the gazetteer…');
+      return;
+    }
+    if (map.getZoom() < VANISHED_MIN_ZOOM) {
+      if (el) el.innerHTML = vanishedLegendHtml('Zoom in to see them · USGS GNIS');
+      return;
+    }
+    const bounds = map.getBounds();
+    let drawn = 0;
+    for (let i = 0; i < vanishedData.length; i++) {
+      const [lat, lon, name, cls, state, county] = vanishedData[i];
+      if (!bounds.contains([lat, lon])) continue;
+      if (drawn >= VANISHED_MAX_DRAWN) break;
+      drawn++;
+      const st = VANISHED_STYLE[cls] || VANISHED_STYLE.town;
+      // Interactive, unlike the state and trail layers. Those are big shapes,
+      // so swallowing clicks inside them would eat every pin drop; these are
+      // 5px dots, and a click that lands on one was aimed at it. Leaflet keeps
+      // the click off the map handler, so the popup opens without a stray pin.
+      L.circleMarker([lat, lon], {
+        radius: 5, color: st.color, weight: 1.5,
+        fillColor: st.color, fillOpacity: 0.35,
+      })
+        .bindPopup(
+          `<b>${escapeHtml(name)}</b><br>${escapeHtml(st.label)}<br>` +
+          `${escapeHtml(county)} County, ${escapeHtml(state)}<br>` +
+          `<span style="color:#aaa;font-size:11px">USGS GNIS · position is approximate</span>`)
+        .addTo(vanishedPlaces);
+    }
+    if (el) {
+      el.innerHTML = vanishedLegendHtml(
+        drawn >= VANISHED_MAX_DRAWN
+          ? `Showing the first ${VANISHED_MAX_DRAWN} here — zoom in for the rest · USGS GNIS`
+          : `${drawn} in view · USGS GNIS · positions approximate`);
+    }
+  }
+
+  map.on('overlayadd', function (e) {
+    if (e.layer !== vanishedPlaces) return;
+    vanishedLegend.addTo(map);
+    drawVanished();
+    if (vanishedData || vanishedLoading) return;
+    vanishedLoading = true;
+    fetch('assets/gnis-historical.json')
+      .then(r => r.json())
+      .then(gj => { vanishedData = gj.features; drawVanished(); })
+      .catch(() => {
+        vanishedLoading = false;
+        const el = document.getElementById('vanishedLegend');
+        if (el) el.innerHTML = vanishedLegendHtml("Couldn't load — toggle it again");
+      });
+  });
+  map.on('overlayremove', function (e) {
+    if (e.layer === vanishedPlaces) vanishedLegend.remove();
+  });
+  map.on('moveend zoomend', drawVanished);
+
   L.control.layers(
     { 'Satellite': satellite, 'Streets': streets },
-    { 'State outlines': stateOutlines, 'Trails west': historicTrails }
+    { 'State outlines': stateOutlines, 'Trails west': historicTrails,
+      'Ghost towns & lost sites': vanishedPlaces }
   ).addTo(map);
 
   // Both overlays are also reachable from Leaflet's layers control, but that
@@ -1275,6 +1392,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   }
   wireOverlayButton('stateLinesBtn', stateOutlines, '🗺️ State lines: on', '🗺️ Show state lines');
   wireOverlayButton('trailsBtn', historicTrails, '🥾 Trails west: on', '🥾 Show trails west');
+  wireOverlayButton('vanishedBtn', vanishedPlaces, '🏚️ Ghost towns: on', '🏚️ Show ghost towns');
 
   // Zoom lock: pins minZoom/maxZoom to the current zoom level, which makes
   // Leaflet itself refuse every zoom trigger (scroll wheel, pinch,
