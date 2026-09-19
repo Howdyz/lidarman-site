@@ -415,12 +415,24 @@ function renderStats(data){
       '<div>' + escapeHtml(h.check ? h.check.replace(/^./, c => c.toUpperCase()) : 'Backend') + ': ' + (h.ok
         ? '<b style="color:#1e8449;">healthy</b> (' + escapeHtml(String(h.seconds)) + 's)'
         : '<b style="color:#c0392b;">FAILING</b> ' + escapeHtml(JSON.stringify(h))) + '</div>' +
+      // Says what the number actually covers. It is paid sessions inside the
+      // reconcile's lookback, NOT the customer total — it read "1" on
+      // 2026-09-19 against 2 real customers because the older sale had aged
+      // out of the window, and that was reasonably read as "one sale".
+      // The window comes from the backend so this cannot drift from the
+      // constant. Customers above is the real total.
       '<div>Paid unlocks checked: <b>' + (rec.checked || 0) + '</b>' +
+        '<span style="opacity:.75;"> in the last ' +
+          (rec.lookbackDays || 7) + ' days</span>' +
         (fixedCount
           ? ' — <b style="color:#c0392b;">auto-fixed ' + fixedCount + ' stuck unlock(s)</b>'
           : ' — none stuck ✅') +
         (rec.note ? ' <span style="opacity:.6;">(' + escapeHtml(rec.note) + ')</span>' : '') +
         (rec.error ? ' <span style="color:#c0392b;">' + escapeHtml(rec.error) + '</span>' : '') +
+      '</div>' +
+      '<div style="font-size:.85em; opacity:.7; margin-top:4px;">' +
+        'A rolling window, not a sales total — older sales drop out of it. ' +
+        'See Customers above for every sale there has ever been.' +
       '</div>';
   }
 
