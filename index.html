@@ -129,8 +129,13 @@
     background: rgba(250,247,240,0.97);
     box-shadow: 0 6px 22px rgba(28, 26, 23, 0.10);
   }
-  /* Matches the tool's width below it. A 780px header over a 1640px panel was
-     the mismatch that made the page look like two different sites stacked. */
+  /* Matches the tool's width below it at EVERY size, not just on wide screens.
+     A 780px header over a 1640px panel was the mismatch that made the page
+     look like two different sites stacked — but the same gap existed at
+     1024px (header 780, panel 961), so both rules track #tool exactly.
+     The prose keeps its own 780px measure; a header is not a reading column
+     and is expected to span wider than the text under it. */
+  header.top .wrap { max-width: 1100px; }
   @media (min-width: 1200px) {
     header.top .wrap { max-width: min(1640px, 94vw); }
   }
