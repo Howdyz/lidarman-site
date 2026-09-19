@@ -178,6 +178,37 @@
     </div>
 
     <div class="panel" style="grid-column: 1 / -1;">
+      <h2>Customers <span id="custSummary" style="font-weight:normal; opacity:.7; font-size:.8em;"></span></h2>
+      <p style="font-size:.85em; opacity:.7; margin:0 0 10px;">
+        Straight from Stripe, every checkout ever started for this product —
+        paid and abandoned. There is no local list of buyers, so this is the
+        only complete answer to "who bought it".
+      </p>
+      <div id="custMismatch" class="hidden" style="margin:0 0 12px; padding:10px 12px; border-left:3px solid #c0392b; background:#fdf0ee; font-size:.9em;"></div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>When</th><th>Email</th><th>Status</th><th>Amount</th><th>Device unlocked?</th></tr></thead>
+          <tbody id="customerRows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel" style="grid-column: 1 / -1;">
+      <h2>Paywall Hits <span id="paywallSummary" style="font-weight:normal; opacity:.7; font-size:.8em;"></span></h2>
+      <p style="font-size:.85em; opacity:.7; margin:0 0 10px;">
+        How many visitors ran out of free searches and were shown the price.
+        These are the only people who ever saw the paywall, so they are the
+        denominator for a conversion rate — not total views.
+      </p>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>Day (UTC)</th><th>Hits</th><th>Devices</th><th>Device trial</th><th>Network cap</th></tr></thead>
+          <tbody id="paywallRows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel" style="grid-column: 1 / -1;">
       <h2>Monitor</h2>
       <div id="monitorStatus" style="font-size:.95em; line-height:1.7;">—</div>
     </div>
@@ -243,9 +274,61 @@ async function loadStats(){
     renderStats(data);
     gate.classList.add('hidden');
     dashboard.classList.remove('hidden');
+    // Fetched separately and never awaited into the block above: this one
+    // calls Stripe, and a slow or broken Stripe must not stop every other
+    // number on this page from rendering.
+    loadCustomers(secret);
   } catch (e) {
     gateError.textContent = 'Could not load stats: ' + e.message;
     gateError.classList.remove('hidden');
+  }
+}
+
+async function loadCustomers(secret){
+  const summary = document.getElementById('custSummary');
+  const body = document.getElementById('customerRows');
+  const warn = document.getElementById('custMismatch');
+  summary.textContent = '(asking Stripe…)';
+  try {
+    const res = await fetch(API_BASE + '/api/admin/customers', { headers: { 'x-admin-secret': secret } });
+    const d = await res.json();
+    if (d.error && !(d.customers || []).length) {
+      summary.textContent = '(Stripe error)';
+      body.innerHTML = '<tr><td colspan="5" style="color:#c0392b;">' + escapeHtml(String(d.error)) + '</td></tr>';
+      return;
+    }
+    const rows = d.customers || [];
+    summary.textContent = `(${d.paidCount || 0} paid · ${d.abandonedCount || 0} abandoned · $${(d.revenue || 0).toFixed(2)})`;
+
+    // The failure this whole page exists to catch: money taken, device still
+    // locked. Says so loudly rather than leaving it in a column.
+    if ((d.mismatched || []).length) {
+      warn.innerHTML = '<b>' + d.mismatched.length + ' paid customer' +
+        (d.mismatched.length === 1 ? ' is' : 's are') +
+        ' still locked out.</b> Their payment went through but the device never unlocked. ' +
+        'Sessions: ' + d.mismatched.map(escapeHtml).join(', ');
+      warn.classList.remove('hidden');
+    } else {
+      warn.classList.add('hidden');
+    }
+
+    body.innerHTML = rows.length ? rows.map(function(c){
+      const when = c.createdAt ? new Date(c.createdAt * 1000).toLocaleString() : '—';
+      const status = c.paid
+        ? '<span style="color:#2e7d32; font-weight:600;">paid</span>'
+        : '<span style="color:var(--ink-soft);">abandoned</span>';
+      const unlocked = !c.paid ? '—'
+        : (c.deviceUnlocked ? 'yes'
+           : '<span style="color:#c0392b; font-weight:600;">NO</span>');
+      return '<tr><td>' + escapeHtml(when) + '</td>' +
+        '<td>' + escapeHtml(c.email || '—') + '</td>' +
+        '<td>' + status + '</td>' +
+        '<td>' + (c.paid ? '$' + (c.amount || 0).toFixed(2) : '—') + '</td>' +
+        '<td>' + unlocked + '</td></tr>';
+    }).join('') : '<tr><td colspan="5" style="color:var(--ink-soft);">No checkout sessions found.</td></tr>';
+  } catch (e) {
+    summary.textContent = '(could not reach Stripe)';
+    body.innerHTML = '<tr><td colspan="5" style="color:#c0392b;">' + escapeHtml(e.message) + '</td></tr>';
   }
 }
 
@@ -287,6 +370,21 @@ function renderStats(data){
       : 'Observation only — no per-IP limit is enforced. ')
     + '"Over N" counts how many addresses that day exceeded N free searches, '
     + 'i.e. how many a cap of N would have turned away.';
+  const pw = data.paywall || {};
+  const pwRows = pw.byDay || [];
+  const pwTotal = pwRows.reduce((a, d) => a + (d.hits || 0), 0);
+  document.getElementById('paywallSummary').textContent =
+    pwRows.length ? `(${pwTotal} in the last ${pwRows.length} day${pwRows.length === 1 ? '' : 's'})`
+                  : '(nothing recorded yet)';
+  document.getElementById('paywallRows').innerHTML = pwRows.length
+    ? pwRows.map(d =>
+        '<tr><td>' + escapeHtml(d.day) + '</td>' +
+        '<td>' + (d.hits || 0) + '</td>' +
+        '<td>' + (d.devices || 0) + '</td>' +
+        '<td>' + (d.deviceTrial || 0) + '</td>' +
+        '<td>' + (d.ipTrial || 0) + '</td></tr>').join('')
+    : '<tr><td colspan="5" style="color:var(--ink-soft);">Nothing yet — this only starts counting from the deploy that added it.</td></tr>';
+
   const iptBody = document.getElementById('ipTrialRows');
   iptBody.innerHTML = (ipt.days || []).length ? ipt.days.map(d => {
     const warn = n => n > 0 ? ' style="color:#c0392b; font-weight:600;"' : '';
