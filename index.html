@@ -325,6 +325,31 @@
   #toolPanel { display: flex; gap: 0; background: #1a1a1a; color: #eee; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 20px var(--shadow); }
   #toolSidebar { width: 300px; flex-shrink: 0; padding: 16px; box-sizing: border-box; }
   #map { flex: 1; min-height: 520px; }
+
+  /* The prose above stays at 780px — that is a reading measure and widening it
+     would make the text worse. The TOOL is not prose. It was inheriting a
+     1100px cap, which on a 1920px screen left 434px empty down each side and
+     gave the map 39% of the width; at 2560px it was 29%. A map wants room. */
+  @media (min-width: 1200px) {
+    #tool { max-width: min(1640px, 94vw); }
+  }
+
+  /* The panel had no height of its own, so it took the sidebar's — and the
+     sidebar is ~1,500px of controls. That made the map 1518px tall on every
+     screen: taller than any monitor, and the reason a finished scan draws
+     around 760px below the fold where nobody sees it.
+     Giving the panel a real height fixes the shape and the off-screen result
+     at the same time; the sidebar keeps all its controls and scrolls inside
+     itself instead of stretching the map. */
+  @media (min-width: 601px) {
+    #toolPanel { height: min(82vh, 900px); }
+    #toolSidebar {
+      overflow-y: auto;
+      /* Don't hand the scroll back to the page at the ends of the list. */
+      overscroll-behavior: contain;
+    }
+    #map { height: 100%; min-height: 0; }
+  }
   @media (max-width: 600px) {
     #toolPanel { flex-direction: column; }
     #toolSidebar { width: 100%; box-sizing: border-box; }
