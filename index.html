@@ -786,17 +786,38 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         <label>...or pick a famous battlefield (US only — data source coverage)</label>
         <select id="battlefieldSelect">
         <option value="">— Select a battlefield —</option>
-        <option value="39.8309,-77.2311">Gettysburg, PA (1863)</option>
-        <option value="39.4762,-77.7517">Antietam, MD (1862)</option>
-        <option value="38.8146,-77.5222">Manassas / Bull Run, VA (1861 &amp; 1862)</option>
-        <option value="35.1400,-88.3450">Shiloh, TN (1862)</option>
-        <option value="32.3526,-90.8779">Vicksburg, MS (1863)</option>
-        <option value="34.9490,-85.2569">Chickamauga, GA (1863)</option>
-        <option value="38.3141,-77.6350">Chancellorsville, VA (1863)</option>
-        <option value="37.2380,-76.5083">Yorktown, VA (1781)</option>
-        <option value="43.0117,-73.6459">Saratoga, NY (1777)</option>
-        <option value="35.1378,-81.8129">Cowpens, SC (1781)</option>
-        <option value="45.5670,-107.4284">Little Bighorn, MT (1876)</option>
+        <optgroup label="Civil War">
+          <option value="39.8309,-77.2311">Gettysburg, PA (1863)</option>
+          <option value="39.4762,-77.7517">Antietam, MD (1862)</option>
+          <option value="38.8146,-77.5222">Manassas / Bull Run, VA (1861 &amp; 1862)</option>
+          <option value="35.1400,-88.3450">Shiloh, TN (1862)</option>
+          <option value="32.3526,-90.8779">Vicksburg, MS (1863)</option>
+          <option value="34.9490,-85.2569">Chickamauga, GA (1863)</option>
+          <option value="38.3141,-77.6350">Chancellorsville, VA (1863)</option>
+        </optgroup>
+        <optgroup label="Revolutionary War">
+          <option value="37.2380,-76.5083">Yorktown, VA (1781)</option>
+          <option value="43.0117,-73.6459">Saratoga, NY (1777)</option>
+          <option value="35.1378,-81.8129">Cowpens, SC (1781)</option>
+        </optgroup>
+        <!-- Coordinates for the National Park Service sites are the centroids
+             of their own boundary polygons, off the same NPS service the
+             backend uses for land status. The rest are geocoded. -->
+        <optgroup label="Indian Wars &amp; the frontier">
+          <option value="41.5520,-83.6942">Fallen Timbers, OH (1794)</option>
+          <option value="40.5049,-86.8459">Tippecanoe, IN (1811)</option>
+          <option value="32.9767,-85.7341">Horseshoe Bend, AL (1814)</option>
+          <option value="42.2030,-104.5459">Fort Laramie, WY (1834)</option>
+          <option value="38.5641,-102.5170">Sand Creek, CO (1864)</option>
+          <option value="44.5315,-106.8255">Fort Phil Kearny / Fetterman, WY (1866)</option>
+          <option value="39.8722,-102.1844">Beecher Island, CO (1868)</option>
+          <option value="35.6209,-99.7045">Washita, OK (1868)</option>
+          <option value="32.1492,-109.4512">Fort Bowie / Apache Pass, AZ (1862–86)</option>
+          <option value="35.8938,-101.1619">Adobe Walls, TX (1874)</option>
+          <option value="45.2305,-106.9978">Rosebud, MT (1876)</option>
+          <option value="45.5670,-107.4284">Little Bighorn, MT (1876)</option>
+          <option value="45.6465,-113.6459">Big Hole, MT (1877)</option>
+        </optgroup>
         </select>
       </div>
       <button class="secondary-btn" id="viewToggleBtn" type="button" disabled>🔦 Lidar view: on</button>
