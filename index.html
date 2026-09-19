@@ -215,6 +215,15 @@
        full square is restored the moment there is width to spare. */
     max-height: 150px; object-fit: cover;
   }
+  /* Measured on a 375px viewport: the clip renders 157px tall against the
+     150px the still was cropped to, so the search field lands within 8px of
+     where it did before — a wash, not a regression. Worth re-checking if the
+     clip is ever re-cut at a different aspect ratio.
+     No object-fit crop here: cropping the clip would cut off the very search
+     box it is demonstrating. */
+  .lede video {
+    display: block; width: 100%; height: auto; border-radius: 4px;
+  }
   .lede figcaption { font-size: 0.8em; opacity: 0.72; margin-top: 6px; }
   @media (min-width: 760px) {
     .lede { grid-template-columns: 1.05fr 1fr; gap: 26px; max-width: 1000px; }
@@ -519,11 +528,33 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     are the newest.
   </p>
   <figure>
-    <img src="assets/gettysburg_candidates.jpg" width="800" height="791"
-         alt="Auto-flagged candidate structures over downtown Gettysburg, Pennsylvania">
-    <figcaption>Real output — downtown Gettysburg, PA, fetched by place name
-      alone. Each marker is a flagged shape.</figcaption>
+    <video id="demoClip" src="assets/search-demo.mp4"
+           poster="assets/search-demo-poster.jpg"
+           width="1280" height="616"
+           autoplay muted loop playsinline preload="metadata"
+           aria-label="A search for Gettysburg, Pennsylvania returning flagged
+                       candidate structures over a LIDAR relief map"></video>
+    <figcaption>A real search of Gettysburg, PA, start to finish — the waiting
+      is shortened. Every circle is a shape Lidarman flagged as probably
+      man-made.</figcaption>
   </figure>
+  <script>
+  // An autoplaying loop is motion nobody asked for. Honour the OS setting:
+  // hand those visitors the poster frame and a play button instead. This has
+  // to run beside the element rather than at the end of the page — by then it
+  // would already be playing.
+  (function () {
+    try {
+      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      var v = document.getElementById('demoClip');
+      if (!v) return;
+      v.removeAttribute('autoplay');
+      v.removeAttribute('loop');
+      v.controls = true;
+      v.pause();
+    } catch (e) { /* never let this break the page */ }
+  })();
+  </script>
 </div>
 
 <div id="unlockedBanner"><b>Unlocked!</b> Payment confirmed — this device is unlocked, no subscription.</div>
