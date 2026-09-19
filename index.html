@@ -419,7 +419,54 @@
      sit at 100% while the request is still running. */
   /* #aaa on the panel's #1a1a1a, matching its own label colour — the paper
      palette's --ink-soft is a dark brown and vanishes against this panel. */
-  #searchProgress { margin-top: 10px; font-size: 0.8em; color: #aaa; }
+  /* This block used to sit in the sidebar, a long way down it. The sidebar is
+     ~1,500px tall and results draw at the MAP's centre, so by the time a scan
+     is running the user has almost always scrolled past this — leaving them
+     watching an unchanged map with no sign anything is happening, which reads
+     as a site that is simply broken. Reported by the site's owner, and the
+     cost of getting it wrong is high: a reload spends another free search.
+
+     So while a scan runs it leaves the sidebar and floats, pinned just under
+     the sticky header where it is in view at every scroll position. Centred
+     and narrow rather than full width, so it clears Leaflet's zoom control on
+     the left and the layers control on the right.
+
+     No JS change — the existing `hidden` toggle still drives it. */
+  #searchProgress {
+    position: fixed;
+    top: 74px;
+    left: 50%;
+    transform: translateX(-50%);
+    /* Not 100vw anywhere: it counts the scrollbar and does not match the
+       layout viewport, which pushed this off the right edge on a phone.
+       A percentage of the viewport (this is position:fixed) is honest. */
+    width: 540px;
+    max-width: calc(100% - 28px);
+    box-sizing: border-box;
+    margin-top: 0;
+    padding: 11px 14px 12px;
+    background: rgba(18,18,18,0.94);
+    backdrop-filter: blur(4px);
+    border: 1px solid #3d3d3d;
+    border-radius: 8px;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.5);
+    /* Leaflet's own controls sit at z-index 400-1000; the site header is 10. */
+    z-index: 1200;
+    /* Nothing in here is clickable, and it floats over a map whose zoom and
+       layers controls move with the page as it scrolls — so no fixed offset
+       can reliably dodge them. Let every click fall through to whatever is
+       underneath instead. */
+    pointer-events: none;
+    font-size: 0.8em; color: #aaa;
+  }
+  @media (max-width: 759px) {
+    /* No room to be fussy on a phone. Pinned to both edges rather than sized
+       and centred, so there is no width arithmetic left to get wrong. */
+    #searchProgress {
+      top: 66px; left: 8px; right: 8px;
+      width: auto; max-width: none; transform: none;
+    }
+  }
   #searchProgress .sp-bar {
     height: 5px; border-radius: 3px; overflow: hidden;
     background: rgba(255,255,255,0.13);
@@ -664,11 +711,11 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       <div id="trackStatus"></div>
       <div id="toolStatus"></div>
       <div id="locMaps" hidden>📜 <a id="locMapsLink" href="#" target="_blank" rel="noopener noreferrer"></a></div>
-      <div id="searchProgress" hidden>
+      <div id="searchProgress" role="status" aria-live="polite" hidden>
         <div class="sp-bar"><div class="sp-fill" id="spFill"></div></div>
         <div class="sp-line">
           <span id="spPhase">Fetching elevation data…</span>
-          <span class="sp-elapsed" id="spElapsed">0s</span>
+          <span class="sp-elapsed" id="spElapsed" aria-hidden="true">0s</span>
         </div>
         <div class="sp-foot">These are the usual steps and timings — the server
           only reports back once the scan finishes.</div>
