@@ -760,6 +760,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   <button class="secondary-btn" id="trailsBtn" type="button">🥾 Show trails west</button>
         <button class="secondary-btn" id="vanishedBtn" type="button">🏚️ Show ghost towns</button>
         <button class="secondary-btn" id="battlefieldsBtn" type="button">⚔️ Show battlefields</button>
+        <button class="secondary-btn" id="minesBtn" type="button">⛏️ Show mining camps</button>
         <button class="secondary-btn" id="histBtn" type="button">🗺️ Historic maps here</button>
         <div id="histStatus"></div>
         <div id="histPanel"></div>
@@ -1732,10 +1733,120 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     if (map.hasLayer(battlefields)) updateBattleLegend();
   });
 
+  // assets/mines.json is USGS's Mineral Resources Data System, cut to the part
+  // a detectorist can use: past-producer metal mines in the United States,
+  // 44,677 of them. MRDS itself is 304,633 records worldwide and includes
+  // 67,000 sand, gravel and stone quarries — dropped, along with everything
+  // still in production and every occurrence nobody ever dug.
+  //
+  // This pairs with the ghost towns layer rather than repeating it. GNIS says
+  // where people lived; this says what they were there for. A vanished town
+  // with a cluster of past producers around it is a mining camp, and the two
+  // layers together show that in a way neither does alone.
+  //
+  // Eight commodities collapse to three colours: the legend has to stay
+  // readable, and the popup carries the exact metal anyway.
+  const MINE_STYLE = {
+    au: { color: '#ffb300', label: 'Gold' },
+    ag: { color: '#b0bec5', label: 'Silver' },
+  };
+  const MINE_OTHER = { color: '#a1887f', label: 'Copper, lead & other' };
+  // Denser than the ghost towns — 44,677 against 16,525 — so it earns its
+  // keep one zoom level further in.
+  // Filled in from the file's own code table when it loads.
+  let MINE_LABELS = {};
+  const MINE_MIN_ZOOM = 10;
+  const MINE_MAX_DRAWN = 700;
+
+  const oldMines = L.layerGroup();
+  let mineData = null;
+  let minesLoading = false;
+
+  const mineLegend = L.control({ position: 'bottomleft' });
+  mineLegend.onAdd = function () {
+    const div = L.DomUtil.create('div', 'trail-legend');
+    div.id = 'mineLegend';
+    return div;
+  };
+
+  function mineStyle(code) { return MINE_STYLE[code] || MINE_OTHER; }
+
+  function mineLegendHtml(note) {
+    const keys = [MINE_STYLE.au, MINE_STYLE.ag, MINE_OTHER];
+    return keys.map(v => `<span><i class="dot" style="background:${v.color}"></i>${v.label}</span>`).join('')
+      + `<span class="trail-legend-src">${note}</span>`;
+  }
+
+  function drawMines() {
+    if (!map.hasLayer(oldMines)) return;
+    oldMines.clearLayers();
+    const el = document.getElementById('mineLegend');
+    if (!mineData) {
+      if (el) el.innerHTML = mineLegendHtml('Loading the mine records…');
+      return;
+    }
+    if (map.getZoom() < MINE_MIN_ZOOM) {
+      if (el) el.innerHTML = mineLegendHtml('Zoom in to see them · USGS MRDS');
+      return;
+    }
+    const bounds = map.getBounds();
+    let drawn = 0;
+    for (let i = 0; i < mineData.length; i++) {
+      const [lat, lon, name, code, state, year] = mineData[i];
+      if (!bounds.contains([lat, lon])) continue;
+      if (drawn >= MINE_MAX_DRAWN) break;
+      drawn++;
+      const st = mineStyle(code);
+      // Interactive for the same reason the ghost-town dots are: a click that
+      // lands on a 5px dot was aimed at it, and Leaflet keeps it off the map's
+      // own handler so no stray pin is dropped.
+      L.circleMarker([lat, lon], {
+        radius: 4, color: st.color, weight: 1.5,
+        fillColor: st.color, fillOpacity: 0.45,
+      })
+        .bindPopup(
+          `<b>${escapeHtml(name)}</b><br>${escapeHtml(MINE_LABELS[code] || 'Metal')} workings` +
+          (year ? ` · from ${year}` : '') + `<br>${escapeHtml(state || '')}<br>` +
+          `<span style="color:#aaa;font-size:11px">USGS MRDS · past producer · position approximate</span>`)
+        .addTo(oldMines);
+    }
+    if (el) {
+      el.innerHTML = mineLegendHtml(
+        drawn >= MINE_MAX_DRAWN
+          ? `Showing the first ${MINE_MAX_DRAWN} here — zoom in for the rest · USGS MRDS`
+          : `${drawn} in view · USGS MRDS · past producers`);
+    }
+  }
+
+  map.on('overlayadd', function (e) {
+    if (e.layer !== oldMines) return;
+    mineLegend.addTo(map);
+    drawMines();
+    if (mineData || minesLoading) return;
+    minesLoading = true;
+    fetch('assets/mines.json')
+      .then(r => r.json())
+      .then(gj => {
+        mineData = gj.sites;
+        MINE_LABELS = gj.codes || {};
+        drawMines();
+      })
+      .catch(() => {
+        minesLoading = false;
+        const el = document.getElementById('mineLegend');
+        if (el) el.innerHTML = mineLegendHtml("Couldn't load — toggle it again");
+      });
+  });
+  map.on('overlayremove', function (e) {
+    if (e.layer === oldMines) mineLegend.remove();
+  });
+  map.on('moveend zoomend', drawMines);
+
   L.control.layers(
     { 'Satellite': satellite, 'Streets': streets },
     { 'State outlines': stateOutlines, 'Trails west': historicTrails,
-      'Ghost towns & lost sites': vanishedPlaces, 'Battlefields': battlefields }
+      'Ghost towns & lost sites': vanishedPlaces, 'Battlefields': battlefields,
+      'Mining camps': oldMines }
   ).addTo(map);
 
   // Both overlays are also reachable from Leaflet's layers control, but that
@@ -1766,6 +1877,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   wireOverlayButton('trailsBtn', historicTrails, '🥾 Trails west: on', '🥾 Show trails west');
   wireOverlayButton('vanishedBtn', vanishedPlaces, '🏚️ Ghost towns: on', '🏚️ Show ghost towns');
   wireOverlayButton('battlefieldsBtn', battlefields, '⚔️ Battlefields: on', '⚔️ Show battlefields');
+  wireOverlayButton('minesBtn', oldMines, '⛏️ Mining camps: on', '⛏️ Show mining camps');
 
   // Zoom lock: pins minZoom/maxZoom to the current zoom level, which makes
   // Leaflet itself refuse every zoom trigger (scroll wheel, pinch,
