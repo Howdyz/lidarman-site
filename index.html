@@ -107,38 +107,101 @@
   @media (max-width: 360px) { .wrap { padding: 0 14px; } }
 
   header.top {
-    border-bottom: 1px solid var(--rule);
-    padding: 14px 0;
-    position: sticky; top: 0; background: rgba(250,247,240,0.92); backdrop-filter: blur(4px);
+    padding: 12px 0;
+    position: sticky; top: 0;
+    background: rgba(250,247,240,0.88);
+    backdrop-filter: blur(10px) saturate(1.08);
     z-index: 10;
+    transition: background 0.25s ease, box-shadow 0.25s ease;
+  }
+  /* A flat grey rule under a warm palette reads as a seam. This is the same
+     hairline, carrying the brand colour through the middle and fading out at
+     both ends so it never looks like a hard border. */
+  header.top::after {
+    content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--rule) 10%,
+                var(--accent-soft) 50%, var(--rule) 90%, transparent);
+    opacity: 0.6;
+  }
+  /* Lifts off the page once you start reading. Driven by a scroll listener
+     below; without the class it is the flat resting state above. */
+  header.top.scrolled {
+    background: rgba(250,247,240,0.97);
+    box-shadow: 0 6px 22px rgba(28, 26, 23, 0.10);
+  }
+  /* Matches the tool's width below it. A 780px header over a 1640px panel was
+     the mismatch that made the page look like two different sites stacked. */
+  @media (min-width: 1200px) {
+    header.top .wrap { max-width: min(1640px, 94vw); }
   }
   header.top .wrap { display: flex; justify-content: space-between; align-items: center; }
-  header.top .brand { font-weight: 700; font-size: 1.05em; letter-spacing: 0.02em; }
-  header.top a.gh {
-    font-family: var(--mono); font-size: 0.85em; text-decoration: none;
-    color: var(--paper); background: var(--ink); padding: 7px 14px; border-radius: 3px;
+  header.top .brand {
+    display: flex; align-items: center; gap: 9px;
+    font-weight: 700; font-size: 1.1em; letter-spacing: 0.01em;
   }
-  header.top a.gh:hover { background: var(--accent); }
+  /* Three contour lines — the thing the whole site is about, at 22px. */
+  header.top .brand svg {
+    display: block; width: 22px; height: 22px; flex-shrink: 0;
+    color: var(--accent);
+  }
+
+  /* One shared shape for the three nav controls; the colour is what separates
+     them. Try It is the primary action and the only filled accent; Share is a
+     quiet outline; Install is dark and only appears when installable. */
+  header.top a.gh,
+  header.top button.share-btn,
   header.top button.install-btn {
-    font-family: var(--mono); font-size: 0.85em;
-    color: var(--paper); background: var(--accent); border: none;
-    padding: 7px 14px; border-radius: 3px; cursor: pointer; margin-right: 10px;
-    display: none;
+    font-family: var(--mono); font-size: 0.85em; line-height: 1.4;
+    padding: 7px 15px; border-radius: 5px; cursor: pointer;
+    text-decoration: none; border: 1px solid transparent;
+    transition: background 0.18s ease, color 0.18s ease,
+                border-color 0.18s ease, transform 0.18s ease,
+                box-shadow 0.18s ease;
   }
-  header.top button.install-btn:hover { background: var(--accent-soft); }
-  header.top button.install-btn.show { display: inline-block; }
+  header.top a.gh {
+    color: var(--paper); background: var(--accent);
+    box-shadow: 0 1px 2px rgba(122, 59, 46, 0.25);
+  }
+  header.top a.gh:hover {
+    background: var(--accent-soft);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(122, 59, 46, 0.28);
+  }
   header.top button.share-btn {
-    font-family: var(--mono); font-size: 0.85em;
-    color: var(--paper); background: var(--ink); border: none;
-    padding: 7px 14px; border-radius: 3px; cursor: pointer; margin-right: 10px;
+    color: var(--ink-soft); background: transparent; border-color: var(--rule);
+    margin-right: 10px;
   }
-  header.top button.share-btn:hover { background: var(--accent); }
+  header.top button.share-btn:hover {
+    color: var(--accent); border-color: var(--accent-soft);
+    background: rgba(172, 106, 82, 0.08);
+  }
+  header.top button.install-btn {
+    color: var(--paper); background: var(--ink); border-color: var(--ink);
+    margin-right: 10px; display: none;
+  }
+  header.top button.install-btn:hover { background: var(--accent); border-color: var(--accent); }
+  header.top button.install-btn.show { display: inline-block; }
   header.top .nav-actions { display: flex; align-items: center; }
   header.top a.guides-link {
     font-family: var(--mono); font-size: 0.85em; text-decoration: none;
     color: var(--ink-soft); margin-right: 14px;
+    position: relative; padding-bottom: 2px;
+    transition: color 0.18s ease;
+  }
+  /* Underline grows from the left rather than blinking on. */
+  header.top a.guides-link::after {
+    content: ''; position: absolute; left: 0; bottom: 0; height: 1px; width: 0;
+    background: var(--accent);
+    transition: width 0.22s ease;
   }
   header.top a.guides-link:hover { color: var(--accent); }
+  header.top a.guides-link:hover::after { width: 100%; }
+  @media (prefers-reduced-motion: reduce) {
+    header.top, header.top a.gh, header.top button.share-btn,
+    header.top button.install-btn, header.top a.guides-link,
+    header.top a.guides-link::after { transition: none; }
+    header.top a.gh:hover { transform: none; }
+  }
 
   /* On a phone this row is exactly as wide as the space it has — measured at
      375px, brand + nav came to 327px inside 327px of usable width. With no
@@ -150,6 +213,11 @@
      padding instead — nothing is dropped out of the nav. */
   @media (max-width: 430px) {
     header.top .wrap { gap: 12px; padding-left: 14px; padding-right: 14px; }
+    /* The contour mark costs 31px (22px + its gap) and this row has never had
+       31px to give — adding it pushed Try It clean off the right edge. The
+       wordmark carries the brand on its own down here. */
+    header.top .brand svg { display: none; }
+    header.top .brand { gap: 0; }
     /* One uniform gap between nav items beats three hand-tuned margins —
        zeroing them individually is what put Guides against the Share button. */
     header.top .nav-actions { gap: 10px; }
@@ -571,7 +639,17 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 
 <header class="top">
   <div class="wrap">
-    <div class="brand">Lidarman</div>
+    <div class="brand">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+        <path d="M1.8 17.4c3.4-2.9 6.4-4.3 10.2-4.3s6.8 1.4 10.2 4.3"
+              stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        <path d="M5.1 12.6c2.4-2 4.4-3 6.9-3s4.5 1 6.9 3"
+              stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity="0.72"/>
+        <path d="M8.4 8.1c1.5-1.2 2.6-1.8 3.6-1.8s2.1.6 3.6 1.8"
+              stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity="0.45"/>
+      </svg>
+      <span>Lidarman</span>
+    </div>
     <div class="nav-actions">
       <a class="guides-link" href="guides.html">Guides</a>
       <button class="share-btn" id="shareBtn" type="button">🔗 Share</button>
@@ -580,6 +658,25 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     </div>
   </div>
 </header>
+<script>
+// The header only lifts off the page once you have actually started reading —
+// at rest it stays flat so the hero is not fighting a shadow.
+(function () {
+  try {
+    var h = document.querySelector('header.top');
+    if (!h) return;
+    var on = null;
+    function update() {
+      var want = window.scrollY > 8;
+      if (want === on) return;        // only touch the DOM when it changes
+      on = want;
+      h.classList.toggle('scrolled', want);
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    update();
+  } catch (e) { /* a shadow is not worth breaking the page over */ }
+})();
+</script>
 
 <div class="hero">
   <div class="wrap hero-inner">
