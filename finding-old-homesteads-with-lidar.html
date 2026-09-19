@@ -102,6 +102,13 @@
   .cta-box a.gh:hover { background: var(--accent-soft); color: white; }
   footer { border-top: 1px solid var(--rule); padding: 28px 0 50px; color: var(--ink-soft); font-size: 0.85em; }
   footer a { color: var(--accent); }
+  footer .disclaimer {
+    margin: 0 0 18px; padding: 14px 16px;
+    border: 1px solid var(--rule); border-left: 3px solid var(--accent);
+    border-radius: 4px; background: var(--fig-bg);
+    line-height: 1.6; max-width: 780px;
+  }
+
 </style>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2526876080898597" crossorigin="anonymous"></script>
 </head>
@@ -223,6 +230,17 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 
 <footer>
   <div class="wrap">
+    <p class="disclaimer">
+      <b>Use this at your own risk.</b> Lidarman flags shapes in public
+      elevation data. It can't tell you what's actually buried, who owns the
+      ground, or whether you're allowed to be there — and the land checks it
+      runs are best effort, so nothing showing up is not the same as an
+      all-clear. Everything here is information, not advice. Where you go,
+      what you dig, and getting permission first are yours. By using this site
+      you accept full responsibility for what you do with it, and agree that
+      its creator is not liable for your actions or for any error, omission or
+      outage in the data it shows.
+    </p>
     &copy; Lidarman. <a href="mailto:projectsilverbeam@gmail.com">projectsilverbeam@gmail.com</a>
   </div>
 </footer>
