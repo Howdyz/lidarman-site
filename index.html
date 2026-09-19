@@ -753,6 +753,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   <button class="secondary-btn" id="stateLinesBtn" type="button">🗺️ Show state lines</button>
   <button class="secondary-btn" id="trailsBtn" type="button">🥾 Show trails west</button>
         <button class="secondary-btn" id="vanishedBtn" type="button">🏚️ Show ghost towns</button>
+        <button class="secondary-btn" id="battlefieldsBtn" type="button">⚔️ Show battlefields</button>
         <button class="secondary-btn" id="histBtn" type="button">🗺️ Historic maps here</button>
         <div id="histStatus"></div>
         <div id="histPanel"></div>
@@ -1599,10 +1600,103 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   });
   map.on('moveend zoomend', drawVanished);
 
+  // assets/battlefields.geojson is the NPS American Battlefield Protection
+  // Program's boundary set — 957 study areas across three wars, pulled from
+  // their public feature service and generalised to about 56m, which is
+  // invisible at the zooms this map is used at and takes 16.7MB down to 1.5.
+  //
+  // These are STUDY AREAS: the historians' outline of where a battle ranged,
+  // not a property line and not a permission. Much of this ground is federal
+  // and detecting on it is a crime — the land-status check the backend already
+  // runs on every search is what actually answers that question. This layer is
+  // context for the private ground nearby, which is the part you can ask about.
+  const BATTLE_STYLE = {
+    cw:   { color: '#8ab4f8', label: 'Civil War' },
+    rev:  { color: '#81c784', label: 'Revolutionary War' },
+    '1812': { color: '#ffb74d', label: 'War of 1812' },
+  };
+
+  const battlefields = L.layerGroup();
+  let battlefieldsLoaded = false;
+  let battlefieldData = null;
+
+  const battleLegend = L.control({ position: 'bottomleft' });
+  battleLegend.onAdd = function () {
+    const div = L.DomUtil.create('div', 'trail-legend');
+    div.id = 'battleLegend';
+    return div;
+  };
+
+  // The polygons are deliberately not interactive, for the same reason the
+  // state outlines are not: they are big, and a click anywhere inside one
+  // would be swallowed instead of dropping a pin. So the names come here
+  // instead of from a popup.
+  function updateBattleLegend() {
+    const el = document.getElementById('battleLegend');
+    if (!el) return;
+    const key = Object.values(BATTLE_STYLE)
+      .map(v => `<span><i style="background:${v.color}"></i>${v.label}</span>`).join('');
+    let foot = 'NPS ABPP study areas · reference only';
+    if (battlefieldData) {
+      const b = map.getBounds();
+      const here = battlefieldData.features.filter(f => {
+        const g = f.geometry; if (!g) return false;
+        const rings = g.type === 'Polygon' ? g.coordinates : g.coordinates.flat();
+        return rings.some(r => r.some(pt => b.contains([pt[1], pt[0]])));
+      });
+      // ABPP carries more than one polygon for some battles (a study area and
+      // a core area, or a later resurvey), so the same name can repeat.
+      const seen = [...new Set(here.map(f => f.properties.n).filter(Boolean))];
+      if (seen.length) {
+        const names = seen.slice(0, 3).map(escapeHtml).join(', ');
+        foot = names + (seen.length > 3 ? ` +${seen.length - 3} more` : '') +
+               ' · NPS ABPP · reference only';
+      }
+    }
+    el.innerHTML = key + `<span class="trail-legend-src">${foot}</span>`;
+  }
+
+  map.on('overlayadd', function (e) {
+    if (e.layer !== battlefields) return;
+    battleLegend.addTo(map);
+    updateBattleLegend();
+    if (battlefieldsLoaded) return;
+    battlefieldsLoaded = true;
+    fetch('assets/battlefields.geojson')
+      .then(r => r.json())
+      .then(gj => {
+        battlefieldData = gj;
+        L.geoJSON(gj, {
+          interactive: false,
+          // 957 polygons and ~67k vertices is a lot of DOM as SVG — one <path>
+          // each, with a very long `d`. Canvas draws the same thing in one
+          // element and pans without the browser re-laying-out any of it.
+          renderer: L.canvas({ padding: 0.3 }),
+          style: f => {
+            const st = BATTLE_STYLE[f.properties.w] || BATTLE_STYLE.cw;
+            return { color: st.color, weight: 1.5, opacity: 0.9,
+                     fillColor: st.color, fillOpacity: 0.12 };
+          }
+        }).addTo(battlefields);
+        updateBattleLegend();
+      })
+      .catch(() => {
+        battlefieldsLoaded = false;
+        const el = document.getElementById('battleLegend');
+        if (el) el.innerHTML = "<span>Couldn't load — toggle it again</span>";
+      });
+  });
+  map.on('overlayremove', function (e) {
+    if (e.layer === battlefields) battleLegend.remove();
+  });
+  map.on('moveend zoomend', function () {
+    if (map.hasLayer(battlefields)) updateBattleLegend();
+  });
+
   L.control.layers(
     { 'Satellite': satellite, 'Streets': streets },
     { 'State outlines': stateOutlines, 'Trails west': historicTrails,
-      'Ghost towns & lost sites': vanishedPlaces }
+      'Ghost towns & lost sites': vanishedPlaces, 'Battlefields': battlefields }
   ).addTo(map);
 
   // Both overlays are also reachable from Leaflet's layers control, but that
@@ -1632,6 +1726,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   wireOverlayButton('stateLinesBtn', stateOutlines, '🗺️ State lines: on', '🗺️ Show state lines');
   wireOverlayButton('trailsBtn', historicTrails, '🥾 Trails west: on', '🥾 Show trails west');
   wireOverlayButton('vanishedBtn', vanishedPlaces, '🏚️ Ghost towns: on', '🏚️ Show ghost towns');
+  wireOverlayButton('battlefieldsBtn', battlefields, '⚔️ Battlefields: on', '⚔️ Show battlefields');
 
   // Zoom lock: pins minZoom/maxZoom to the current zoom level, which makes
   // Leaflet itself refuse every zoom trigger (scroll wheel, pinch,
