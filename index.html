@@ -2652,7 +2652,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         // ordinary "heads up, there's a park nearby" line.
         if (parts.length) setStatus(parts.join(' '), npsFailed);
 
-        showLocMaps((placeInput.value || '').trim() || areas[0] || '');
+        showLocMaps((document.getElementById('placeInput').value || '').trim() || areas[0] || '');
       })
       .catch(err => { setStatus('Request failed: ' + err, true); stopSearchProgress(); searchBtn.disabled = false; });
   }
