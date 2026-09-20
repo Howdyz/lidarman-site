@@ -5,27 +5,27 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#7a3b2e">
-<title>How to Read LIDAR Terrain Maps: Hillshade, Slope &amp; Local Relief — Lidarman</title>
-<link rel="canonical" href="https://lidarman.com/reading-lidar-hillshade-maps.html">
+<title>Finding Old Mining Camps: Where the Miners Lived, Not Where They Dug — Lidarman</title>
+<link rel="canonical" href="https://lidarman.com/finding-old-mining-camps.html">
 <link rel="icon" type="image/png" href="assets/icon-192.png">
-<meta name="description" content="What hillshade, slope, Local Relief Model, and sky-view openness actually show you in LIDAR terrain data, and a practical workflow for reading them together.">
+<meta name="description" content="44,677 abandoned US metal mines are on record. The camp is never quite where the mine is — how to read cabin platforms, dumps and haul roads to find the ground people actually lived on.">
 <meta property="og:type" content="article">
-<meta property="og:url" content="https://lidarman.com/reading-lidar-hillshade-maps.html">
-<meta property="og:title" content="How to Read LIDAR Terrain Maps: Hillshade, Slope &amp; Local Relief">
-<meta property="og:description" content="What each terrain-visualization style is actually showing you, and a practical workflow for reading them together in the field.">
+<meta property="og:url" content="https://lidarman.com/finding-old-mining-camps.html">
+<meta property="og:title" content="Finding Old Mining Camps">
+<meta property="og:description" content="The mine is a hole; the camp is where the people were. How to find the second from the first.">
 <meta property="og:image" content="https://lidarman.com/assets/hero-background.jpg">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="How to Read LIDAR Terrain Maps: Hillshade, Slope &amp; Local Relief">
-<meta name="twitter:description" content="What each terrain-visualization style is actually showing you, and a practical workflow for reading them together in the field.">
+<meta name="twitter:title" content="Finding Old Mining Camps">
+<meta name="twitter:description" content="The mine is a hole; the camp is where the people were. How to find the second from the first.">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "Article",
-  "headline": "How to Read LIDAR Terrain Maps: Hillshade, Slope & Local Relief",
-  "description": "What hillshade, slope, Local Relief Model, and sky-view openness actually show you in LIDAR terrain data, and a practical workflow for reading them together.",
+  "headline": "Finding Old Mining Camps",
+  "description": "44,677 abandoned US metal mines are on record. The camp is never quite where the mine is — how to read cabin platforms, dumps and haul roads to find the ground people actually lived on.",
   "author": { "@type": "Organization", "name": "Lidarman" },
   "publisher": { "@type": "Organization", "name": "Lidarman", "url": "https://lidarman.com/" },
-  "mainEntityOfPage": "https://lidarman.com/reading-lidar-hillshade-maps.html"
+  "mainEntityOfPage": "https://lidarman.com/finding-old-mining-camps.html"
 }
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -147,116 +147,172 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 
   <div class="titleblock">
     <span class="kicker">Field guide</span>
-    <h1>How to Read LIDAR Terrain Maps</h1>
-    <div class="dek">Hillshade, slope, Local Relief Model, and sky-view openness are four different ways of looking at the same elevation data. Each one hides different things and reveals different things.</div>
+    <h1>Finding Old Mining Camps</h1>
+    <div class="dek">There are 44,677 abandoned metal mines on record in the United States. The camp is never quite where the mine is, and knowing the difference is most of the job.</div>
   </div>
 
   <div class="abstract">
     <span class="label">In short</span>
-    Raw elevation numbers rarely show anything to the eye — a foundation reduced to a few centimeters of relief is invisible at normal color scales. Hillshade, slope, Local Relief Model, and sky-view openness are all just different math applied to the same digital elevation model to exaggerate exactly that kind of small, local relief. None of them is strictly "better" — they surface different failure modes, which is why Lidarman lets you switch between them on the same search without re-running it.
+    A mine is a hole. A camp is where the people who worked the hole ate, slept, drank, got paid and lost things. They are always close and never the same spot, because nobody builds a bunkhouse on top of the ore. The US Geological Survey's mineral database records the holes — every past producer, with its metal. Read those clusters properly and they tell you where to look for the living.
   </div>
 
-  <p class="quick-cta">Want to see these styles on your own ground? <a href="index.html#try-it">Run a search</a> — 3 free, no account.</p>
+  <p class="quick-cta">The mining camps layer is built into the map. <a href="index.html#try-it">Run a search</a> — 3 free, no account.</p>
 
   <nav class="toc">
     Contents
     <ol>
-      <li><a href="#hillshade">1. Hillshade</a></li>
-      <li><a href="#slope">2. Slope</a></li>
-      <li><a href="#lrm">3. Local Relief Model</a></li>
-      <li><a href="#openness">4. Sky-view openness</a></li>
-      <li><a href="#workflow">5. A practical workflow</a></li>
-      <li><a href="#cheatsheet">6. Cheat sheet by feature type</a></li>
+      <li><a href="#data">1. What the 44,677 actually are</a></li>
+      <li><a href="#camp">2. The camp is not the mine</a></li>
+      <li><a href="#ground">3. What a camp leaves behind</a></li>
+      <li><a href="#dates">4. The dating problem</a></li>
+      <li><a href="#pairing">5. Pairing it with ghost towns</a></li>
+      <li><a href="#safety">6. Two things that will hurt you</a></li>
     </ol>
   </nav>
 
-  <section id="hillshade">
-    <h2>1. Hillshade</h2>
+  <section id="data">
+    <h2>1. What the 44,677 actually are</h2>
     <p>
-      Hillshade simulates sunlight hitting the terrain from a fixed direction and renders the result in grayscale — it's the closest thing to "what the ground would look like if you stripped away every tree and building and lit it from one angle." It's the easiest style to read at a glance, because it looks like a photograph of terrain rather than an abstraction.
+      The source is the USGS Mineral Resources Data System, a national record of
+      mineral occurrences, prospects and mines. The full file runs to over 300,000
+      records worldwide and includes a great deal that is no use to a detectorist —
+      active operations, gravel pits, stone quarries and mineral occurrences nobody
+      ever dug.
     </p>
     <p>
-      The catch is direction-dependence: a feature that happens to face away from the simulated sun can wash out almost completely, while an identical feature facing the light stands out sharply. A single-direction hillshade can genuinely miss things that are sitting right there. Lidarman's default composite view uses a <i>multi-directional</i> hillshade — the same calculation averaged over eight compass directions — specifically to reduce this blind spot, but the plain single-direction hillshade style is still useful on its own as the fastest way to get oriented in a new area before switching to something more sensitive.
+      Filtered to United States sites that are <b>past producers</b> of metal —
+      meaning something was actually extracted and the workings are now abandoned —
+      it comes to 44,677:
     </p>
-  </section>
-
-  <section id="slope">
-    <h2>2. Slope</h2>
-    <p>
-      Slope measures steepness — the rate of elevation change — at every point, independent of which way it faces. This is what makes it the right tool for <i>not missing anything</i>: an edge that a hillshade might hide because of unlucky lighting geometry still shows up in slope, because slope doesn't care about light direction at all.
-    </p>
-    <p>
-      What slope can't tell you on its own is whether an edge is the top of a rise or the bottom of a dip — a foundation wall and the ditch running next to it can produce a very similar-looking bright edge in a pure slope map. It's a detector for "something changes here," not a classifier for what kind of change it is.
-    </p>
-  </section>
-
-  <section id="lrm">
-    <h2>3. Local Relief Model (LRM)</h2>
-    <p>
-      The Local Relief Model isolates small, local bumps and dips from the broader regional terrain trend: take the elevation model, heavily smooth a copy of it (a large-radius Gaussian blur), then subtract the smoothed version from the original. What's left is only the local deviation — a gentle hillside disappears into the subtraction, while a sharp, small-scale foundation outline or ditch survives it.
-    </p>
-    <p>
-      LRM is the clearest style for sorting <i>raised</i> from <i>sunken</i> at a glance, typically rendered on a diverging color scale: warm/red for higher than the immediate surroundings, cool/blue for lower. It's also the layer Lidarman's automatic candidate-detector itself analyzes (thresholded, then run through contour extraction and shape scoring) — when the tool flags a rectangular or circular candidate, LRM is what it actually looked at.
-    </p>
-    <figure class="guide-fig">
-      <img src="assets/synthetic_lrm.jpg" width="800" height="791"
-           alt="Local Relief Model of a test elevation model, raised features red and sunken features blue">
-      <figcaption>A Local Relief Model on the diverging scale described above —
-        red where the ground sits higher than its immediate surroundings, blue
-        where it sits lower. This is the validation DEM, where the buried
-        shapes are known in advance.</figcaption>
-    </figure>
-    <div class="callout">
-      <span class="tag">Limitation worth knowing</span>
-      A large, perfectly flat raised feature — a big building pad, for instance — can be nearly invisible in the <i>interior</i> of an LRM, because the smoothing radius only lights up the <i>edges</i> of a plateau much bigger than itself. The interior blends back into the smoothed baseline. If you're looking at a large flat-topped feature, cross-check it against slope or hillshade rather than trusting LRM's interior reading alone.
-    </div>
-  </section>
-
-  <section id="openness">
-    <h2>4. Sky-view openness</h2>
-    <p>
-      Openness measures the average horizon angle visible from each point across several compass directions — essentially, how much open sky a point on the ground can "see." <i>Positive</i> openness highlights convex features (mounds, walls, raised pads) that poke up above their surroundings; <i>negative</i> openness highlights concave features (pits, ditches, sunken paths) that dip below theirs. Because it's an average across many directions rather than one simulated light source, it doesn't share hillshade's direction-dependent blind spot.
-    </p>
-    <p>
-      Lidarman's default composite blends positive and negative openness with hillshade into one RGB image, which is why the composite view is a reasonable all-around default even before you know what you're looking for.
-    </p>
-  </section>
-
-  <section id="workflow">
-    <h2>5. A practical workflow</h2>
-    <figure class="guide-fig">
-      <img src="assets/gettysburg_composite.jpg" width="800" height="791"
-           alt="RGB composite of LIDAR terrain data over downtown Gettysburg, Pennsylvania">
-      <figcaption>The composite Lidarman shows by default — positive openness,
-        inverted negative openness and hillshade combined into one image. Real
-        data over downtown Gettysburg, PA; building outlines, streets and the
-        Lincoln Square circle all resolve.</figcaption>
-    </figure>
-
-    <p>Rather than picking one style and sticking with it, treat them as a sequence:</p>
-    <ol>
-      <li><b>Start with slope</b> to catch every edge in view — this is your net, cast wide.</li>
-      <li><b>Switch to Local Relief</b> to sort what you found into raised vs. sunken, and to see how the automatic detector is scoring it.</li>
-      <li><b>Check hillshade</b> as a gut-check — does it look like plausible real terrain, or does it look like a rendering artifact?</li>
-    </ol>
-    <p>
-      This costs nothing extra: Lidarman computes all four derivative layers for every search, so switching styles is instant and doesn't re-run anything.
-    </p>
-  </section>
-
-  <section id="cheatsheet">
-    <h2>6. Cheat sheet by feature type</h2>
-    <div class="legend">
-      <span><span class="dot" style="background:#ffd54f;"></span>rectangular</span>
-      <span><span class="dot" style="background:#4dd0e1;"></span>circular</span>
-      <span><span class="dot" style="background:#ff7043;"></span>irregular</span>
-    </div>
     <ul>
-      <li><b>Sunken paths &amp; old roads</b> — Local Relief, look for a blue trail. Slope is a good backup: it shows as two parallel bright edges where the path dips in and climbs back out.</li>
-      <li><b>Basements &amp; cellars</b> — Local Relief (a blue rectangle), cross-checked against slope — steep cellar walls often read as a bright "picture frame" outline around a flatter, darker floor.</li>
-      <li><b>Foundations (old wall stubs)</b> — Local Relief or the composite view, looking for a thin warm-colored outline.</li>
-      <li><b>Walls, berms &amp; mounds</b> — Composite or Local Relief — these are raised features, so they read warm on both.</li>
+      <li><b>24,307 gold</b></li>
+      <li><b>6,350 lead</b></li>
+      <li><b>4,633 silver</b></li>
+      <li><b>4,199 copper</b></li>
+      <li><b>2,613 zinc</b>, plus tungsten, mercury and tin</li>
     </ul>
+    <p>
+      They are heavily concentrated in the West — California, Nevada, Colorado,
+      Arizona and Alaska carry the bulk — but Missouri's lead belt and the
+      Appalachian copper and gold districts put real numbers in the East too.
+    </p>
+  </section>
+
+  <section id="camp">
+    <h2>2. The camp is not the mine</h2>
+    <p>
+      This is the single most useful idea in this guide. The dot in the database is
+      a working — a shaft, an adit, a placer claim. Standing on it puts you on
+      waste rock, which is the least productive ground in the district.
+    </p>
+    <p>
+      The people lived <b>near</b> it, and their choice of where was governed by
+      things you can see in terrain data:
+    </p>
+    <ul>
+      <li><b>Below the workings, not above.</b> Ore goes downhill easily; men climb
+        up to it. Camps sit lower.</li>
+      <li><b>On the first flat ground.</b> Anywhere a tent or a cabin could stand
+        without being cut into the slope.</li>
+      <li><b>Beside water.</b> Non-negotiable — drinking, washing, and for placer
+        work the whole operation.</li>
+      <li><b>Along the haul road.</b> Whatever route the ore took out is the route
+        everything else came in on.</li>
+    </ul>
+    <p>
+      So when you see a cluster of workings, look downslope, at the nearest flat
+      bench beside the nearest creek. That is your search centre.
+    </p>
+  </section>
+
+  <section id="ground">
+    <h2>3. What a camp leaves behind</h2>
+    <p>
+      <b>Cabin platforms.</b> On a slope, building anything flat means cutting into
+      the hill and piling the spoil on the downhill side. That leaves a distinctive
+      shelf — flat, rectangular, with a cut bank behind it. They are very hard to
+      see on the ground under brush and very obvious in a Local Relief Model. A row
+      of them along a contour is a camp.
+    </p>
+    <p>
+      <b>The dump.</b> Downhill, downwind, over the nearest edge. Tin cans, bottle
+      glass and stove parts, and in a mining camp a notably high proportion of
+      dropped coins, because these were cash economies.
+    </p>
+    <p>
+      <b>Tailings and waste piles.</b> Large, smooth, unnaturally uniform mounds
+      with a flat top or a fan shape. Useful as landmarks — they mark the workings
+      so you can orient from them — but not places to detect.</p>
+    <p>
+      <b>The road.</b> Mining roads were cut for loaded wagons, so they hold a
+      steady grade and switchback rather than running straight up. A switchbacking
+      cut that leads to nothing is leading to something that was there.
+    </p>
+  </section>
+
+  <section id="dates">
+    <h2>4. The dating problem</h2>
+    <p>
+      Worth knowing before you build a plan around it: only <b>6,731 of the 44,677
+      records carry any date at all</b>. "Past producer" means abandoned. It does
+      not tell you whether that happened in 1874 or 1974, and a 1970s exploration
+      adit is a very different afternoon from a gold-rush camp.
+    </p>
+    <p>
+      Where the record has a first-production or discovery year, the popup shows it.
+      Where it doesn't, the district's history is the shortcut — a state geological
+      survey bulletin or a county history will usually date a whole district in one
+      go, and that is close enough to decide whether to walk it.
+    </p>
+    <p>
+      Coordinate precision varies for the same reason. Some entries are surveyed;
+      others were derived from a section centre on an old report. Treat the dot as
+      approximate and search around it.
+    </p>
+  </section>
+
+  <section id="pairing">
+    <h2>5. Pairing it with ghost towns</h2>
+    <p>
+      Turn on the <a href="finding-ghost-towns-with-lidar.html">ghost towns</a>
+      layer at the same time and the map starts answering questions on its own.
+    </p>
+    <p>
+      A vanished town sitting inside a cluster of workings is a mining camp, and
+      the two layers together give you both halves — the government's record of
+      where people lived, and the record of what they were digging. That combination
+      dates the site, tells you the population was transient and carrying cash, and
+      separates the living ground from the working ground.
+    </p>
+    <p>
+      Workings with no vanished town near them usually mean the men walked in from
+      somewhere that still exists, or camped rough and left less. Still worth
+      looking, but expect thinner material.
+    </p>
+  </section>
+
+  <section id="safety">
+    <h2>6. Two things that will hurt you</h2>
+    <p>
+      <b>Open shafts.</b> Abandoned mine workings kill people every year. Vertical
+      shafts get covered by brush, snow and rotten timber, and a covered shaft looks
+      like ground. Never walk a mine site alone, never approach an opening, and
+      treat any unexplained depression as a hazard rather than a feature.
+    </p>
+    <p>
+      <b>Claims are property.</b> An abandoned mine is not necessarily abandoned
+      land. Many sites sit on active mining claims, which are private rights even
+      on public ground, and taking material from one is theft rather than detecting.
+      Others are on federal land where the rules differ by agency, and a site old
+      enough to be interesting is often old enough to be protected as an
+      archaeological resource.
+    </p>
+    <p>
+      Lidarman flags candidates on National Park Service and other federal land
+      automatically, but it cannot see mining claims. Check before you go —
+      see <a href="metal-detecting-permission-and-legal-basics.html">permission and
+      legal basics</a>.
+    </p>
   </section>
 
   <section id="more-guides">
@@ -264,8 +320,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     <ul>
       <li><b><a href="finding-ghost-towns-with-lidar.html">Finding Ghost Towns With LIDAR</a></b> — What a vanished town leaves in the ground, where the list of 16,525 of them comes from, and why the dot is only a starting point.</li>
       <li><b><a href="detecting-near-civil-war-battlefields.html">Detecting Near Civil War Battlefields</a></b> — The protected core is off limits — the study area around it often isn't. How to tell the two apart before you knock.</li>
-      <li><b><a href="finding-old-mining-camps.html">Finding Old Mining Camps</a></b> — 44,677 abandoned metal mines, what the camp left behind as opposed to the workings, and why the two are a short walk apart.</li>
       <li><b><a href="finding-old-homesteads-with-lidar.html">Finding Old Homestead Sites With LIDAR</a></b> — What a vanished foundation, root cellar or filled-in farm road looks like in elevation data, and how to tell them from natural ground.</li>
+      <li><b><a href="reading-lidar-hillshade-maps.html">How to Read LIDAR Terrain Maps</a></b> — Hillshade, slope, Local Relief Model and sky-view openness, and a practical workflow for reading them together.</li>
       <li><b><a href="historical-maps-for-metal-detecting.html">Historical Maps for Metal Detecting</a></b> — Where to get old maps free, what the symbols mean, and how to line a century-old sheet up with the ground you are standing on.</li>
       <li><b><a href="detecting-along-the-westward-trails.html">Detecting Along the Westward Trails</a></b> — What survives of the Oregon, California, Pony Express and Santa Fe routes, and how ruts and swales read in terrain data.</li>
       <li><b><a href="free-public-lidar-data-sources.html">Free Public LIDAR Data Sources</a></b> — Where LIDAR elevation data comes from in the US — USGS 3DEP, OpenTopography and state GIS portals — and what each is good for.</li>
@@ -274,11 +330,11 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   </section>
 
   <div class="cta-box">
-    <p>Every style above is one click away on a real search — no manual GIS work, no separate download.</p>
+    <p>All 44,677 abandoned metal mines are on the map — gold, silver, copper and the rest.</p>
     <a class="gh" href="index.html#try-it">Try a search — 3 free</a>
   </div>
 
-  <p><a href="guides.html">&larr; Back to guides</a> &nbsp;·&nbsp; <a href="finding-old-homesteads-with-lidar.html">Next: Finding Old Homestead Sites With LIDAR &rarr;</a></p>
+  <p><a href="guides.html">&larr; Back to guides</a> &nbsp;&middot;&nbsp; <a href="finding-ghost-towns-with-lidar.html">Next: Finding Ghost Towns With LIDAR &rarr;</a></p>
 
 </div>
 
