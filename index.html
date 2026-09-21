@@ -1479,7 +1479,16 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   // anywhere near a dot. 12px takes a ghost town from a 10px target to about
   // 35px, which is the size of a fingertip without being greedy about it.
   const COARSE_POINTER = window.matchMedia('(pointer: coarse)').matches;
-  const dotRenderer = L.canvas({ padding: 0.3, tolerance: COARSE_POINTER ? 12 : 0 });
+  const dotRenderer = L.canvas({ padding: 0.3 });
+  // How close a finger has to land to select a circle. Not the renderer's
+  // `tolerance`, which this replaced: that inflates every circle's hit area
+  // independently, and Leaflet's canvas then picks whichever overlapping
+  // circle was drawn LAST, not the nearest one. With 61 candidates inside a
+  // 300m scan those inflated areas overlap constantly, so tapping one circle
+  // handed back a neighbour's reading — reported as taps not opening the
+  // circle you touched. Distance is measured here instead, and the nearest
+  // circle wins.
+  const TAP_RADIUS_PX = 22;
 
   // A tap is not a drag. Leaflet calls any pointer movement over 3px between
   // press and release a drag, and then discards the click entirely — for the
@@ -1528,19 +1537,30 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     featureInfoEl.scrollIntoView({ block: 'nearest' });
   }
 
+  // The circle nearest a tap, if one is close enough. Groups are checked only
+  // while they are actually on the map, so a hidden layer cannot be selected.
+  function nearestTapTarget(containerPoint) {
+    let best = null, bestDist = Infinity;
+    [candidateMarkers, vanishedPlaces, oldMines].forEach((group) => {
+      if (!group || !map.hasLayer(group)) return;
+      group.eachLayer((l) => {
+        if (!l.__build || !l._point) return;
+        const d = containerPoint.distanceTo(map.layerPointToContainerPoint(l._point));
+        if (d < bestDist) { bestDist = d; best = l; }
+      });
+    });
+    return bestDist <= TAP_RADIUS_PX ? best : null;
+  }
+
   // Same content either way. `build` stays a function so the candidate QR is
   // still only encoded for the one feature actually opened.
   function bindDetails(layer, build) {
     if (COARSE_POINTER) {
-      // Stop the click here, exactly as bindPopup does internally
-      // (Layer._openPopup calls DomEvent.stopPropagation). Without it the
-      // click carries on to the map, which drops a search pin on top of the
-      // circle and opens *its* popup — putting a tag back over the map, which
-      // is the thing this panel exists to avoid.
-      layer.on('click', (e) => {
-        L.DomEvent.stopPropagation(e);
-        showFeatureInfo(build(layer));
-      });
+      // Deliberately no click handler on the layer. A layer that listens for
+      // clicks is claimed by Leaflet's canvas renderer on a last-drawn-wins
+      // basis; leaving it silent lets the click reach the map, where one
+      // handler can compare every circle and choose the nearest.
+      layer.__build = build;
     } else {
       layer.bindPopup(build);
     }
@@ -3733,6 +3753,11 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   });
 
   map.on('click', (e) => {
+    // On a phone a tap near a circle means that circle, not a new pin.
+    if (COARSE_POINTER) {
+      const hit = nearestTapTarget(e.containerPoint);
+      if (hit) { showFeatureInfo(hit.__build(hit)); return; }
+    }
     placeSearchPin(e.latlng.lat, e.latlng.lng, true);
   });
 
