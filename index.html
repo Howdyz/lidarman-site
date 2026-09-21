@@ -405,6 +405,27 @@
   #toolSidebar { width: 300px; flex-shrink: 0; padding: 16px; box-sizing: border-box; }
   #map { flex: 1; min-height: 520px; }
 
+  /* Details for a tapped circle, on a phone.
+     A Leaflet popup carrying a QR code covers a 375px map completely — it is
+     the map, at that point. On touch the same HTML is rendered here instead,
+     under the map, where it can be as tall as it needs to be.
+     Paper, not the panel's near-black: this content was written for a white
+     Leaflet popup and carries inline colours (#8a5f16, #c0392b) chosen against
+     one. On a dark card they would be unreadable. */
+  #featureInfo {
+    margin-top: 10px; padding: 12px 14px;
+    background: var(--paper); color: var(--ink);
+    border: 1px solid var(--rule); border-radius: 8px;
+    box-shadow: 0 4px 20px var(--shadow);
+    font-family: system-ui, sans-serif; font-size: 14px; line-height: 1.55;
+  }
+  #featureInfo .fi-close {
+    float: right; margin: -4px -6px 0 10px; padding: 2px 8px;
+    background: none; border: 0; color: var(--ink-soft);
+    font-size: 22px; line-height: 1; cursor: pointer;
+  }
+  #featureInfo img, #featureInfo svg { max-width: 100%; height: auto; }
+
   /* The prose above stays at 780px — that is a reading measure and widening it
      would make the text worse. The TOOL is not prose. It was inheriting a
      1100px cap, which on a 1920px screen left 434px empty down each side and
@@ -932,6 +953,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     </div>
     <div id="map"></div>
   </div>
+  <div id="featureInfo" hidden></div>
 </div>
 
 <div class="cost-compare">
@@ -1473,6 +1495,57 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   if (COARSE_POINTER) L.Draggable.prototype.options.clickTolerance = 12;
 
   const map = L.map('map').setView([39.8283, -98.5795], 4);
+
+  // Where a tapped feature's details go.
+  //
+  // Reported from a phone: the information tag fills the whole map. It does —
+  // a candidate popup carries a rank, a reading, four measurements, a land
+  // warning, coordinates, a button and a 104px QR code, and the map on a
+  // phone is about 380px tall. So on touch pointers the same HTML goes into a
+  // panel under the map instead, and the map stays visible while you read.
+  // A mouse keeps the popup: there the map is big and the popup is not in the
+  // way.
+  const featureInfoEl = document.getElementById('featureInfo');
+
+  function hideFeatureInfo() {
+    featureInfoEl.hidden = true;
+    featureInfoEl.innerHTML = '';
+  }
+
+  function showFeatureInfo(html) {
+    featureInfoEl.innerHTML =
+      '<button type="button" class="fi-close" aria-label="Close details">\u00d7</button>' + html;
+    featureInfoEl.hidden = false;
+    featureInfoEl.querySelector('.fi-close').addEventListener('click', hideFeatureInfo);
+    // The candidate HTML carries a Track button, and the popupopen handler that
+    // normally wires it never runs when there is no popup.
+    const t = featureInfoEl.querySelector('.cand-track-btn');
+    if (t) t.addEventListener('click', () => {
+      placeSearchPin(parseFloat(t.dataset.lat), parseFloat(t.dataset.lon), false);
+      hideFeatureInfo();
+      trackStatus.textContent = 'Target set. Tap "Start tracking" to begin.';
+    });
+    featureInfoEl.scrollIntoView({ block: 'nearest' });
+  }
+
+  // Same content either way. `build` stays a function so the candidate QR is
+  // still only encoded for the one feature actually opened.
+  function bindDetails(layer, build) {
+    if (COARSE_POINTER) {
+      // Stop the click here, exactly as bindPopup does internally
+      // (Layer._openPopup calls DomEvent.stopPropagation). Without it the
+      // click carries on to the map, which drops a search pin on top of the
+      // circle and opens *its* popup — putting a tag back over the map, which
+      // is the thing this panel exists to avoid.
+      layer.on('click', (e) => {
+        L.DomEvent.stopPropagation(e);
+        showFeatureInfo(build(layer));
+      });
+    } else {
+      layer.bindPopup(build);
+    }
+    return layer;
+  }
   const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
     attribution: 'Esri World Imagery', maxZoom: 20
   }).addTo(map);
@@ -1664,12 +1737,11 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       // so swallowing clicks inside them would eat every pin drop; these are
       // 5px dots, and a click that lands on one was aimed at it. Leaflet keeps
       // the click off the map handler, so the popup opens without a stray pin.
-      L.circleMarker([lat, lon], {
+      bindDetails(L.circleMarker([lat, lon], {
         renderer: dotRenderer,
         radius: 5, color: st.color, weight: 1.5,
         fillColor: st.color, fillOpacity: 0.35,
-      })
-        .bindPopup(
+      }), () =>
           `<b>${escapeHtml(name)}</b><br>${escapeHtml(st.label)}<br>` +
           `${escapeHtml(county)} County, ${escapeHtml(state)}<br>` +
           `<span style="color:#aaa;font-size:11px">USGS GNIS · position is approximate</span>`)
@@ -1863,12 +1935,11 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       // Interactive for the same reason the ghost-town dots are: a click that
       // lands on a 5px dot was aimed at it, and Leaflet keeps it off the map's
       // own handler so no stray pin is dropped.
-      L.circleMarker([lat, lon], {
+      bindDetails(L.circleMarker([lat, lon], {
         renderer: dotRenderer,
         radius: 4, color: st.color, weight: 1.5,
         fillColor: st.color, fillOpacity: 0.45,
-      })
-        .bindPopup(
+      }), () =>
           `<b>${escapeHtml(name)}</b><br>${escapeHtml(MINE_LABELS[code] || 'Metal')} workings` +
           (year ? ` · from ${year}` : '') + `<br>${escapeHtml(state || '')}<br>` +
           `<span style="color:#aaa;font-size:11px">USGS MRDS · past producer · position approximate</span>`)
@@ -2581,6 +2652,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         styleSelect.value = 'composite';
 
         candidateMarkers.clearLayers();
+        hideFeatureInfo();   // details for the previous scan's circles
         // A fresh scan always shows its circles. Leaving them hidden because
         // the last search was toggled off would silently drop the result of
         // the search just paid for.
@@ -2637,17 +2709,17 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
           // Prohibited land overrides the shape colour outright: the single
           // most important thing about a candidate you cannot legally dig is
           // that you cannot legally dig it.
-          L.circleMarker([c.lat, c.lon], {
+          bindDetails(L.circleMarker([c.lat, c.lon], {
               renderer: dotRenderer,
               radius: evidenced ? 9 : 6,
               color: prohibited ? '#c0392b' : (evidenced ? '#8a5f16' : shapeColor(c.shape)),
               weight: prohibited ? 3 : (evidenced ? 3 : 2),
               dashArray: prohibited ? '3 3' : null,
-              fillOpacity: evidenced ? 0.35 : 0.2 })
+              fillOpacity: evidenced ? 0.35 : 0.2 }),
             // Built lazily: a scan draws 60+ markers and encoding a QR for
             // every one of them up front would be wasted work, since only the
-            // opened popup is ever seen.
-            .bindPopup(() => {
+            // one actually opened is ever seen.
+            () => {
               const url = `https://www.google.com/maps/search/?api=1&query=${c.lat.toFixed(6)},${c.lon.toFixed(6)}`;
               let qr = '';
               try {
@@ -3366,6 +3438,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     if (searchPin) { map.removeLayer(searchPin); searchPin = null; }
     candidateMarkers.clearLayers();
     if (!map.hasLayer(candidateMarkers)) map.addLayer(candidateMarkers);
+    hideFeatureInfo();
     circlesToggleBtn.disabled = true;
     setCirclesLabel();
     stopTracking();
