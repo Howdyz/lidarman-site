@@ -1435,14 +1435,6 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   }
   const deviceId = getDeviceId();
 
-  const map = L.map('map').setView([39.8283, -98.5795], 4);
-  const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    attribution: 'Esri World Imagery', maxZoom: 20
-  }).addTo(map);
-  const streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
-  });
-
   // ---- Tap targets for the dots ------------------------------------------
   // Every dot on this map is an L.circleMarker, whose radius is in *screen
   // pixels* and never changes with zoom. A ghost town draws as a 10px circle
@@ -1466,6 +1458,28 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   // 35px, which is the size of a fingertip without being greedy about it.
   const COARSE_POINTER = window.matchMedia('(pointer: coarse)').matches;
   const dotRenderer = L.canvas({ padding: 0.3, tolerance: COARSE_POINTER ? 12 : 0 });
+
+  // A tap is not a drag. Leaflet calls any pointer movement over 3px between
+  // press and release a drag, and then discards the click entirely — for the
+  // layer and for the map (1.9.4: Map._findEventTargets ~4475 and
+  // Canvas._onClick ~12925). A mouse moves 0px, so on a desktop this is
+  // invisible; a finger always slides further than 3px, so tapping a circle on
+  // a phone did nothing whatsoever: no popup, no pin, no error. Reported as
+  // "the taps never hit inside the circle", and reproduced with a 6px wobble.
+  //
+  // 12px is a fingertip's worth of slop. The cost is that a pan has to travel
+  // 12px before the map starts moving, which is not perceptible. Touch only,
+  // so mouse dragging keeps its 3px precision.
+  if (COARSE_POINTER) L.Draggable.prototype.options.clickTolerance = 12;
+
+  const map = L.map('map').setView([39.8283, -98.5795], 4);
+  const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Esri World Imagery', maxZoom: 20
+  }).addTo(map);
+  const streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
+  });
+
   // State outlines, as an overlay you switch on rather than a permanent
   // fixture: at a 300m search radius they are almost never in frame, and the
   // point of the map most of the time is the terrain underneath.
