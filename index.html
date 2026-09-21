@@ -639,11 +639,28 @@
 <body>
 
 <script>
+// Stripe sends a buyer back to ?unlocked=1 and someone who abandons checkout
+// back to the same page with no query at all — same path, same
+// checkout.stripe.com referrer. Sending that one flag is what separates them.
+//
+// The flag is read and rebuilt here rather than forwarding location.search:
+// ?admin=<secret> and ?gift=<code> arrive by the same route, and a beacon that
+// posted the raw query string would hand the owner's admin secret to the
+// server and into its logs.
+//
+// This must stay ahead of the code that clears the flag off the URL: the
+// handler further down calls history.replaceState to tidy ?unlocked=1 away
+// once it has been acted on, and a beacon reading location.search after that
+// would see a bare "/" on every paid return.
+function visitPath() {
+  var unlocked = new URLSearchParams(location.search).get('unlocked') === '1';
+  return location.pathname + (unlocked ? '?unlocked=1' : '');
+}
 // fire-and-forget page view beacon — never blocks or breaks the page if it fails
 fetch('https://lidarman-backend.onrender.com/api/visit', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ path: location.pathname, referrer: document.referrer }),
+  body: JSON.stringify({ path: visitPath(), referrer: document.referrer }),
   keepalive: true
 }).catch(function(){});
 </script>

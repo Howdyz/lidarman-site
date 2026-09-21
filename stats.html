@@ -346,9 +346,15 @@ function renderStats(data){
     return '<div class="bar-row"><div class="bar-label">' + d + '</div><div class="bar-track"><div class="bar-fill" style="width:' + pct + '%"></div></div><div class="bar-count">' + count + '</div></div>';
   }).join('') : '<div style="color:var(--ink-soft); font-size:12px;">No data yet.</div>';
 
+  // One path key is not a page: Stripe's success_url brings a buyer back to
+  // "/?unlocked=1" while someone who abandons the payment screen comes back to
+  // a bare "/". Counting them apart is the only way to see the bottom of the
+  // funnel, but "/?unlocked=1" in a list of pages reads like a bug, so it says
+  // what it means.
+  const PATH_LABELS = { '/?unlocked=1': '/ — came back from Stripe (paid)' };
   const pathsBody = document.getElementById('topPaths');
   pathsBody.innerHTML = (data.topPaths || []).length ? data.topPaths.map(p =>
-    '<tr><td>' + escapeHtml(p.key) + '</td><td>' + p.count.toLocaleString() + '</td></tr>'
+    '<tr><td>' + escapeHtml(PATH_LABELS[p.key] || p.key) + '</td><td>' + p.count.toLocaleString() + '</td></tr>'
   ).join('') : '<tr><td style="color:var(--ink-soft);">No data yet.</td></tr>';
 
   const refBody = document.getElementById('topReferrers');
