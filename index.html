@@ -439,6 +439,13 @@
     background: rgba(20,20,20,0.82); color: #eee; padding: 7px 9px;
     border-radius: 4px; font-size: 11px; line-height: 1.6;
     font-family: system-ui, sans-serif; max-width: 172px;
+    /* The key sits over the bottom-left corner of the map, and a dot that
+       lands under it becomes untappable — the legend swallows the tap and
+       nothing happens at all, which reads as the map being broken rather than
+       as something being in the way. Every legend here is static text and
+       colour swatches, with nothing to click, so taps are let through to the
+       map underneath. */
+    pointer-events: none;
   }
   .trail-legend span { display: block; white-space: nowrap; }
   .trail-legend i {
@@ -1435,6 +1442,30 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   const streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
   });
+
+  // ---- Tap targets for the dots ------------------------------------------
+  // Every dot on this map is an L.circleMarker, whose radius is in *screen
+  // pixels* and never changes with zoom. A ghost town draws as a 10px circle
+  // and a mining camp as 8px; Apple asks for 44px and Android for 48. On a
+  // phone they are genuinely hard to hit.
+  //
+  // Pinching appears to fix it and then does not, which is the confusing part:
+  // during the gesture Leaflet CSS-scales the whole overlay pane, so the dots
+  // grow with everything else, and when the gesture ends it re-projects and
+  // redraws them at the same fixed radius. Zooming in separates the dots from
+  // each other but never makes one a bigger target.
+  //
+  // The fix is the canvas renderer's `tolerance`, which widens the hit test
+  // without changing a pixel of what is drawn — CircleMarker._containsPoint
+  // measures against `radius + weight/2 + tolerance`. So the dots stay small
+  // and discreet, and a thumb still lands on them.
+  //
+  // Touch pointers only, and deliberately short of the full 44px: a tap on the
+  // map drops a search pin, and a hit area that wide would swallow pin drops
+  // anywhere near a dot. 12px takes a ghost town from a 10px target to about
+  // 35px, which is the size of a fingertip without being greedy about it.
+  const COARSE_POINTER = window.matchMedia('(pointer: coarse)').matches;
+  const dotRenderer = L.canvas({ padding: 0.3, tolerance: COARSE_POINTER ? 12 : 0 });
   // State outlines, as an overlay you switch on rather than a permanent
   // fixture: at a 300m search radius they are almost never in frame, and the
   // point of the map most of the time is the terrain underneath.
@@ -1620,6 +1651,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       // 5px dots, and a click that lands on one was aimed at it. Leaflet keeps
       // the click off the map handler, so the popup opens without a stray pin.
       L.circleMarker([lat, lon], {
+        renderer: dotRenderer,
         radius: 5, color: st.color, weight: 1.5,
         fillColor: st.color, fillOpacity: 0.35,
       })
@@ -1818,6 +1850,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       // lands on a 5px dot was aimed at it, and Leaflet keeps it off the map's
       // own handler so no stray pin is dropped.
       L.circleMarker([lat, lon], {
+        renderer: dotRenderer,
         radius: 4, color: st.color, weight: 1.5,
         fillColor: st.color, fillOpacity: 0.45,
       })
@@ -2591,6 +2624,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
           // most important thing about a candidate you cannot legally dig is
           // that you cannot legally dig it.
           L.circleMarker([c.lat, c.lon], {
+              renderer: dotRenderer,
               radius: evidenced ? 9 : 6,
               color: prohibited ? '#c0392b' : (evidenced ? '#8a5f16' : shapeColor(c.shape)),
               weight: prohibited ? 3 : (evidenced ? 3 : 2),
