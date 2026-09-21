@@ -5,27 +5,27 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#7a3b2e">
-<title>Detecting Near Civil War Battlefields: Core Area vs Study Area — Lidarman</title>
-<link rel="canonical" href="https://lidarman.com/detecting-near-civil-war-battlefields.html">
+<title>LiDAR Hillshade Maps for Metal Detecting: How to Read Them — Lidarman</title>
+<link rel="canonical" href="https://lidarman.com/lidar-hillshade-maps.html">
 <link rel="icon" type="image/png" href="assets/icon-192.png">
-<meta name="description" content="The protected core of a battlefield is closed, but the mapped study area around it is often private land. What the 957 NPS battlefield outlines actually mean, and why the camps beat the battle line.">
+<meta name="description" content="How to read LiDAR hillshade maps for metal detecting — what hillshade, slope, Local Relief Model and sky-view openness each reveal about old foundations and sunken roads, and a workflow for reading them together.">
 <meta property="og:type" content="article">
-<meta property="og:url" content="https://lidarman.com/detecting-near-civil-war-battlefields.html">
-<meta property="og:title" content="Detecting Near Civil War Battlefields">
-<meta property="og:description" content="Why the ground around a battlefield is often more productive than the battlefield, and how to tell protected land from the rest.">
+<meta property="og:url" content="https://lidarman.com/lidar-hillshade-maps.html">
+<meta property="og:title" content="LiDAR Hillshade Maps for Metal Detecting: How to Read Them">
+<meta property="og:description" content="What each terrain-visualization style actually shows a detectorist, and a practical workflow for reading them together before you go.">
 <meta property="og:image" content="https://lidarman.com/assets/hero-background.jpg">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Detecting Near Civil War Battlefields">
-<meta name="twitter:description" content="Why the ground around a battlefield is often more productive than the battlefield, and how to tell protected land from the rest.">
+<meta name="twitter:title" content="LiDAR Hillshade Maps for Metal Detecting: How to Read Them">
+<meta name="twitter:description" content="What each terrain-visualization style actually shows a detectorist, and a practical workflow for reading them together before you go.">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "Article",
-  "headline": "Detecting Near Civil War Battlefields",
-  "description": "The protected core of a battlefield is closed, but the mapped study area around it is often private land. What the 957 NPS battlefield outlines actually mean, and why the camps beat the battle line.",
+  "headline": "LiDAR Hillshade Maps for Metal Detecting: How to Read Them",
+  "description": "How to read LiDAR hillshade maps for metal detecting — what hillshade, slope, Local Relief Model and sky-view openness each reveal about old foundations and sunken roads, and a workflow for reading them together.",
   "author": { "@type": "Organization", "name": "Lidarman" },
   "publisher": { "@type": "Organization", "name": "Lidarman", "url": "https://lidarman.com/" },
-  "mainEntityOfPage": "https://lidarman.com/detecting-near-civil-war-battlefields.html"
+  "mainEntityOfPage": "https://lidarman.com/lidar-hillshade-maps.html"
 }
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -159,182 +159,126 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 
   <div class="titleblock">
     <span class="kicker">Field guide</span>
-    <h1>Detecting Near Civil War Battlefields</h1>
-    <div class="dek">The protected core of a battlefield is closed to you and always will be. The ground the fighting actually crossed is often much larger, frequently private, and a different conversation entirely.</div>
+    <h1>LiDAR Hillshade Maps for Metal Detecting</h1>
+    <div class="dek">Hillshade is where most detectorists start, but it is one of four ways of looking at the same elevation data — alongside slope, Local Relief Model, and sky-view openness. Each one hides different things and reveals different things.</div>
   </div>
 
   <div class="abstract">
     <span class="label">In short</span>
-    People assume a battlefield means a national park, and a national park means no. Both halves are true and neither is the whole picture. The National Park Service maps battlefields as <b>study areas</b> — the historians' outline of where a battle ranged — and those outlines routinely run well past the park boundary onto farms, woodlots and pasture. That margin is where permission is possible, and it is where the army camped, marched and retreated, which is usually more productive than the firing line anyway.
+    If you are metal detecting, the point of all this is to pick your ground before you drive out to it. Raw elevation numbers rarely show anything to the eye — a foundation reduced to a few centimeters of relief is invisible at normal color scales. Hillshade, slope, Local Relief Model, and sky-view openness are all just different math applied to the same digital elevation model to exaggerate exactly that kind of small, local relief. None of them is strictly "better" — they surface different failure modes, which is why Lidarman lets you switch between them on the same search without re-running it.
   </div>
 
-  <p class="quick-cta">All 957 battlefield outlines are on the map. <a href="index.html#try-it">Run a search</a> — 3 free, no account.</p>
+  <p class="quick-cta">Want to see these styles on your own ground? <a href="index.html#try-it">Run a search</a> — 3 free, no account.</p>
 
   <nav class="toc">
     Contents
     <ol>
-      <li><a href="#core">1. Core area versus study area</a></li>
-      <li><a href="#where">2. Where the boundaries come from</a></li>
-      <li><a href="#camps">3. The camps beat the battle line</a></li>
-      <li><a href="#ground">4. What survives in the terrain</a></li>
-      <li><a href="#nogo">5. The ground that is simply closed</a></li>
-      <li><a href="#workflow">6. A working method</a></li>
+      <li><a href="#hillshade">1. Hillshade</a></li>
+      <li><a href="#slope">2. Slope</a></li>
+      <li><a href="#lrm">3. Local Relief Model</a></li>
+      <li><a href="#openness">4. Sky-view openness</a></li>
+      <li><a href="#workflow">5. A practical workflow</a></li>
+      <li><a href="#cheatsheet">6. Cheat sheet by feature type</a></li>
     </ol>
   </nav>
 
-  <section id="core">
-    <h2>1. Core area versus study area</h2>
+  <section id="hillshade">
+    <h2>1. Hillshade</h2>
     <p>
-      These are two different things and the difference decides whether you have
-      anything to work with.
+      Hillshade simulates sunlight hitting the terrain from a fixed direction and renders the result in grayscale — it's the closest thing to "what the ground would look like if you stripped away every tree and building and lit it from one angle." It's the easiest style to read at a glance, because it looks like a photograph of terrain rather than an abstraction, which is why a hillshade map is usually the first thing a detectorist opens.
     </p>
     <p>
-      The <b>core area</b> is where the heaviest fighting happened. It is usually
-      the part that got preserved — the national military park, the state historic
-      site, the land a trust bought. Assume it is closed.
-    </p>
-    <p>
-      The <b>study area</b> is the historians' outline of everywhere the battle
-      ranged: the approach, the flanks, the camps, the line of retreat. It is
-      drawn from the historical record rather than from who owns the dirt, and it
-      is frequently several times the size of the protected core. Most of it is
-      ordinary private land whose owner may never have thought about it.
-    </p>
-    <p>
-      The layer on the map draws study areas. A boundary crossing a field is not
-      telling you that field is protected — it is telling you soldiers were on it.
-      Whether you can walk it is a question for the person who owns it.
+      The catch is direction-dependence: a feature that happens to face away from the simulated sun can wash out almost completely, while an identical feature facing the light stands out sharply. A single-direction hillshade can genuinely miss things that are sitting right there. Lidarman's default composite view uses a <i>multi-directional</i> hillshade — the same calculation averaged over eight compass directions — specifically to reduce this blind spot, but the plain single-direction hillshade style is still useful on its own as the fastest way to get oriented in a new area before switching to something more sensitive.
     </p>
   </section>
 
-  <section id="where">
-    <h2>2. Where the boundaries come from</h2>
+  <section id="slope">
+    <h2>2. Slope</h2>
     <p>
-      The National Park Service runs the American Battlefield Protection Program,
-      which surveys and maps battlefields so they can be prioritised for
-      preservation. Its boundary set covers <b>957 battlefields across three
-      wars</b>:
+      Slope measures steepness — the rate of elevation change — at every point, independent of which way it faces. This is what makes it the right tool for <i>not missing anything</i>: an edge that a hillshade might hide because of unlucky lighting geometry still shows up in slope, because slope doesn't care about light direction at all.
     </p>
-    <ul>
-      <li><b>718 Civil War</b> sites</li>
-      <li><b>159 Revolutionary War</b> sites</li>
-      <li><b>80 War of 1812</b> sites</li>
-    </ul>
     <p>
-      That is a far longer list than the twenty or so battles most people can name.
-      Most of these have no visitor centre, no marker and no parking — a skirmish
-      at a ford, a cavalry action at a crossroads, a rearguard fight at a mill.
-      Those are the ones nobody has worked.
+      What slope can't tell you on its own is whether an edge is the top of a rise or the bottom of a dip — a foundation wall and the ditch running next to it can produce a very similar-looking bright edge in a pure slope map. It's a detector for "something changes here," not a classifier for what kind of change it is.
     </p>
   </section>
 
-  <section id="camps">
-    <h2>3. The camps beat the battle line</h2>
+  <section id="lrm">
+    <h2>3. Local Relief Model (LRM)</h2>
     <p>
-      A battle lasted a day or two. The camp before and after it lasted weeks, and
-      an army in camp is a machine for losing small metal objects: buttons, buckles,
-      coins, eating utensils, tent hardware, horse gear, dropped and trampled
-      ammunition.
+      The Local Relief Model isolates small, local bumps and dips from the broader regional terrain trend: take the elevation model, heavily smooth a copy of it (a large-radius Gaussian blur), then subtract the smoothed version from the original. What's left is only the local deviation — a gentle hillside disappears into the subtraction, while a sharp, small-scale foundation outline or ditch survives it.
     </p>
     <p>
-      The firing line gets the attention and, near preserved ground, the
-      enforcement. The camps are usually outside the park, on the approach roads,
-      near water, on flat ground with drainage — and they are where the density of
-      finds actually is.
+      LRM is the clearest style for sorting <i>raised</i> from <i>sunken</i> at a glance, typically rendered on a diverging color scale: warm/red for higher than the immediate surroundings, cool/blue for lower. It's also the layer Lidarman's automatic candidate-detector itself analyzes (thresholded, then run through contour extraction and shape scoring) — when the tool flags a rectangular or circular candidate, LRM is what it actually looked at.
     </p>
-    <p>
-      Field hospitals are the same story. They sat behind the line, near a road and
-      near water, often in or around an existing farmstead. Look for a
-      substantial period building site within a mile or two behind where the line
-      stood.
-    </p>
+    <figure class="guide-fig">
+      <img src="assets/synthetic_lrm.jpg" width="800" height="791"
+           alt="Local Relief Model of a test elevation model, raised features red and sunken features blue">
+      <figcaption>A Local Relief Model on the diverging scale described above —
+        red where the ground sits higher than its immediate surroundings, blue
+        where it sits lower. This is the validation DEM, where the buried
+        shapes are known in advance.</figcaption>
+    </figure>
+    <div class="callout">
+      <span class="tag">Limitation worth knowing</span>
+      A large, perfectly flat raised feature — a big building pad, for instance — can be nearly invisible in the <i>interior</i> of an LRM, because the smoothing radius only lights up the <i>edges</i> of a plateau much bigger than itself. The interior blends back into the smoothed baseline. If you're looking at a large flat-topped feature, cross-check it against slope or hillshade rather than trusting LRM's interior reading alone.
+    </div>
   </section>
 
-  <section id="ground">
-    <h2>4. What survives in the terrain</h2>
+  <section id="openness">
+    <h2>4. Sky-view openness</h2>
     <p>
-      Earthworks are the great advantage of elevation data over walking. A century
-      and a half of ploughing and tree growth hides them completely from the eye
-      and from aerial photography, and they survive underneath perfectly well.
+      Openness measures the average horizon angle visible from each point across several compass directions — essentially, how much open sky a point on the ground can "see." <i>Positive</i> openness highlights convex features (mounds, walls, raised pads) that poke up above their surroundings; <i>negative</i> openness highlights concave features (pits, ditches, sunken paths) that dip below theirs. Because it's an average across many directions rather than one simulated light source, it doesn't share hillshade's direction-dependent blind spot.
     </p>
     <p>
-      <b>Entrenchments and rifle pits</b> read as a long, shallow, surprisingly
-      straight or zigzag line — usually a ditch with a bank on one side. In a Local
-      Relief Model the ditch reads cool and the parapet warm, running in parallel.
-      Nature does not build in zigzags.
-    </p>
-    <p>
-      <b>Redoubts and gun emplacements</b> are compact geometric shapes —
-      squares, lunettes, arrowheads — sitting on high ground with a view. Once you
-      have seen one you will not mistake another.
-    </p>
-    <p>
-      <b>Roads and traces</b> that no longer go anywhere mark how the army moved.
-      Where a sunken lane runs from a modern road toward the study-area boundary
-      and stops, that is the old alignment.
-    </p>
-    <p>
-      For how each visualisation renders these, see
-      <a href="lidar-hillshade-maps.html">how to read LiDAR hillshade maps</a>.
-    </p>
-  </section>
-
-  <section id="nogo">
-    <h2>5. The ground that is simply closed</h2>
-    <p>
-      Being direct about this because it is the part that gets people into real
-      trouble rather than just turned away.
-    </p>
-    <p>
-      Metal detecting on National Park Service land is prohibited under federal
-      law, and battlefield parks are actively patrolled. Digging an artefact on
-      federal ground is not a citation — it is a federal offence with a genuine
-      prospect of prosecution, forfeiture of equipment and a vehicle. State historic
-      sites and battlefield-trust land are generally closed too.
-    </p>
-    <p>
-      Lidarman runs a land-status check on every search and flags candidates that
-      fall on National Park Service ground. Treat that flag as final. Treat the
-      absence of a flag as "not checked or not federal" rather than as permission —
-      the check is best effort and it says nothing about private ownership.
-    </p>
-    <p>
-      The full picture is in
-      <a href="metal-detecting-permission-and-legal-basics.html">permission and
-      legal basics</a>.
+      Lidarman's default composite blends positive and negative openness with hillshade into one RGB image, which is why the composite view is a reasonable all-around default even before you know what you're looking for.
     </p>
   </section>
 
   <section id="workflow">
-    <h2>6. A working method</h2>
+    <h2>5. A practical workflow</h2>
+    <figure class="guide-fig">
+      <img src="assets/gettysburg_composite.jpg" width="800" height="791"
+           alt="RGB composite of LIDAR terrain data over downtown Gettysburg, Pennsylvania">
+      <figcaption>The composite Lidarman shows by default — positive openness,
+        inverted negative openness and hillshade combined into one image. Real
+        data over downtown Gettysburg, PA; building outlines, streets and the
+        Lincoln Square circle all resolve.</figcaption>
+    </figure>
+
+    <p>Rather than picking one style and sticking with it, treat them as a sequence — this is the order that wastes the least time when you are scouting somewhere to detect:</p>
     <ol>
-      <li><b>Turn on the battlefields layer</b> and find a study area near you.
-        Blue is Civil War, green Revolutionary, amber War of 1812.</li>
-      <li><b>Find the edge.</b> The interesting ground is where the outline crosses
-        onto land that isn't preserved — the margin between the park and the farms.</li>
-      <li><b>Read the history before the terrain.</b> Which direction did each side
-        approach from, and where did they camp? That narrows a large outline to a
-        few fields.</li>
-      <li><b>Scan the approach, not the monument.</b> Look for the long lines and
-        geometric shapes described above.</li>
-      <li><b>Check ownership, then knock.</b> "Your field is inside the mapped
-        study area for the battle and I'd like permission to look for camp
-        material" is a specific, informed request — and landowners near battlefields
-        have usually heard the vague version many times.</li>
-      <li><b>Cross-check with a period map.</b>
-        <a href="historical-maps-for-metal-detecting.html">Historical maps</a> often
-        show the farm names and road alignments the battle reports refer to, which
-        is how you turn an account into a location.</li>
+      <li><b>Start with slope</b> to catch every edge in view — this is your net, cast wide.</li>
+      <li><b>Switch to Local Relief</b> to sort what you found into raised vs. sunken, and to see how the automatic detector is scoring it.</li>
+      <li><b>Check hillshade</b> as a gut-check — does it look like plausible real terrain, or does it look like a rendering artifact?</li>
     </ol>
+    <p>
+      This costs nothing extra: Lidarman computes all four derivative layers for every search, so switching styles is instant and doesn't re-run anything. Reading the same ground four ways before you go is what turns a hillshade map into a shortlist of places worth swinging a coil over.
+    </p>
+  </section>
+
+  <section id="cheatsheet">
+    <h2>6. Cheat sheet by feature type</h2>
+    <p>The four shapes worth walking on, and the style that shows each one most clearly:</p>
+    <div class="legend">
+      <span><span class="dot" style="background:#ffd54f;"></span>rectangular</span>
+      <span><span class="dot" style="background:#4dd0e1;"></span>circular</span>
+      <span><span class="dot" style="background:#ff7043;"></span>irregular</span>
+    </div>
+    <ul>
+      <li><b>Sunken paths &amp; old roads</b> — Local Relief, look for a blue trail. Slope is a good backup: it shows as two parallel bright edges where the path dips in and climbs back out.</li>
+      <li><b>Basements &amp; cellars</b> — Local Relief (a blue rectangle), cross-checked against slope — steep cellar walls often read as a bright "picture frame" outline around a flatter, darker floor.</li>
+      <li><b>Foundations (old wall stubs)</b> — Local Relief or the composite view, looking for a thin warm-colored outline.</li>
+      <li><b>Walls, berms &amp; mounds</b> — Composite or Local Relief — these are raised features, so they read warm on both.</li>
+    </ul>
   </section>
 
   <section id="more-guides">
     <h2>More guides</h2>
     <ul>
       <li><b><a href="finding-ghost-towns-with-lidar.html">Finding Ghost Towns With LIDAR</a></b> — What a vanished town leaves in the ground, where the list of 16,525 of them comes from, and why the dot is only a starting point.</li>
+      <li><b><a href="detecting-near-civil-war-battlefields.html">Detecting Near Civil War Battlefields</a></b> — The protected core is off limits — the study area around it often isn't. How to tell the two apart before you knock.</li>
       <li><b><a href="finding-old-mining-camps.html">Finding Old Mining Camps</a></b> — 44,677 abandoned metal mines, what the camp left behind as opposed to the workings, and why the two are a short walk apart.</li>
       <li><b><a href="finding-old-homesteads-with-lidar.html">Finding Old Homestead Sites With LIDAR</a></b> — What a vanished foundation, root cellar or filled-in farm road looks like in elevation data, and how to tell them from natural ground.</li>
-      <li><b><a href="lidar-hillshade-maps.html">LiDAR Hillshade Maps for Metal Detecting</a></b> — Hillshade, slope, Local Relief Model and sky-view openness, and a practical workflow for reading them together.</li>
       <li><b><a href="historical-maps-for-metal-detecting.html">Historical Maps for Metal Detecting</a></b> — Where to get old maps free, what the symbols mean, and how to line a century-old sheet up with the ground you are standing on.</li>
       <li><b><a href="detecting-along-the-westward-trails.html">Detecting Along the Westward Trails</a></b> — What survives of the Oregon, California, Pony Express and Santa Fe routes, and how ruts and swales read in terrain data.</li>
       <li><b><a href="free-public-lidar-data-sources.html">Free Public LIDAR Data Sources</a></b> — Where LIDAR elevation data comes from in the US — USGS 3DEP, OpenTopography and state GIS portals — and what each is good for.</li>
@@ -343,11 +287,11 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   </section>
 
   <div class="cta-box">
-    <p>All 957 battlefield outlines — three wars — are one toggle away on the map.</p>
+    <p>Every style above is one click away on a real search — no manual GIS work, no separate download.</p>
     <a class="gh" href="index.html#try-it">Try a search — 3 free</a>
   </div>
 
-  <p><a href="guides.html">&larr; Back to guides</a> &nbsp;&middot;&nbsp; <a href="finding-old-mining-camps.html">Next: Finding Old Mining Camps &rarr;</a></p>
+  <p><a href="guides.html">&larr; Back to guides</a> &nbsp;·&nbsp; <a href="finding-old-homesteads-with-lidar.html">Next: Finding Old Homestead Sites With LIDAR &rarr;</a></p>
 
 </div>
 
