@@ -45,7 +45,7 @@
     {
       "@type": "Question",
       "name": "Does Lidarman work outside the United States?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Yes, in England. English searches run on the Environment Agency's 1m lidar, which covers about 99% of the country, at the same resolution as the US data. Everywhere else is still to come \u2014 that includes Scotland, Wales and Northern Ireland, which the English survey stops at." }
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes \u2014 England, Norway, the Netherlands and Poland, alongside the US. Each one runs on that country's own national lidar survey at the same 1m detail as the US data. Everywhere else is still to come, and that includes Scotland, Wales and Northern Ireland, which the English survey stops at." }
     },
     {
       "@type": "Question",
@@ -1088,8 +1088,10 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       ground returns), or a place name or coordinate pair, geocoded via
       OpenStreetMap/Nominatim and fetched directly from whichever national
       survey covers it — USGS's 3D Elevation Program (3DEP) in the US, the
-      Environment Agency's 1&nbsp;m LIDAR Composite in England — with no
-      manual download step and no API key required.
+      Environment Agency's LIDAR Composite in England, Kartverket's national
+      height model in Norway, AHN in the Netherlands and GUGiK's NMT in
+      Poland, each at 1&nbsp;m — with no manual download step and no API key
+      required.
     </p>
 
     <h3>2.2 Terrain visualization derivatives</h3>
@@ -1363,15 +1365,24 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 
     <h3>Does Lidarman work outside the United States?</h3>
     <p>
-      Yes, in England. Search an English place the same way you'd search a US
-      one and you'll get the same 1&nbsp;m detail — that data comes from the
-      Environment Agency's lidar survey, which covers about 99% of England.
+      Yes — England, Norway, the Netherlands and Poland. Search a place in any
+      of them the same way you'd search a US one and you'll get the same
+      1&nbsp;m detail, because each runs on that country's own national lidar
+      survey rather than a coarse worldwide one.
     </p>
     <p>
-      Nowhere else yet. The English survey stops at the border, so Scotland,
-      Wales and Northern Ireland aren't covered, and neither is anywhere
-      outside the US and England. If you search one, Lidarman will say so
-      rather than hand you a blank map.
+      Nowhere else yet. Each survey stops at its own border, so Scotland,
+      Wales and Northern Ireland aren't covered even though England is. If you
+      search somewhere with no coverage, Lidarman will say so rather than hand
+      you a blank map.
+    </p>
+    <p>
+      One thing worth knowing before you dig abroad: the tool flags protected
+      land in the US and England, but not yet in Norway, the Netherlands or
+      Poland. All three protect archaeological sites, and all three expect you
+      to have permission before detecting. Check locally — a result there
+      carries no land warnings at all, and that's a gap in Lidarman, not a
+      sign the ground is clear.
     </p>
 
     <h3>How much does Lidarman cost?</h3>
@@ -2851,28 +2862,29 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   let searchSeq = 0;
   const geocodeCache = new Map();
 
-  // How much better England's best match must be before it beats the best US
-  // one. See the note in geocodePlace for where 0.25 comes from.
-  const GB_IMPORTANCE_MARGIN = 0.25;
+  // How much better a non-US match must be before it beats the best US one.
+  // See the note in geocodePlace for where 0.25 comes from.
+  const FOREIGN_IMPORTANCE_MARGIN = 0.25;
+  const US_CODES = ['us', 'pr', 'vi'];
 
   function pickGeocodeResult(list) {
     const cc = r => (((r.address || {}).country_code) || '').toLowerCase();
     const imp = r => (typeof r.importance === 'number' ? r.importance : 0);
-    const best = codes => list.filter(r => codes.includes(cc(r)))
-                              .sort((a, b) => imp(b) - imp(a))[0] || null;
-    const us = best(['us', 'pr', 'vi']);
-    const gb = best(['gb']);
-    if (!us) return gb || list[0];
-    if (!gb) return us;
-    return imp(gb) - imp(us) > GB_IMPORTANCE_MARGIN ? gb : us;
+    const strongest = keep => list.filter(keep).sort((a, b) => imp(b) - imp(a))[0] || null;
+    const us = strongest(r => US_CODES.includes(cc(r)));
+    const foreign = strongest(r => !US_CODES.includes(cc(r)));
+    if (!us) return foreign || list[0];
+    if (!foreign) return us;
+    return imp(foreign) - imp(us) > FOREIGN_IMPORTANCE_MARGIN ? foreign : us;
   }
 
   function geocodePlace(text) {
     const key = text.toLowerCase();
     if (geocodeCache.has(key)) return Promise.resolve(geocodeCache.get(key));
-    // Still biased to US territory, but no longer limited to it: elevation
-    // comes from USGS 3DEP in the States and the Environment Agency's 1m
-    // LIDAR Composite in England, so both are worth resolving.
+    // Still biased to US territory, but no longer limited to it. Elevation
+    // comes from whichever national survey covers the spot — USGS 3DEP,
+    // the Environment Agency in England, Kartverket in Norway, AHN in the
+    // Netherlands, GUGiK in Poland — so all five are worth resolving.
     //
     // Nominatim will not do that ranking for us, and neither obvious approach
     // survives contact with it. Measured 2026-09-22:
@@ -2885,13 +2897,16 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     //     road in Washington State, "Avebury" as a street in Idaho. The US
     //     fuzzy match is never nothing.
     //
-    // So ask for both and prefer the US unless England's match is much
-    // stronger. The gap separates the two cases cleanly: ambiguous city names
-    // sit 0.08-0.22 apart (Birmingham 0.733 England vs 0.657 Alabama) while
-    // the English sites people actually come for sit far wider (Stonehenge
-    // 0.581 vs 0.265). 0.25 splits them with room on either side.
+    // So ask for all of them and prefer the US unless the foreign match is
+    // much stronger. One number does it, and the gap separates the two cases
+    // with room to spare in every country: a name that is really a US city
+    // sits 0.08-0.14 behind (Birmingham 0.733 England vs 0.657 Alabama,
+    // Bergen 0.699 Norway vs 0.561 New Jersey) while the places people
+    // actually come here for sit three to four times wider (Stonehenge 0.581
+    // vs 0.265, Amsterdam 0.788 vs 0.467, Warsaw 0.800 vs 0.465). 0.25 splits
+    // them without landing near either group.
     const url = 'https://nominatim.openstreetmap.org/search?' + new URLSearchParams({
-      q: text, format: 'jsonv2', limit: '5', countrycodes: 'us,pr,vi,gb',
+      q: text, format: 'jsonv2', limit: '6', countrycodes: 'us,pr,vi,gb,no,nl,pl',
       addressdetails: '1'
     });
     // fetch has no timeout of its own, and this is a free shared service whose
