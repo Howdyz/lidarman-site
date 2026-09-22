@@ -801,8 +801,14 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
            them" — by the site's own owner, which settles it. -->
       <div class="layer-group">
         <span class="layer-group-label">Map layers</span>
-  <button class="secondary-btn" id="stateLinesBtn" type="button">🗺️ Show state lines</button>
-  <button class="secondary-btn" id="trailsBtn" type="button">🥾 Show trails west</button>
+        <button class="secondary-btn" id="referenceBtn" type="button">🌐 Borders &amp; names: on</button>
+        <!-- Everything below this line is a US dataset. Labelling the group
+             beats letting someone in Norway press five buttons in turn and
+             watch nothing happen — the layers are not broken there, they
+             simply do not cover it, and saying so costs one line. -->
+        <span class="layer-group-label" style="margin-top:10px;">United States only</span>
+        <button class="secondary-btn" id="stateLinesBtn" type="button">🗺️ Show state lines</button>
+        <button class="secondary-btn" id="trailsBtn" type="button">🥾 Show trails west</button>
         <button class="secondary-btn" id="vanishedBtn" type="button">🏚️ Show ghost towns</button>
         <button class="secondary-btn" id="battlefieldsBtn" type="button">⚔️ Show battlefields</button>
         <button class="secondary-btn" id="minesBtn" type="button">⛏️ Show mining camps</button>
@@ -1596,6 +1602,29 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
   });
 
+  // Borders and place names, on by default, and the only map layer here that
+  // works outside the United States.
+  //
+  // Every other overlay below is a US dataset — state lines, the westward
+  // trails, ghost towns, battlefields, mines, USGS topo sheets. That was fine
+  // while the tool was US-only, but a search in Norway or Poland landed on
+  // bare satellite imagery with a purple square on it and nothing at all to
+  // say where you were: no coastline, no town, no county line. Reported by
+  // the owner as "no reference, no border lines, nothing for any of the new
+  // search sites", which is exactly right.
+  //
+  // One global Esri reference tileset fixes it everywhere at once rather than
+  // four bundled boundary files that would still leave the fifth country bare.
+  // Same provider as the imagery above, so the attribution does not change.
+  //
+  // It sits in the tile pane, which puts it *under* the lidar image overlay.
+  // That is deliberate: labels stacked on top of the terrain you are trying to
+  // read would fight the thing people came for, and the orientation you want
+  // is around the search box rather than inside it.
+  const reference = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Esri', maxZoom: 20
+  }).addTo(map);
+
   // State outlines, as an overlay you switch on rather than a permanent
   // fixture: at a 300m search radius they are almost never in frame, and the
   // point of the map most of the time is the terrain underneath.
@@ -2022,9 +2051,10 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 
   L.control.layers(
     { 'Satellite': satellite, 'Streets': streets },
-    { 'State outlines': stateOutlines, 'Trails west': historicTrails,
-      'Ghost towns & lost sites': vanishedPlaces, 'Battlefields': battlefields,
-      'Mining camps': oldMines }
+    { 'Borders & place names': reference,
+      'State outlines (US)': stateOutlines, 'Trails west (US)': historicTrails,
+      'Ghost towns & lost sites (US)': vanishedPlaces, 'Battlefields (US)': battlefields,
+      'Mining camps (US)': oldMines }
   ).addTo(map);
 
   // Both overlays are also reachable from Leaflet's layers control, but that
@@ -2050,7 +2080,13 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     const sync = (e) => { if (e.layer === layer) btn.textContent = map.hasLayer(layer) ? onLabel : offLabel; };
     map.on('overlayadd', sync);
     map.on('overlayremove', sync);
+    // Set the label once at wire time as well as on events. Every layer here
+    // used to start off, so the markup's own text was always right; the
+    // reference layer starts *on*, and without this its button would sit there
+    // reading "Show borders & names" while they were already showing.
+    btn.textContent = map.hasLayer(layer) ? onLabel : offLabel;
   }
+  wireOverlayButton('referenceBtn', reference, '🌐 Borders & names: on', '🌐 Show borders & names');
   wireOverlayButton('stateLinesBtn', stateOutlines, '🗺️ State lines: on', '🗺️ Show state lines');
   wireOverlayButton('trailsBtn', historicTrails, '🥾 Trails west: on', '🥾 Show trails west');
   wireOverlayButton('vanishedBtn', vanishedPlaces, '🏚️ Ghost towns: on', '🏚️ Show ghost towns');
