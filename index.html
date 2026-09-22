@@ -3102,8 +3102,12 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     function render(sheets) {
       if (!sheets.length) {
         histPanel.style.display = 'none';
-        setHistStatus('No historic sheets indexed for this spot. Coverage is the '
-          + 'United States only — try centring the map on land.');
+        // "try centring on land" was the whole hint back when the only way to
+        // see this was to sit the map on water. England searches reach it too
+        // now, and there the advice is just baffling — you are on land, and
+        // no amount of recentring will conjure a USGS sheet over Wiltshire.
+        setHistStatus('No historic sheets indexed for this spot. These are USGS '
+          + 'sheets, so the coverage is the United States only.');
         return;
       }
       histPanel.innerHTML = sheets.map(a => {
