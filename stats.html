@@ -133,6 +133,21 @@
     margin-bottom: 18px;
   }
   .refresh:hover { border-color: var(--accent); color: var(--accent); }
+  /* Deliberately not styled like .refresh: this one cannot be undone, and it
+     sits at the far bottom of the page rather than beside Refresh so a
+     mis-aimed click lands on nothing. */
+  .danger {
+    background: var(--paper); border: 1px solid #a4362a; color: #a4362a;
+    font-family: var(--mono); font-size: 13px; padding: 8px 14px;
+    cursor: pointer; border-radius: 3px;
+  }
+  .danger:hover { background: #a4362a; color: var(--paper); }
+  .danger:disabled { opacity: .5; cursor: default; }
+  .suspend-note { font-size: .85em; opacity: .75; line-height: 1.6; margin: 0 0 12px; }
+  .suspend-done {
+    border: 1px solid #a4362a; background: #f7ece9; color: #7d2a20;
+    padding: 12px 14px; font-size: .9em; line-height: 1.65; border-radius: 3px;
+  }
 </style>
 </head>
 <body>
@@ -242,6 +257,32 @@
         <table><tbody id="recentErrors"></tbody></table>
       </div>
     </div>
+    <div class="panel" style="grid-column: 1 / -1;" id="suspendPanel">
+      <h2>Admin Access</h2>
+      <p class="suspend-note">
+        Closes every admin endpoint — this page, customers, monitor, comp and
+        gift codes — for a set time. It takes effect straight away: it is a
+        stored flag with an expiry, not a change to ADMIN_SECRET, so there is
+        no redeploy and your saved password still works afterwards.
+      </p>
+      <p class="suspend-note">
+        <b>It cannot be lifted early.</b> Un-suspending would itself be an
+        admin call, and admin calls are what this suspends — so once you press
+        it, this page stops loading until the time is up. The unattended
+        monitor ping stops for that window too.
+      </p>
+      <div id="suspendControls" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <select id="suspendMinutes" style="font-family:var(--mono); font-size:13px; padding:7px 9px; background:var(--paper); border:1px solid var(--rule); color:var(--ink); border-radius:3px;">
+          <option value="15">15 minutes</option>
+          <option value="60" selected>1 hour</option>
+          <option value="240">4 hours</option>
+        </select>
+        <button class="danger" id="suspendBtn" type="button">Suspend admin access</button>
+        <span id="suspendHint" style="font-size:.85em; opacity:.75;"></span>
+      </div>
+      <div id="suspendResult" class="suspend-done hidden" style="margin-top:12px;"></div>
+    </div>
+
   </div>
 </div>
 
@@ -251,6 +292,70 @@ const gate = document.getElementById('gate');
 const gateError = document.getElementById('gateError');
 const dashboard = document.getElementById('dashboard');
 const secretInput = document.getElementById('secretInput');
+
+// ---- temporary admin suspension ----------------------------------------
+// Two-step on purpose. This is the one control on the page that cannot be
+// taken back, and it sits one stray click away from locking the owner out of
+// their own analytics for up to four hours, so the first press only arms it.
+// Ten seconds is long enough to read the confirm and short enough that a
+// forgotten armed button disarms itself rather than waiting to catch you.
+(function () {
+  const btn = document.getElementById('suspendBtn');
+  const sel = document.getElementById('suspendMinutes');
+  const hint = document.getElementById('suspendHint');
+  const result = document.getElementById('suspendResult');
+  if (!btn) return;
+  let armed = false, armTimer = null;
+
+  function disarm() {
+    armed = false;
+    clearTimeout(armTimer);
+    btn.textContent = 'Suspend admin access';
+    hint.textContent = '';
+  }
+
+  btn.addEventListener('click', async () => {
+    const label = sel.options[sel.selectedIndex].textContent;
+    if (!armed) {
+      armed = true;
+      btn.textContent = `Confirm — suspend for ${label}`;
+      hint.textContent = 'Click again to confirm. Cancels itself in 10s.';
+      armTimer = setTimeout(disarm, 10000);
+      return;
+    }
+    clearTimeout(armTimer);
+    btn.disabled = true;
+    btn.textContent = 'Suspending…';
+    try {
+      const res = await fetch(API_BASE + '/api/admin/suspend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-secret': getSecret() },
+        body: JSON.stringify({ minutes: Number(sel.value) })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      const until = new Date(data.suspendedUntil * 1000);
+      // The secret is dropped here as well as suspended: leaving it in
+      // sessionStorage would only let this tab keep firing 401s at endpoints
+      // that are now closed, and the point of pressing this was to stand the
+      // credential down.
+      sessionStorage.removeItem('lidarman_admin_secret');
+      document.getElementById('suspendControls').classList.add('hidden');
+      result.classList.remove('hidden');
+      result.innerHTML = 'Admin access suspended until <b>'
+        + until.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        + '</b> (' + until.toLocaleDateString() + ').<br>'
+        + 'This page will not load again until then, and the monitor ping is '
+        + 'paused. Nothing visitor-facing is affected — search, checkout and '
+        + 'webhooks all carry on. Your saved password still works afterwards.';
+      result.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    } catch (err) {
+      btn.disabled = false;
+      disarm();
+      hint.textContent = 'Failed: ' + err.message;
+    }
+  });
+})();
 
 function getSecret(){ return sessionStorage.getItem('lidarman_admin_secret') || ''; }
 function setSecret(s){ sessionStorage.setItem('lidarman_admin_secret', s); }
