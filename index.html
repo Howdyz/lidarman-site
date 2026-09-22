@@ -814,6 +814,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         <span class="layer-group-label" style="margin-top:10px;">Norway only</span>
         <button class="secondary-btn" id="nomBtn" type="button">🏺 Show cultural monuments</button>
         <button class="secondary-btn" id="nozBtn" type="button">🛡️ Show protection zones</button>
+        <button class="secondary-btn" id="nohBtn" type="button">📜 Show historic maps (1826–1917)</button>
         <span class="layer-group-label" style="margin-top:10px;">Poland only</span>
         <button class="secondary-btn" id="plmBtn" type="button">🏺 Show archaeological monuments</button>
         <span class="layer-group-label" style="margin-top:10px;">Netherlands only</span>
@@ -2363,6 +2364,45 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   map.on('overlayadd', (e) => { if (e.layer === polandMonuments) plLegend.addTo(map); });
   map.on('overlayremove', (e) => { if (e.layer === polandMonuments) plLegend.remove(); });
 
+  // ---- Norway: Kartverket's historic county maps ---------------------------
+  // The Amtskart series, roughly 1826-1917 — Norway's answer to the USGS topo
+  // sheets, and the same job: showing farms, tracks and boundaries that have
+  // since been ploughed out, next to a hillshade that still faintly holds them.
+  //
+  // Unlike the Dutch and Polish archives this one is usable as-is. Kadaster's
+  // Historische tijdreis is richer (1815 onward, fourteen epochs) but every
+  // layer is an EPSG:28992 tile cache marked TilesOnly, and Leaflet cannot mix
+  // projections in one map — using it would mean reprojecting the whole map
+  // and breaking every other layer. Poland publishes no archival topo at all:
+  // those endpoints answer 401, and the one public archival service is
+  // orthophotos from 1995, which is neither a map nor old.
+  //
+  // Deliberately in the default tile pane, *under* the lidar overlay rather
+  // than over it like Poland's monuments. That is what makes the spy lens
+  // worth using here: the lens cuts a hole in the lidar, so with this on it
+  // reveals the 1800s map underneath instead of the satellite — which is the
+  // comparison the National Library of Scotland's viewer does, on our own map.
+  const norwayHistoric = L.tileLayer.wms(
+    'https://wms.geonorge.no/skwms1/wms.historiskekart', {
+      layers: 'amt1',
+      format: 'image/png',
+      transparent: true,
+      version: '1.3.0',
+      opacity: 0.85,
+      attribution: 'Kartverket'
+    });
+
+  const noHistLegend = L.control({ position: 'bottomleft' });
+  noHistLegend.onAdd = function () {
+    const div = L.DomUtil.create('div', 'trail-legend');
+    div.id = 'noHistLegend';
+    div.innerHTML = '<span>Amtskart, c.1826&ndash;1917</span>'
+      + '<span class="trail-legend-src">Under the lidar — try the spy lens · Kartverket</span>';
+    return div;
+  };
+  map.on('overlayadd', (e) => { if (e.layer === norwayHistoric) noHistLegend.addTo(map); });
+  map.on('overlayremove', (e) => { if (e.layer === norwayHistoric) noHistLegend.remove(); });
+
   const NL_ARCH = '#e05a3a', NL_BUILT = '#6b8fb5';
   const dutchMonuments = makeHeritageLayer({
     legendId: 'nlmLegend', source: 'RCE rijksmonumenten',
@@ -2392,6 +2432,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       'Battlefields (England)': englishBattlefields,
       'Cultural monuments (Norway)': norwayMonuments,
       'Protection zones (Norway)': norwayZones,
+      'Historic maps 1826–1917 (Norway)': norwayHistoric,
       'Archaeological monuments (Poland)': polandMonuments,
       'Rijksmonuments (Netherlands)': dutchMonuments,
       'Protected townscapes (Netherlands)': dutchTownscapes,
@@ -2434,6 +2475,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   wireOverlayButton('ebBtn', englishBattlefields, '⚔️ English battlefields: on', '⚔️ Show English battlefields');
   wireOverlayButton('nomBtn', norwayMonuments, '🏺 Cultural monuments: on', '🏺 Show cultural monuments');
   wireOverlayButton('nozBtn', norwayZones, '🛡️ Protection zones: on', '🛡️ Show protection zones');
+  wireOverlayButton('nohBtn', norwayHistoric, '📜 Historic maps: on', '📜 Show historic maps (1826–1917)');
   wireOverlayButton('plmBtn', polandMonuments, '🏺 Archaeological monuments: on', '🏺 Show archaeological monuments');
   wireOverlayButton('nlmBtn', dutchMonuments, '🏺 Rijksmonuments: on', '🏺 Show rijksmonuments');
   wireOverlayButton('nltBtn', dutchTownscapes, '🏛️ Protected townscapes: on', '🏛️ Show protected townscapes');
