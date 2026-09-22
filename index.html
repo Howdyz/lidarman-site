@@ -814,6 +814,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         <span class="layer-group-label" style="margin-top:10px;">Norway only</span>
         <button class="secondary-btn" id="nomBtn" type="button">🏺 Show cultural monuments</button>
         <button class="secondary-btn" id="nozBtn" type="button">🛡️ Show protection zones</button>
+        <span class="layer-group-label" style="margin-top:10px;">Poland only</span>
+        <button class="secondary-btn" id="plmBtn" type="button">🏺 Show archaeological monuments</button>
         <span class="layer-group-label" style="margin-top:10px;">Netherlands only</span>
         <button class="secondary-btn" id="nlmBtn" type="button">🏺 Show rijksmonuments</button>
         <button class="secondary-btn" id="nltBtn" type="button">🏛️ Show protected townscapes</button>
@@ -2312,6 +2314,55 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     nameOf: p => p.name || null
   });
 
+  // ---- Poland: NID's registered archaeological monuments -------------------
+  // The odd one out, and not by choice. NID publishes a WMS and nothing else:
+  // the geoportal's WFS endpoints answer 401 and the INSPIRE download variants
+  // 404, so there are no features to fetch — only a picture of them. This is
+  // therefore a tile layer rather than named polygons, and it is the reason
+  // the backend's land check reads the same layer as a raster mask.
+  //
+  // Requested in EPSG:3857, which is Leaflet's own projection and sidesteps
+  // the axis-order trap entirely: WMS 1.3.0 with EPSG:4326 wants lat,lon and
+  // returns a blank tile rather than an error when fed lon,lat. 3857 has no
+  // such ambiguity, so there is nothing to get wrong.
+  //
+  // In its own pane above the overlay pane, so it stays visible over the lidar
+  // raster instead of being buried under it. Below the marker pane, so the
+  // candidate circles still sit on top and stay clickable.
+  map.createPane('plPane');
+  map.getPane('plPane').style.zIndex = 450;
+  const polandMonuments = L.tileLayer.wms(
+    'https://usluga.zabytek.gov.pl/INSPIRE_AMD/service.svc/get', {
+      layers: 'Archaeological_Monuments',
+      format: 'image/png',
+      transparent: true,
+      version: '1.3.0',
+      pane: 'plPane',
+      // 0.9 rather than the 0.7 the other overlays use. NID renders this grey
+      // (#808080 across 95% of its opaque pixels, sampled from a tile), and
+      // grey over green satellite is already low contrast without fading it
+      // further. Unlike the other three countries this styling is the
+      // server's, not ours — a rendered tile arrives the colour it arrives.
+      opacity: 0.9,
+      attribution: 'NID'
+    });
+
+  const plLegend = L.control({ position: 'bottomleft' });
+  plLegend.onAdd = function () {
+    const div = L.DomUtil.create('div', 'trail-legend');
+    div.id = 'plLegend';
+    // No name list, unlike every other heritage layer here, and that is a
+    // property of the source rather than a gap: a rendered tile has no
+    // attributes to read. Saying so beats an empty list that looks broken.
+    // Swatch matches what NID actually draws, not what we would have picked:
+    // sampled from a tile, 95% of its opaque pixels are #808080.
+    div.innerHTML = '<span><i style="background:#808080"></i>Registered archaeological monument</span>'
+      + '<span class="trail-legend-src">Shaded areas only — this register publishes no names · NID</span>';
+    return div;
+  };
+  map.on('overlayadd', (e) => { if (e.layer === polandMonuments) plLegend.addTo(map); });
+  map.on('overlayremove', (e) => { if (e.layer === polandMonuments) plLegend.remove(); });
+
   const NL_ARCH = '#e05a3a', NL_BUILT = '#6b8fb5';
   const dutchMonuments = makeHeritageLayer({
     legendId: 'nlmLegend', source: 'RCE rijksmonumenten',
@@ -2341,6 +2392,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       'Battlefields (England)': englishBattlefields,
       'Cultural monuments (Norway)': norwayMonuments,
       'Protection zones (Norway)': norwayZones,
+      'Archaeological monuments (Poland)': polandMonuments,
       'Rijksmonuments (Netherlands)': dutchMonuments,
       'Protected townscapes (Netherlands)': dutchTownscapes,
       'State outlines (US)': stateOutlines, 'Trails west (US)': historicTrails,
@@ -2382,6 +2434,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   wireOverlayButton('ebBtn', englishBattlefields, '⚔️ English battlefields: on', '⚔️ Show English battlefields');
   wireOverlayButton('nomBtn', norwayMonuments, '🏺 Cultural monuments: on', '🏺 Show cultural monuments');
   wireOverlayButton('nozBtn', norwayZones, '🛡️ Protection zones: on', '🛡️ Show protection zones');
+  wireOverlayButton('plmBtn', polandMonuments, '🏺 Archaeological monuments: on', '🏺 Show archaeological monuments');
   wireOverlayButton('nlmBtn', dutchMonuments, '🏺 Rijksmonuments: on', '🏺 Show rijksmonuments');
   wireOverlayButton('nltBtn', dutchTownscapes, '🏛️ Protected townscapes: on', '🏛️ Show protected townscapes');
 
