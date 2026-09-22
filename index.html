@@ -2107,6 +2107,26 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     const nameOf = opts.nameOf || (p => p.Name);
     const styleOf = opts.styleOf || (() => ({ color: opts.color, fillColor: opts.color }));
 
+    // Same backstop the backend land check carries, for the same reason. The
+    // Dutch WFS asked without srsName answers in EPSG:28992 metres while still
+    // reporting the features it found — and Leaflet will happily accept
+    // [120924, 487346] as a coordinate and draw the layer somewhere off the
+    // coast of Africa, with the legend cheerfully naming monuments. Better to
+    // say the load failed than to draw a heritage layer in the wrong country.
+    function looksLikeLonLat(gj) {
+      for (const f of (gj.features || []).slice(0, 5)) {
+        const g = f.geometry; if (!g) continue;
+        const rings = g.type === 'Polygon' ? g.coordinates
+          : g.type === 'MultiPolygon' ? g.coordinates.flat() : [];
+        for (const r of rings) {
+          for (const p of r.slice(0, 4)) {
+            if (!(p[0] >= -180 && p[0] <= 180 && p[1] >= -90 && p[1] <= 90)) return false;
+          }
+        }
+      }
+      return true;
+    }
+
     function render(gj) {
       if (drawn) group.removeLayer(drawn);
       drawn = L.geoJSON(gj, {
@@ -2140,6 +2160,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         .then(r => r.json())
         .then(gj => {
           if (!gj || !Array.isArray(gj.features)) throw new Error('bad response');
+          if (!looksLikeLonLat(gj)) throw new Error('wrong CRS');
           lastBounds = q;
           render(gj);
         })
