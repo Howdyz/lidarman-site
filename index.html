@@ -810,7 +810,15 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         <span class="layer-group-label" style="margin-top:10px;">England only</span>
         <button class="secondary-btn" id="smBtn" type="button">🏺 Show scheduled monuments</button>
         <button class="secondary-btn" id="ebBtn" type="button">⚔️ Show English battlefields</button>
-        <button class="secondary-btn" id="nlsBtn" type="button">📜 Historic OS maps here</button>
+        <!-- "Open", not "Show", and an arrow: this is the one historic-map
+             button on the page that does not draw on this map. The US and
+             Norwegian ones are overlays, and "Historic OS maps here" read
+             exactly like them, so it promised something it does not do.
+             England cannot be an overlay without paying - NLS's seamless
+             layers moved to MapTiler Cloud, whose free tier is
+             non-commercial, and OS publishes no historic layers of its own. -->
+        <button class="secondary-btn" id="nlsBtn" type="button"
+                title="Opens the National Library of Scotland's map viewer in a new tab, centred where your map is">📜 Open historic OS maps ↗</button>
         <span class="layer-group-label" style="margin-top:10px;">Norway only</span>
         <button class="secondary-btn" id="nomBtn" type="button">🏺 Show cultural monuments</button>
         <button class="secondary-btn" id="nozBtn" type="button">🛡️ Show protection zones</button>
