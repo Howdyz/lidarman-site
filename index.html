@@ -810,6 +810,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         <span class="layer-group-label" style="margin-top:10px;">England only</span>
         <button class="secondary-btn" id="smBtn" type="button">🏺 Show scheduled monuments</button>
         <button class="secondary-btn" id="ebBtn" type="button">⚔️ Show English battlefields</button>
+        <button class="secondary-btn" id="nlsBtn" type="button">📜 Historic OS maps here</button>
         <span class="layer-group-label" style="margin-top:10px;">United States only</span>
         <button class="secondary-btn" id="stateLinesBtn" type="button">🗺️ Show state lines</button>
         <button class="secondary-btn" id="trailsBtn" type="button">🥾 Show trails west</button>
@@ -884,6 +885,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         </select>
       </div>
       <button class="secondary-btn" id="viewToggleBtn" type="button" disabled>🔦 Lidar view: on</button>
+      <button class="secondary-btn" id="spyToggleBtn" type="button" disabled>🔍 Spy lens: off</button>
       <button class="secondary-btn" id="circlesToggleBtn" type="button" disabled>⭕ Circles: on</button>
       <button class="secondary-btn" id="zoomLockBtn" type="button">🔓 Lock zoom</button>
       <label>Color style</label>
@@ -2206,6 +2208,30 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   wireOverlayButton('referenceBtn', reference, '🌐 Borders & names: on', '🌐 Show borders & names');
   wireOverlayButton('smBtn', scheduledMonuments, '🏺 Scheduled monuments: on', '🏺 Show scheduled monuments');
   wireOverlayButton('ebBtn', englishBattlefields, '⚔️ English battlefields: on', '⚔️ Show English battlefields');
+
+  // England's answer to the Library of Congress link, and for the same reason:
+  // a link out rather than an overlay. The NLS seamless layers moved to
+  // MapTiler Cloud in 2022 and now need an API key whose free tier is
+  // non-commercial only — $25/month for the commercial plan, against a site
+  // that sells a $25 unlock. Linking costs nothing and needs no key.
+  //
+  // The underlying maps are CC-BY (stated on NLS's own viewer), so there is no
+  // licence obstacle to this; it is purely that hosting the tiles costs money
+  // and pointing at them does not.
+  //
+  // layers=6 is OS Six Inch 1888-1915, verified over Stonehenge and Sutton Hoo
+  // — both of which the Victorian surveyors marked "Tumuli", which is exactly
+  // the kind of thing that has since been ploughed flat and shows up in the
+  // hillshade as a faint ring.
+  document.getElementById('nlsBtn').addEventListener('click', () => {
+    const c = map.getCenter();
+    // NLS is a web-mercator XYZ viewer like this one, so the zoom carries over
+    // directly. Clamped because the six-inch sheets run out of detail past 17.
+    const z = Math.max(10, Math.min(17, Math.round(map.getZoom())));
+    window.open('https://maps.nls.uk/geo/explore/#zoom=' + z
+      + '&lat=' + c.lat.toFixed(6) + '&lon=' + c.lng.toFixed(6)
+      + '&layers=6&b=1&o=100', '_blank', 'noopener');
+  });
   wireOverlayButton('stateLinesBtn', stateOutlines, '🗺️ State lines: on', '🗺️ Show state lines');
   wireOverlayButton('trailsBtn', historicTrails, '🥾 Trails west: on', '🥾 Show trails west');
   wireOverlayButton('vanishedBtn', vanishedPlaces, '🏚️ Ghost towns: on', '🏚️ Show ghost towns');
@@ -2846,6 +2872,10 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         lidarViewOn = true;
         viewToggleBtn.disabled = false;
         viewToggleBtn.textContent = '🔦 Lidar view: on';
+        // A new search is a new image element, so any mask from the last one
+        // is gone with it; the flag has to come back down to match.
+        spyToggleBtn.disabled = false;
+        setSpy(false);
         styleSelect.disabled = false;
         styleSelect.value = 'composite';
 
@@ -3631,10 +3661,94 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 
   const viewToggleBtn = document.getElementById('viewToggleBtn');
   let lidarViewOn = true;
+
+  // ---- spy lens ------------------------------------------------------------
+  // Borrowed from the National Library of Scotland's map viewer, which does
+  // this between a historic map and a modern one. The useful pairing here is
+  // the lidar against the aerial photo: the question a candidate raises is
+  // always "is that ring really in the ground, or is it a slurry pit" — and
+  // that is answered by looking at the same spot both ways, in the same place
+  // on the screen, without toggling and losing your eye.
+  //
+  // An addition, not a replacement: "Lidar view" still fades the whole raster
+  // and the opacity it uses is untouched.
+  //
+  // Implemented as a mask on the overlay image rather than a second copy of
+  // the map. A radial-gradient mask with a transparent centre cuts a clean
+  // hole through to the imagery already underneath, costs one style write per
+  // pointer move, and needs no second tile load.
+  //
+  // While spying the raster goes fully opaque. At the usual 0.7 the hole is
+  // a difference between "mostly lidar" and "all photo", which is too subtle
+  // to read as a lens; at 1.0 the edge is unmistakable.
+  const spyToggleBtn = document.getElementById('spyToggleBtn');
+  const SPY_RADIUS = 95;
+  let spyOn = false;
+
+  function overlayOpacity() {
+    if (!lidarViewOn) return 0;
+    return spyOn ? 1 : 0.7;
+  }
+
+  function spyImage() {
+    return compositeOverlay && compositeOverlay.getElement
+      ? compositeOverlay.getElement() : null;
+  }
+
+  function clearSpyMask() {
+    const img = spyImage();
+    if (!img) return;
+    img.style.webkitMaskImage = '';
+    img.style.maskImage = '';
+  }
+
+  function moveSpy(clientX, clientY) {
+    const img = spyImage();
+    if (!img || !spyOn || !lidarViewOn) return;
+    const r = img.getBoundingClientRect();
+    // Leaflet scales this element with a CSS transform mid-zoom, and a mask is
+    // resolved in the element's own untransformed box, so the pointer has to
+    // be divided back out of that scale or the hole drifts while zooming.
+    const sx = r.width / (img.offsetWidth || r.width || 1);
+    const sy = r.height / (img.offsetHeight || r.height || 1);
+    const x = (clientX - r.left) / (sx || 1);
+    const y = (clientY - r.top) / (sy || 1);
+    const rad = SPY_RADIUS / (sx || 1);
+    const g = `radial-gradient(circle ${rad.toFixed(1)}px at ${x.toFixed(1)}px ${y.toFixed(1)}px,`
+      + ` transparent 0 ${(rad - 2).toFixed(1)}px, #000 ${rad.toFixed(1)}px)`;
+    img.style.webkitMaskImage = g;
+    img.style.maskImage = g;
+  }
+
+  function setSpy(on) {
+    spyOn = on && !!compositeOverlay;
+    spyToggleBtn.textContent = spyOn ? '🔍 Spy lens: on' : '🔍 Spy lens: off';
+    if (compositeOverlay) compositeOverlay.setOpacity(overlayOpacity());
+    if (!spyOn) clearSpyMask();
+  }
+
+  spyToggleBtn.addEventListener('click', () => {
+    if (!compositeOverlay) return;
+    // Spying with the raster faded to nothing would look like a dead button,
+    // so switching it on brings the lidar back rather than doing nothing.
+    if (!lidarViewOn) {
+      lidarViewOn = true;
+      viewToggleBtn.textContent = '🔦 Lidar view: on';
+    }
+    setSpy(!spyOn);
+  });
+
+  const mapEl = document.getElementById('map');
+  mapEl.addEventListener('pointermove', (e) => moveSpy(e.clientX, e.clientY));
+  // Leaving the map restores the full raster: a hole frozen wherever the
+  // pointer happened to exit reads as a rendering fault, not as a lens.
+  mapEl.addEventListener('pointerleave', clearSpyMask);
+
   viewToggleBtn.addEventListener('click', () => {
     if (!compositeOverlay) return;
     lidarViewOn = !lidarViewOn;
-    compositeOverlay.setOpacity(lidarViewOn ? 0.7 : 0);
+    if (!lidarViewOn && spyOn) setSpy(false);
+    compositeOverlay.setOpacity(overlayOpacity());
     viewToggleBtn.textContent = lidarViewOn ? '🔦 Lidar view: on' : '🛰️ Lidar view: off';
   });
 
@@ -3691,6 +3805,9 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     map.closePopup();
 
     if (compositeOverlay) { map.removeLayer(compositeOverlay); compositeOverlay = null; }
+    spyOn = false;
+    spyToggleBtn.disabled = true;
+    spyToggleBtn.textContent = '🔍 Spy lens: off';
     if (searchPin) { map.removeLayer(searchPin); searchPin = null; }
     candidateMarkers.clearLayers();
     if (!map.hasLayer(candidateMarkers)) map.addLayer(candidateMarkers);
