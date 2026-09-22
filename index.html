@@ -2776,18 +2776,27 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         const areas = lc.areas || [];
         const failed = lc.failed || [];
 
-        // Only NPS carries an outright prohibition; the rest are advisory, so
-        // losing one is worth mentioning but is not the same kind of gap.
+        // Some of these carry an outright prohibition and the rest are
+        // advisory, so losing one is not the same size of gap as losing the
+        // other. This list has to match the sources the backend marks
+        // status:'prohibited' in landstatus.py — it was just 'nps' when NPS
+        // was the only one, which left a failed tribal-land check looking
+        // like a missing advisory note, and would have done the same to
+        // England's Scheduled Monuments check.
         const SOURCE_NAMES = {
           nps: 'National Park Service',
+          tribal: 'tribal land',
+          tribal_trust: 'tribal trust land',
+          scheduled_monument: 'Historic England Scheduled Monument',
           blm_nlcs: 'BLM monuments and conservation areas',
           blm_wild: 'BLM wilderness',
           usfs: 'National Forest',
           blm: 'BLM public land'
         };
+        const PROHIBITION_SOURCES = ['nps', 'tribal', 'tribal_trust', 'scheduled_monument'];
         const failedKeys = failed.map(f => f && f.source).filter(Boolean);
-        const npsFailed = failedKeys.includes('nps');
-        const otherFailed = failedKeys.filter(k => k !== 'nps');
+        const prohibitionFailed = failedKeys.filter(k => PROHIBITION_SOURCES.includes(k));
+        const otherFailed = failedKeys.filter(k => !PROHIBITION_SOURCES.includes(k));
 
         const parts = [];
 
@@ -2803,8 +2812,10 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         }
 
         if (areas.length) parts.push(`This area includes ${areas.join(', ')}.`);
-        if (npsFailed) {
-          parts.push('The National Park Service check didn\u2019t answer, so nothing here has been checked against park boundaries. Treat that as unknown rather than all clear \u2014 worth checking yourself before you go.');
+        if (prohibitionFailed.length) {
+          const names = prohibitionFailed.map(k => SOURCE_NAMES[k] || k);
+          const verb = names.length > 1 ? 'checks didn\u2019t' : 'check didn\u2019t';
+          parts.push(`The ${names.join(' and ')} ${verb} answer, so nothing here has been checked against ${names.length > 1 ? 'those boundaries' : 'that boundary'}. Treat it as unknown rather than all clear \u2014 detecting there can be an offence, so it is worth checking yourself before you go.`);
         }
         if (otherFailed.length) {
           const names = otherFailed.map(k => SOURCE_NAMES[k] || k);
@@ -2814,7 +2825,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         // Red for a missing prohibition check, amber otherwise: the one case
         // where a visitor could get in real trouble should not look like the
         // ordinary "heads up, there's a park nearby" line.
-        if (parts.length) setStatus(parts.join(' '), npsFailed);
+        if (parts.length) setStatus(parts.join(' '), prohibitionFailed.length > 0);
 
         showLocMaps((document.getElementById('placeInput').value || '').trim() || areas[0] || '');
       })
