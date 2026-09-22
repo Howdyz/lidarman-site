@@ -802,10 +802,14 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       <div class="layer-group">
         <span class="layer-group-label">Map layers</span>
         <button class="secondary-btn" id="referenceBtn" type="button">🌐 Borders &amp; names: on</button>
-        <!-- Everything below this line is a US dataset. Labelling the group
-             beats letting someone in Norway press five buttons in turn and
-             watch nothing happen — the layers are not broken there, they
-             simply do not cover it, and saying so costs one line. -->
+        <!-- The rest are national datasets, grouped by the country they
+             cover. Labelling them beats letting someone in Norway press five
+             buttons in turn and watch nothing happen — the layers are not
+             broken there, they simply do not cover it, and saying so costs
+             one line per group. -->
+        <span class="layer-group-label" style="margin-top:10px;">England only</span>
+        <button class="secondary-btn" id="smBtn" type="button">🏺 Show scheduled monuments</button>
+        <button class="secondary-btn" id="ebBtn" type="button">⚔️ Show English battlefields</button>
         <span class="layer-group-label" style="margin-top:10px;">United States only</span>
         <button class="secondary-btn" id="stateLinesBtn" type="button">🗺️ Show state lines</button>
         <button class="secondary-btn" id="trailsBtn" type="button">🥾 Show trails west</button>
@@ -2049,9 +2053,122 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   });
   map.on('moveend zoomend', drawMines);
 
+  // ---- England: Historic England's National Heritage List -------------------
+  // The English answer to ghost towns and battlefields above. Same shape as
+  // those — non-interactive polygons plus a legend that names what is in view,
+  // because a click inside a polygon would be swallowed instead of dropping a
+  // pin — but fetched per view rather than bundled.
+  //
+  // Per view because the national Scheduled Monuments set is ~20,000 polygons
+  // and the register is revised continually, so a file shipped with the site
+  // would be both heavy and slowly wrong. The cost is a network call per pan,
+  // which is held down three ways: a zoom floor, server-side simplification,
+  // and skipping the fetch entirely while the new view sits inside the last
+  // one already drawn.
+  //
+  // maxAllowableOffset is 0.0001 (~11 m) here and 0.00002 (~2 m) in the
+  // backend's land check, on purpose. This layer only has to look right; that
+  // one decides whether someone is told they may dig, and at 20 m a bowl
+  // barrow lost 60% of its area. Measured over the Stonehenge box: 752 KB and
+  // 19,505 vertices raw, 62 KB and 1,383 at this offset, same 212 monuments.
+  const HE_URL = 'https://services-eu1.arcgis.com/ZOdPfBS3aqqDYPUQ/ArcGIS/rest/'
+    + 'services/National_Heritage_List_for_England_NHLE_v02_VIEW/FeatureServer';
+  const HE_MIN_ZOOM = 11;          // below this a query can cover half a county
+  const HE_MAX_FEATURES = 400;
+
+  function makeHeritageLayer(opts) {
+    const group = L.layerGroup();
+    let drawn = null, lastBounds = null, loading = false;
+
+    const legend = L.control({ position: 'bottomleft' });
+    legend.onAdd = function () {
+      const div = L.DomUtil.create('div', 'trail-legend');
+      div.id = opts.legendId;
+      return div;
+    };
+    const say = (msg) => {
+      const el = document.getElementById(opts.legendId);
+      if (el) {
+        el.innerHTML = `<span><i style="background:${opts.color}"></i>${opts.label}</span>`
+          + `<span class="trail-legend-src">${msg}</span>`;
+      }
+    };
+
+    function render(gj) {
+      if (drawn) group.removeLayer(drawn);
+      drawn = L.geoJSON(gj, {
+        interactive: false,
+        renderer: L.canvas({ padding: 0.3 }),
+        style: { color: opts.color, weight: 1.5, opacity: 0.9,
+                 fillColor: opts.color, fillOpacity: 0.15 }
+      }).addTo(group);
+      const names = [...new Set((gj.features || [])
+        .map(f => (f.properties || {}).Name).filter(Boolean))];
+      if (!names.length) { say(`None in view · ${opts.source}`); return; }
+      const shown = names.slice(0, 3).map(escapeHtml).join(', ');
+      say(shown + (names.length > 3 ? ` +${names.length - 3} more` : '')
+          + ` · ${opts.source}`);
+    }
+
+    function refresh() {
+      if (!map.hasLayer(group) || loading) return;
+      if (map.getZoom() < HE_MIN_ZOOM) {
+        if (drawn) { group.removeLayer(drawn); drawn = null; }
+        lastBounds = null;
+        say(`Zoom in to load · ${opts.source}`);
+        return;
+      }
+      const b = map.getBounds();
+      if (lastBounds && lastBounds.contains(b)) return;
+      const q = b.pad(0.35);
+      loading = true;
+      say(`Loading… · ${opts.source}`);
+      const url = HE_URL + '/' + opts.layerId + '/query?' + new URLSearchParams({
+        geometry: [q.getWest(), q.getSouth(), q.getEast(), q.getNorth()].join(','),
+        geometryType: 'esriGeometryEnvelope', inSR: '4326', outSR: '4326',
+        spatialRel: 'esriSpatialRelIntersects', outFields: 'Name',
+        returnGeometry: 'true', maxAllowableOffset: '0.0001',
+        resultRecordCount: String(HE_MAX_FEATURES), f: 'geojson'
+      });
+      fetch(url)
+        .then(r => r.json())
+        .then(gj => {
+          if (!gj || !Array.isArray(gj.features)) throw new Error('bad response');
+          lastBounds = q;
+          render(gj);
+        })
+        .catch(() => {
+          lastBounds = null;
+          say(`Couldn't load — pan or toggle again · ${opts.source}`);
+        })
+        .finally(() => { loading = false; });
+    }
+
+    map.on('overlayadd', (e) => { if (e.layer === group) { legend.addTo(map); refresh(); } });
+    map.on('overlayremove', (e) => {
+      if (e.layer !== group) return;
+      legend.remove();
+      if (drawn) { group.removeLayer(drawn); drawn = null; }
+      lastBounds = null;
+    });
+    map.on('moveend zoomend', refresh);
+    return group;
+  }
+
+  const scheduledMonuments = makeHeritageLayer({
+    layerId: 6, legendId: 'smLegend', color: '#e05a3a',
+    label: 'Scheduled Monument', source: 'Historic England NHLE'
+  });
+  const englishBattlefields = makeHeritageLayer({
+    layerId: 8, legendId: 'ebLegend', color: '#c9a227',
+    label: 'Registered Battlefield', source: 'Historic England NHLE'
+  });
+
   L.control.layers(
     { 'Satellite': satellite, 'Streets': streets },
     { 'Borders & place names': reference,
+      'Scheduled monuments (England)': scheduledMonuments,
+      'Battlefields (England)': englishBattlefields,
       'State outlines (US)': stateOutlines, 'Trails west (US)': historicTrails,
       'Ghost towns & lost sites (US)': vanishedPlaces, 'Battlefields (US)': battlefields,
       'Mining camps (US)': oldMines }
@@ -2087,6 +2204,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     btn.textContent = map.hasLayer(layer) ? onLabel : offLabel;
   }
   wireOverlayButton('referenceBtn', reference, '🌐 Borders & names: on', '🌐 Show borders & names');
+  wireOverlayButton('smBtn', scheduledMonuments, '🏺 Scheduled monuments: on', '🏺 Show scheduled monuments');
+  wireOverlayButton('ebBtn', englishBattlefields, '⚔️ English battlefields: on', '⚔️ Show English battlefields');
   wireOverlayButton('stateLinesBtn', stateOutlines, '🗺️ State lines: on', '🗺️ Show state lines');
   wireOverlayButton('trailsBtn', historicTrails, '🥾 Trails west: on', '🥾 Show trails west');
   wireOverlayButton('vanishedBtn', vanishedPlaces, '🏚️ Ghost towns: on', '🏚️ Show ghost towns');
