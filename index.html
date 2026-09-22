@@ -45,7 +45,7 @@
     {
       "@type": "Question",
       "name": "Does Lidarman work outside the United States?",
-      "acceptedAnswer": { "@type": "Answer", "text": "No, not currently. Elevation data comes from USGS's 3D Elevation Program, which only covers the US. International coverage is on the roadmap but not built yet." }
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes, in England. English searches run on the Environment Agency's 1m lidar, which covers about 99% of the country, at the same resolution as the US data. Everywhere else is still to come \u2014 that includes Scotland, Wales and Northern Ireland, which the English survey stops at." }
     },
     {
       "@type": "Question",
@@ -835,7 +835,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         <div id="parksStatus"></div>
         <div id="parksPanel" style="display:none; max-height:280px; overflow-y:auto; margin-top:6px;
            border:1px solid rgba(255,255,255,0.12); border-radius:4px;"></div>
-        <label>...or pick a famous battlefield (US only — data source coverage)</label>
+        <label>...or pick a famous battlefield (US sites)</label>
         <select id="battlefieldSelect">
         <option value="">— Select a battlefield —</option>
         <optgroup label="Civil War">
@@ -1085,10 +1085,11 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     <p>
       Input can be a user-supplied DEM GeoTIFF, a ground-classified LAS/LAZ
       point cloud (gridded via linear interpolation over the classified
-      ground returns), or — for US locations — a place name or coordinate
-      pair, geocoded via OpenStreetMap/Nominatim and fetched directly from
-      USGS's 3D Elevation Program (3DEP) web services, with no manual
-      download step and no API key required.
+      ground returns), or a place name or coordinate pair, geocoded via
+      OpenStreetMap/Nominatim and fetched directly from whichever national
+      survey covers it — USGS's 3D Elevation Program (3DEP) in the US, the
+      Environment Agency's 1&nbsp;m LIDAR Composite in England — with no
+      manual download step and no API key required.
     </p>
 
     <h3>2.2 Terrain visualization derivatives</h3>
@@ -1362,9 +1363,15 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 
     <h3>Does Lidarman work outside the United States?</h3>
     <p>
-      No, not currently. Elevation data comes from USGS's 3D Elevation
-      Program, which only covers the US. International coverage is on the
-      roadmap (§8) but not built yet.
+      Yes, in England. Search an English place the same way you'd search a US
+      one and you'll get the same 1&nbsp;m detail — that data comes from the
+      Environment Agency's lidar survey, which covers about 99% of England.
+    </p>
+    <p>
+      Nowhere else yet. The English survey stops at the border, so Scotland,
+      Wales and Northern Ireland aren't covered, and neither is anywhere
+      outside the US and England. If you search one, Lidarman will say so
+      rather than hand you a blank map.
     </p>
 
     <h3>How much does Lidarman cost?</h3>
@@ -2833,14 +2840,48 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   let searchSeq = 0;
   const geocodeCache = new Map();
 
+  // How much better England's best match must be before it beats the best US
+  // one. See the note in geocodePlace for where 0.25 comes from.
+  const GB_IMPORTANCE_MARGIN = 0.25;
+
+  function pickGeocodeResult(list) {
+    const cc = r => (((r.address || {}).country_code) || '').toLowerCase();
+    const imp = r => (typeof r.importance === 'number' ? r.importance : 0);
+    const best = codes => list.filter(r => codes.includes(cc(r)))
+                              .sort((a, b) => imp(b) - imp(a))[0] || null;
+    const us = best(['us', 'pr', 'vi']);
+    const gb = best(['gb']);
+    if (!us) return gb || list[0];
+    if (!gb) return us;
+    return imp(gb) - imp(us) > GB_IMPORTANCE_MARGIN ? gb : us;
+  }
+
   function geocodePlace(text) {
     const key = text.toLowerCase();
     if (geocodeCache.has(key)) return Promise.resolve(geocodeCache.get(key));
-    // Biased to US territory on purpose: the elevation data behind every other
-    // feature here is USGS 3DEP, so a bare "Bristol" resolving to England would
-    // only send someone to a coverage error by a longer route.
+    // Still biased to US territory, but no longer limited to it: elevation
+    // comes from USGS 3DEP in the States and the Environment Agency's 1m
+    // LIDAR Composite in England, so both are worth resolving.
+    //
+    // Nominatim will not do that ranking for us, and neither obvious approach
+    // survives contact with it. Measured 2026-09-22:
+    //
+    //   * Ask for both countries at once and it answers "Birmingham",
+    //     "Bristol", "Manchester" and "Newcastle" with England — every one of
+    //     which is a US city to most people typing it here.
+    //   * Ask for the US alone and fall back to the UK only when the US finds
+    //     nothing, and the fallback never fires: "Stonehenge" comes back as a
+    //     road in Washington State, "Avebury" as a street in Idaho. The US
+    //     fuzzy match is never nothing.
+    //
+    // So ask for both and prefer the US unless England's match is much
+    // stronger. The gap separates the two cases cleanly: ambiguous city names
+    // sit 0.08-0.22 apart (Birmingham 0.733 England vs 0.657 Alabama) while
+    // the English sites people actually come for sit far wider (Stonehenge
+    // 0.581 vs 0.265). 0.25 splits them with room on either side.
     const url = 'https://nominatim.openstreetmap.org/search?' + new URLSearchParams({
-      q: text, format: 'jsonv2', limit: '1', countrycodes: 'us,pr,vi'
+      q: text, format: 'jsonv2', limit: '5', countrycodes: 'us,pr,vi,gb',
+      addressdetails: '1'
     });
     // fetch has no timeout of its own, and this is a free shared service whose
     // cold lookups are not fast: "Bonneyville Mill, Indiana" took 6.7s on a
@@ -2854,9 +2895,10 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       .then(r => r.json())
       .then(list => {
         if (!Array.isArray(list) || !list.length) {
-          throw new Error(`Couldn't find "${text}" — try adding the state.`);
+          throw new Error(`Couldn't find "${text}" — try adding the state or county.`);
         }
-        const hit = [parseFloat(list[0].lat), parseFloat(list[0].lon), list[0].display_name];
+        const pick = pickGeocodeResult(list);
+        const hit = [parseFloat(pick.lat), parseFloat(pick.lon), pick.display_name];
         geocodeCache.set(key, hit);
         return hit;
       })
