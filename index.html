@@ -811,6 +811,9 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         <button class="secondary-btn" id="smBtn" type="button">🏺 Show scheduled monuments</button>
         <button class="secondary-btn" id="ebBtn" type="button">⚔️ Show English battlefields</button>
         <button class="secondary-btn" id="nlsBtn" type="button">📜 Historic OS maps here</button>
+        <span class="layer-group-label" style="margin-top:10px;">Netherlands only</span>
+        <button class="secondary-btn" id="nlmBtn" type="button">🏺 Show rijksmonuments</button>
+        <button class="secondary-btn" id="nltBtn" type="button">🏛️ Show protected townscapes</button>
         <span class="layer-group-label" style="margin-top:10px;">United States only</span>
         <button class="secondary-btn" id="stateLinesBtn" type="button">🗺️ Show state lines</button>
         <button class="secondary-btn" id="trailsBtn" type="button">🥾 Show trails west</button>
@@ -2088,24 +2091,32 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       div.id = opts.legendId;
       return div;
     };
+    // `keys` is a list so a layer can carry more than one swatch. The Dutch
+    // monuments layer needs two: its register mixes archaeological sites with
+    // listed buildings, and those mean opposite things to someone holding a
+    // detector — one is why you came, the other is a canal house.
+    const keys = opts.keys || [{ color: opts.color, label: opts.label }];
     const say = (msg) => {
       const el = document.getElementById(opts.legendId);
       if (el) {
-        el.innerHTML = `<span><i style="background:${opts.color}"></i>${opts.label}</span>`
+        el.innerHTML = keys
+          .map(k => `<span><i style="background:${k.color}"></i>${k.label}</span>`).join('')
           + `<span class="trail-legend-src">${msg}</span>`;
       }
     };
+    const nameOf = opts.nameOf || (p => p.Name);
+    const styleOf = opts.styleOf || (() => ({ color: opts.color, fillColor: opts.color }));
 
     function render(gj) {
       if (drawn) group.removeLayer(drawn);
       drawn = L.geoJSON(gj, {
         interactive: false,
         renderer: L.canvas({ padding: 0.3 }),
-        style: { color: opts.color, weight: 1.5, opacity: 0.9,
-                 fillColor: opts.color, fillOpacity: 0.15 }
+        style: f => Object.assign({ weight: 1.5, opacity: 0.9, fillOpacity: 0.15 },
+                                  styleOf(f))
       }).addTo(group);
       const names = [...new Set((gj.features || [])
-        .map(f => (f.properties || {}).Name).filter(Boolean))];
+        .map(f => nameOf(f.properties || {})).filter(Boolean))];
       if (!names.length) { say(`None in view · ${opts.source}`); return; }
       const shown = names.slice(0, 3).map(escapeHtml).join(', ');
       say(shown + (names.length > 3 ? ` +${names.length - 3} more` : '')
@@ -2125,14 +2136,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       const q = b.pad(0.35);
       loading = true;
       say(`Loading… · ${opts.source}`);
-      const url = HE_URL + '/' + opts.layerId + '/query?' + new URLSearchParams({
-        geometry: [q.getWest(), q.getSouth(), q.getEast(), q.getNorth()].join(','),
-        geometryType: 'esriGeometryEnvelope', inSR: '4326', outSR: '4326',
-        spatialRel: 'esriSpatialRelIntersects', outFields: 'Name',
-        returnGeometry: 'true', maxAllowableOffset: '0.0001',
-        resultRecordCount: String(HE_MAX_FEATURES), f: 'geojson'
-      });
-      fetch(url)
+      fetch(opts.buildUrl(q))
         .then(r => r.json())
         .then(gj => {
           if (!gj || !Array.isArray(gj.features)) throw new Error('bad response');
@@ -2157,13 +2161,67 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     return group;
   }
 
+  const heUrl = (layerId) => (q) => HE_URL + '/' + layerId + '/query?' + new URLSearchParams({
+    geometry: [q.getWest(), q.getSouth(), q.getEast(), q.getNorth()].join(','),
+    geometryType: 'esriGeometryEnvelope', inSR: '4326', outSR: '4326',
+    spatialRel: 'esriSpatialRelIntersects', outFields: 'Name',
+    returnGeometry: 'true', maxAllowableOffset: '0.0001',
+    resultRecordCount: String(HE_MAX_FEATURES), f: 'geojson'
+  });
+
   const scheduledMonuments = makeHeritageLayer({
-    layerId: 6, legendId: 'smLegend', color: '#e05a3a',
+    legendId: 'smLegend', color: '#e05a3a', buildUrl: heUrl(6),
     label: 'Scheduled Monument', source: 'Historic England NHLE'
   });
   const englishBattlefields = makeHeritageLayer({
-    layerId: 8, legendId: 'ebLegend', color: '#c9a227',
+    legendId: 'ebLegend', color: '#c9a227', buildUrl: heUrl(8),
     label: 'Registered Battlefield', source: 'Historic England NHLE'
+  });
+
+  // ---- Netherlands: RCE's national heritage register -----------------------
+  // A WFS rather than an ArcGIS service, so the query shape differs, but it
+  // hands back the same GeoJSON and goes through the same layer helper.
+  //
+  // Two CRS traps here, both already paid for in the backend's land check:
+  // the bbox needs CRS84 named explicitly because the urn EPSG:4326 form means
+  // lat,lon and silently returns nothing when fed lon,lat, and srsName has to
+  // be stated or the service answers in its own EPSG:28992 metres — features
+  // returned, nothing ever drawn in the right place.
+  //
+  // No server-side filtering: this WFS refuses CQL_FILTER and bbox together
+  // ("mutually exclusive"). So the register comes back whole and the split is
+  // done in the style function instead, which is better anyway — you can see
+  // both kinds at once and tell them apart by colour.
+  const RCE_URL = 'https://services.rce.geovoorziening.nl/rce/wfs';
+  const rceUrl = (typeName) => (q) => RCE_URL + '?' + new URLSearchParams({
+    service: 'WFS', version: '2.0.0', request: 'GetFeature',
+    typeNames: typeName, outputFormat: 'application/json',
+    srsName: 'urn:ogc:def:crs:OGC:1.3:CRS84',
+    bbox: [q.getWest(), q.getSouth(), q.getEast(), q.getNorth()].join(',')
+          + ',urn:ogc:def:crs:OGC:1.3:CRS84',
+    count: String(HE_MAX_FEATURES)
+  });
+
+  const NL_ARCH = '#e05a3a', NL_BUILT = '#6b8fb5';
+  const dutchMonuments = makeHeritageLayer({
+    legendId: 'nlmLegend', source: 'RCE rijksmonumenten',
+    buildUrl: rceUrl('rce:NationalListedMonumentPolygons'),
+    keys: [{ color: NL_ARCH, label: 'Archaeological' },
+           { color: NL_BUILT, label: 'Built' }],
+    styleOf: f => {
+      const arch = (f.properties || {}).aard_monument === 'archeologisch';
+      return { color: arch ? NL_ARCH : NL_BUILT,
+               fillColor: arch ? NL_ARCH : NL_BUILT };
+    },
+    // The polygons carry a register number rather than a name, so the legend
+    // names them the way the register does.
+    nameOf: p => p.rijksmonument_nummer ? 'Rijksmonument ' + p.rijksmonument_nummer : null
+  });
+  const dutchTownscapes = makeHeritageLayer({
+    legendId: 'nltLegend', color: '#c9a227', source: 'RCE stads- en dorpsgezichten',
+    label: 'Protected townscape',
+    buildUrl: rceUrl('rce:Townscapes'),
+    nameOf: p => p.NAAM || null
   });
 
   L.control.layers(
@@ -2171,6 +2229,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     { 'Borders & place names': reference,
       'Scheduled monuments (England)': scheduledMonuments,
       'Battlefields (England)': englishBattlefields,
+      'Rijksmonuments (Netherlands)': dutchMonuments,
+      'Protected townscapes (Netherlands)': dutchTownscapes,
       'State outlines (US)': stateOutlines, 'Trails west (US)': historicTrails,
       'Ghost towns & lost sites (US)': vanishedPlaces, 'Battlefields (US)': battlefields,
       'Mining camps (US)': oldMines }
@@ -2208,6 +2268,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   wireOverlayButton('referenceBtn', reference, '🌐 Borders & names: on', '🌐 Show borders & names');
   wireOverlayButton('smBtn', scheduledMonuments, '🏺 Scheduled monuments: on', '🏺 Show scheduled monuments');
   wireOverlayButton('ebBtn', englishBattlefields, '⚔️ English battlefields: on', '⚔️ Show English battlefields');
+  wireOverlayButton('nlmBtn', dutchMonuments, '🏺 Rijksmonuments: on', '🏺 Show rijksmonuments');
+  wireOverlayButton('nltBtn', dutchTownscapes, '🏛️ Protected townscapes: on', '🏛️ Show protected townscapes');
 
   // England's answer to the Library of Congress link, and for the same reason:
   // a link out rather than an overlay. The NLS seamless layers moved to
