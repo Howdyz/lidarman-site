@@ -1377,12 +1377,17 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       you a blank map.
     </p>
     <p>
-      One thing worth knowing before you dig abroad: the tool flags protected
-      land in the US and England, but not yet in Norway, the Netherlands or
-      Poland. All three protect archaeological sites, and all three expect you
-      to have permission before detecting. Check locally — a result there
-      carries no land warnings at all, and that's a gap in Lidarman, not a
-      sign the ground is clear.
+      Protected sites are flagged in all five. Each country's own register does
+      it — the National Park Service in the US, Historic England's Scheduled
+      Monuments, Riksantikvaren in Norway, the rijksmonumenten register in the
+      Netherlands and Poland's registered archaeological monuments. Land a
+      candidate on one and it's marked, with the monument named where the
+      register gives a name.
+    </p>
+    <p>
+      That's a floor, not a clearance. None of it replaces the landowner's
+      permission, and Poland expects a conservator's permit for detecting
+      anywhere at all, not just on a registered site.
     </p>
 
     <h3>How much does Lidarman cost?</h3>
@@ -2799,12 +2804,16 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
           tribal: 'tribal land',
           tribal_trust: 'tribal trust land',
           scheduled_monument: 'Historic England Scheduled Monument',
+          no_kulturminne: 'Norwegian protected monument',
+          nl_rijksmonument: 'Dutch national monument',
+          pl_zabytek: 'Polish registered archaeological monument',
           blm_nlcs: 'BLM monuments and conservation areas',
           blm_wild: 'BLM wilderness',
           usfs: 'National Forest',
           blm: 'BLM public land'
         };
-        const PROHIBITION_SOURCES = ['nps', 'tribal', 'tribal_trust', 'scheduled_monument'];
+        const PROHIBITION_SOURCES = ['nps', 'tribal', 'tribal_trust', 'scheduled_monument',
+                                     'no_kulturminne', 'nl_rijksmonument', 'pl_zabytek'];
         const failedKeys = failed.map(f => f && f.source).filter(Boolean);
         const prohibitionFailed = failedKeys.filter(k => PROHIBITION_SOURCES.includes(k));
         const otherFailed = failedKeys.filter(k => !PROHIBITION_SOURCES.includes(k));
