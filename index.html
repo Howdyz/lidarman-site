@@ -810,15 +810,20 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         <span class="layer-group-label" style="margin-top:10px;">England only</span>
         <button class="secondary-btn" id="smBtn" type="button">🏺 Show scheduled monuments</button>
         <button class="secondary-btn" id="ebBtn" type="button">⚔️ Show English battlefields</button>
-        <!-- "Open", not "Show", and an arrow: this is the one historic-map
-             button on the page that does not draw on this map. The US and
-             Norwegian ones are overlays, and "Historic OS maps here" read
-             exactly like them, so it promised something it does not do.
-             England cannot be an overlay without paying - NLS's seamless
-             layers moved to MapTiler Cloud, whose free tier is
-             non-commercial, and OS publishes no historic layers of its own. -->
-        <button class="secondary-btn" id="nlsBtn" type="button"
-                title="Opens the National Library of Scotland's map viewer in a new tab, centred where your map is">📜 Open historic OS maps ↗</button>
+        <!-- No historic-map button for England, deliberately. Every other
+             historic map on this page draws on this map - the US topo sheets,
+             Norway's Amtskart - and the point of them is comparing old ground
+             against the hillshade in one view, which the spy lens now does.
+             A link out to another site cannot do that job, so it was removed
+             rather than left sitting among buttons that can.
+
+             England can only be an overlay by paying: NLS's seamless layers
+             moved to MapTiler Cloud in 2022, whose free tier is explicitly
+             non-commercial and whose commercial plan is $25/month. Ordnance
+             Survey publishes no historic layers of its own - checked
+             2026-09-22, the OS Maps API is present-day only and NLS keeps the
+             historic collection separately. Revisit if that changes, or if
+             the subscription ever becomes worth it. -->
         <span class="layer-group-label" style="margin-top:10px;">Norway only</span>
         <button class="secondary-btn" id="nomBtn" type="button">🏺 Show cultural monuments</button>
         <button class="secondary-btn" id="nozBtn" type="button">🛡️ Show protection zones</button>
@@ -2488,29 +2493,6 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   wireOverlayButton('nlmBtn', dutchMonuments, '🏺 Rijksmonuments: on', '🏺 Show rijksmonuments');
   wireOverlayButton('nltBtn', dutchTownscapes, '🏛️ Protected townscapes: on', '🏛️ Show protected townscapes');
 
-  // England's answer to the Library of Congress link, and for the same reason:
-  // a link out rather than an overlay. The NLS seamless layers moved to
-  // MapTiler Cloud in 2022 and now need an API key whose free tier is
-  // non-commercial only — $25/month for the commercial plan, against a site
-  // that sells a $25 unlock. Linking costs nothing and needs no key.
-  //
-  // The underlying maps are CC-BY (stated on NLS's own viewer), so there is no
-  // licence obstacle to this; it is purely that hosting the tiles costs money
-  // and pointing at them does not.
-  //
-  // layers=6 is OS Six Inch 1888-1915, verified over Stonehenge and Sutton Hoo
-  // — both of which the Victorian surveyors marked "Tumuli", which is exactly
-  // the kind of thing that has since been ploughed flat and shows up in the
-  // hillshade as a faint ring.
-  document.getElementById('nlsBtn').addEventListener('click', () => {
-    const c = map.getCenter();
-    // NLS is a web-mercator XYZ viewer like this one, so the zoom carries over
-    // directly. Clamped because the six-inch sheets run out of detail past 17.
-    const z = Math.max(10, Math.min(17, Math.round(map.getZoom())));
-    window.open('https://maps.nls.uk/geo/explore/#zoom=' + z
-      + '&lat=' + c.lat.toFixed(6) + '&lon=' + c.lng.toFixed(6)
-      + '&layers=6&b=1&o=100', '_blank', 'noopener');
-  });
   wireOverlayButton('stateLinesBtn', stateOutlines, '🗺️ State lines: on', '🗺️ Show state lines');
   wireOverlayButton('trailsBtn', historicTrails, '🥾 Trails west: on', '🥾 Show trails west');
   wireOverlayButton('vanishedBtn', vanishedPlaces, '🏚️ Ghost towns: on', '🏚️ Show ghost towns');
