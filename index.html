@@ -50,7 +50,7 @@
     {
       "@type": "Question",
       "name": "How much does Lidarman cost?",
-      "acceptedAnswer": { "@type": "Answer", "text": "The first three searches on a device are free, no account required. After that, a one-time $10 payment unlocks the tool on that device, up to a fair-use ceiling of 100 searches a day — no subscription, no recurring charge." }
+      "acceptedAnswer": { "@type": "Answer", "text": "The first three searches on a device are free, no account required. After that, a one-time $25 payment unlocks the tool on that device, up to a fair-use ceiling of 100 searches a day — no subscription, no recurring charge." }
     },
     {
       "@type": "Question",
@@ -959,7 +959,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 <div class="cost-compare">
   <h2>What this costs</h2>
   <p>
-    Lidarman is <span class="price">$10, once</span>. Three free searches
+    Lidarman is <span class="price">$25, once</span>. Three free searches
     first — no account, no card.
   </p>
   <p>
@@ -984,14 +984,14 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     </div>
     <div class="cc-row cc-mine">
       <span class="cc-name">Lidarman</span>
-      <span class="cc-price">$10 once</span>
+      <span class="cc-price">$25 once</span>
       <span class="cc-terms">Three free searches first · no account · no card · no renewal</span>
     </div>
   </div>
 
   <p>
     Every one of those is a rental. Stop paying and it all goes away, however
-    many years you've put in. Lidarman is $10, once. The unlock stays on your
+    many years you've put in. Lidarman is $25, once. The unlock stays on your
     device and there's nothing to cancel.
   </p>
   <p>
@@ -1007,7 +1007,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   <div id="paywallCard">
     <h3>Free trial used up</h3>
     <p id="paywallMessage">You've used your free searches for this device.</p>
-    <button class="primary" id="unlockBtn">Unlock — $10 one-time</button>
+    <button class="primary" id="unlockBtn">Unlock — $25 one-time</button>
     <button class="secondary" id="paywallCloseBtn">Maybe later</button>
     <div id="paywallRestore"><a id="paywallRestoreLink">Already paid? Restore access</a></div>
   </div>
@@ -1326,7 +1326,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       Lidarman runs on a server, not on your phone. Every search pulls fresh
       elevation data for your spot and processes it, which takes real time and
       real compute — that's why it isn't just a file you download once. Try it free — the first three searches on a device are on
-      the house, then a one-time $10 payment unlocks the tool on that device,
+      the house, then a one-time $25 payment unlocks the tool on that device,
       no subscription. There's a fair-use limit of 100 searches a day on paid
       devices — far more than anyone hunting real ground will use, and it's
       only there to stop a script hammering the server on one payment.
@@ -1393,7 +1393,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     <h3>How much does Lidarman cost?</h3>
     <p>
       The first three searches on a device are free, no account required.
-      After that, a one-time $10 payment unlocks that device — no
+      After that, a one-time $25 payment unlocks that device — no
       subscription, no recurring charge, with a fair-use ceiling of 100
       searches a day.
     </p>
@@ -2452,7 +2452,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       btn.className = 'primary';
       btn.id = 'inlineUnlockBtn';
       btn.type = 'button';
-      btn.textContent = 'Unlock — $10 one-time';
+      btn.textContent = 'Unlock — $25 one-time';
       btn.addEventListener('click', () => startCheckout(btn));
       trialEl.appendChild(btn);
     }
