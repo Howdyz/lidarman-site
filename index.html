@@ -811,6 +811,9 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         <button class="secondary-btn" id="smBtn" type="button">🏺 Show scheduled monuments</button>
         <button class="secondary-btn" id="ebBtn" type="button">⚔️ Show English battlefields</button>
         <button class="secondary-btn" id="nlsBtn" type="button">📜 Historic OS maps here</button>
+        <span class="layer-group-label" style="margin-top:10px;">Norway only</span>
+        <button class="secondary-btn" id="nomBtn" type="button">🏺 Show cultural monuments</button>
+        <button class="secondary-btn" id="nozBtn" type="button">🛡️ Show protection zones</button>
         <span class="layer-group-label" style="margin-top:10px;">Netherlands only</span>
         <button class="secondary-btn" id="nlmBtn" type="button">🏺 Show rijksmonuments</button>
         <button class="secondary-btn" id="nltBtn" type="button">🏛️ Show protected townscapes</button>
@@ -2137,7 +2140,14 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       }).addTo(group);
       const names = [...new Set((gj.features || [])
         .map(f => nameOf(f.properties || {})).filter(Boolean))];
-      if (!names.length) { say(`None in view · ${opts.source}`); return; }
+      // Not every register names its features — Norway's protection zones
+      // carry no name at all. Reporting "None in view" over ten drawn
+      // polygons would read as a fault, so fall back to counting them.
+      if (!names.length) {
+        const n = (gj.features || []).length;
+        say(n ? `${n} in view · ${opts.source}` : `None in view · ${opts.source}`);
+        return;
+      }
       const shown = names.slice(0, 3).map(escapeHtml).join(', ');
       say(shown + (names.length > 3 ? ` +${names.length - 3} more` : '')
           + ` · ${opts.source}`);
@@ -2157,7 +2167,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       loading = true;
       say(`Loading… · ${opts.source}`);
       fetch(opts.buildUrl(q))
-        .then(r => r.json())
+        .then(r => r.text())
+        .then(t => (opts.parse ? opts.parse(t) : JSON.parse(t)))
         .then(gj => {
           if (!gj || !Array.isArray(gj.features)) throw new Error('bad response');
           if (!looksLikeLonLat(gj)) throw new Error('wrong CRS');
@@ -2223,6 +2234,84 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     count: String(HE_MAX_FEATURES)
   });
 
+  // ---- Norway: Riksantikvaren's monument register --------------------------
+  // Geonorge's WFS serves GML 3.2 and nothing else — it refuses
+  // application/json outright — so this one is parsed in the browser. Its CORS
+  // is open (`access-control-allow-origin: *`), checked before building this,
+  // because an open format behind a closed door would have been useless.
+  //
+  // Same coordinate order the backend land check uses: under the urn EPSG:4326
+  // form both the bbox and the returned posList are lat,lon, so the pairs come
+  // out reversed into lon,lat here. The CRS guard above is the backstop if
+  // that ever stops being true.
+  const NO_URL = 'https://wfs.geonorge.no/skwms1/wfs.kulturminner';
+  const noUrl = (typeName) => (q) => NO_URL + '?' + new URLSearchParams({
+    service: 'WFS', version: '2.0.0', request: 'GetFeature',
+    typeNames: typeName, srsName: 'urn:ogc:def:crs:EPSG::4326',
+    bbox: [q.getSouth(), q.getWest(), q.getNorth(), q.getEast()].join(',')
+          + ',urn:ogc:def:crs:EPSG::4326',
+    count: String(HE_MAX_FEATURES)
+  });
+
+  function gmlToGeoJSON(text, nameTags) {
+    const doc = new DOMParser().parseFromString(text, 'application/xml');
+    const root = doc.documentElement;
+    if (!root || root.localName === 'parsererror') throw new Error('bad GML');
+    const local = (n) => n.localName || n.nodeName.split(':').pop();
+    const features = [];
+    for (const member of root.children) {
+      if (!/^(member|featureMember)$/.test(local(member))) continue;
+      for (const feat of member.children) {
+        let name = null;
+        for (const el of feat.getElementsByTagName('*')) {
+          if (nameTags.includes(local(el)) && (el.textContent || '').trim()) {
+            name = el.textContent.trim();
+            break;
+          }
+        }
+        const polys = [];
+        for (const poly of feat.getElementsByTagName('*')) {
+          if (local(poly) !== 'Polygon') continue;
+          const rings = [];
+          // Every posList under the polygon, so interior rings (holes) come
+          // through alongside the exterior one.
+          for (const pos of poly.getElementsByTagName('*')) {
+            if (local(pos) !== 'posList') continue;
+            const nums = (pos.textContent || '').trim().split(/\s+/).map(Number);
+            const ring = [];
+            for (let i = 0; i + 1 < nums.length; i += 2) ring.push([nums[i + 1], nums[i]]);
+            if (ring.length >= 3) rings.push(ring);
+          }
+          if (rings.length) polys.push(rings);
+        }
+        if (!polys.length) continue;
+        features.push({
+          type: 'Feature',
+          properties: { name },
+          geometry: polys.length === 1
+            ? { type: 'Polygon', coordinates: polys[0] }
+            : { type: 'MultiPolygon', coordinates: polys }
+        });
+      }
+    }
+    return { type: 'FeatureCollection', features };
+  }
+
+  const norwayMonuments = makeHeritageLayer({
+    legendId: 'nomLegend', color: '#e05a3a', source: 'Riksantikvaren',
+    label: 'Cultural monument',
+    buildUrl: noUrl('app:Lokalitet'),
+    parse: t => gmlToGeoJSON(t, ['navn']),
+    nameOf: p => p.name || null
+  });
+  const norwayZones = makeHeritageLayer({
+    legendId: 'nozLegend', color: '#c9a227', source: 'Riksantikvaren',
+    label: 'Protection zone (sikringssone)',
+    buildUrl: noUrl('app:Sikringssone'),
+    parse: t => gmlToGeoJSON(t, ['navn']),
+    nameOf: p => p.name || null
+  });
+
   const NL_ARCH = '#e05a3a', NL_BUILT = '#6b8fb5';
   const dutchMonuments = makeHeritageLayer({
     legendId: 'nlmLegend', source: 'RCE rijksmonumenten',
@@ -2250,6 +2339,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     { 'Borders & place names': reference,
       'Scheduled monuments (England)': scheduledMonuments,
       'Battlefields (England)': englishBattlefields,
+      'Cultural monuments (Norway)': norwayMonuments,
+      'Protection zones (Norway)': norwayZones,
       'Rijksmonuments (Netherlands)': dutchMonuments,
       'Protected townscapes (Netherlands)': dutchTownscapes,
       'State outlines (US)': stateOutlines, 'Trails west (US)': historicTrails,
@@ -2289,6 +2380,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   wireOverlayButton('referenceBtn', reference, '🌐 Borders & names: on', '🌐 Show borders & names');
   wireOverlayButton('smBtn', scheduledMonuments, '🏺 Scheduled monuments: on', '🏺 Show scheduled monuments');
   wireOverlayButton('ebBtn', englishBattlefields, '⚔️ English battlefields: on', '⚔️ Show English battlefields');
+  wireOverlayButton('nomBtn', norwayMonuments, '🏺 Cultural monuments: on', '🏺 Show cultural monuments');
+  wireOverlayButton('nozBtn', norwayZones, '🛡️ Protection zones: on', '🛡️ Show protection zones');
   wireOverlayButton('nlmBtn', dutchMonuments, '🏺 Rijksmonuments: on', '🏺 Show rijksmonuments');
   wireOverlayButton('nltBtn', dutchTownscapes, '🏛️ Protected townscapes: on', '🏛️ Show protected townscapes');
 
