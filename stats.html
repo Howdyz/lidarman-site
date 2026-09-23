@@ -269,10 +269,21 @@
         <b>It cannot be lifted early.</b> Un-suspending would itself be an
         admin call, and admin calls are what this suspends — so once you press
         it, this page stops loading until the time is up. The unattended
-        monitor ping stops for that window too.
+        monitor ping stops for that window too. Pick <b>1 minute</b> if you
+        just want to see it work.
+      </p>
+      <p class="suspend-note">
+        Takes <b>two clicks</b>: the first arms the button and the second
+        confirms, and it disarms itself after ten seconds if you walk away.
       </p>
       <div id="suspendControls" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
         <select id="suspendMinutes" style="font-family:var(--mono); font-size:13px; padding:7px 9px; background:var(--paper); border:1px solid var(--rule); color:var(--ink); border-radius:3px;">
+          <!-- A one-minute option exists so this can be tried at all. Without
+               it the shortest commitment was fifteen minutes with no early
+               lift, which made the one control on the page nobody dares press
+               also the one nobody can test. Reported as "the suspend button is
+               not working for testing". -->
+          <option value="1">1 minute (try it)</option>
           <option value="15">15 minutes</option>
           <option value="60" selected>1 hour</option>
           <option value="240">4 hours</option>
