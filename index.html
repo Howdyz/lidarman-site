@@ -2919,6 +2919,12 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     const box = document.getElementById('demoBox');
     if (!box) return;
     box.hidden = false;
+    // "e.g. Gettysburg, PA" invites precisely the search a locked device
+    // cannot run. The box stays enabled on purpose — trying somewhere of your
+    // own and being told it needs an unlock is the moment this is worth
+    // buying — but it should not advertise a place that will be refused.
+    const placeEl = document.getElementById('placeInput');
+    if (placeEl) placeEl.placeholder = 'Unlock to search anywhere';
     if (demoRendered) return;
     demoRendered = true;
     const wrap = document.getElementById('demoButtons');
@@ -2944,6 +2950,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     if (data.unlocked) {
       const box = document.getElementById('demoBox');
       if (box) box.hidden = true;
+      const placeEl = document.getElementById('placeInput');
+      if (placeEl) placeEl.placeholder = 'e.g. Gettysburg, PA';
       trialEl.textContent = '✅ Unlocked on this device — no subscription.';
       trialEl.classList.add('unlocked');
       restoreBox.hidden = true;
