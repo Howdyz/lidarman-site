@@ -1053,6 +1053,12 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         <button class="secondary-btn" id="smBtn" type="button">🏺 Show scheduled monuments</button>
         <button class="secondary-btn" id="ebBtn" type="button">⚔️ Show English battlefields</button>
         <button class="secondary-btn" id="ecBtn" type="button">🏰 Show castle sites</button>
+        <span class="layer-group-label" style="margin-top:10px;">Scotland only</span>
+        <button class="secondary-btn" id="sumBtn" type="button">🏺 Show scheduled monuments</button>
+        <button class="secondary-btn" id="sucBtn" type="button">🏰 Show castle sites</button>
+        <span class="layer-group-label" style="margin-top:10px;">Wales only</span>
+        <button class="secondary-btn" id="wamBtn" type="button">🏺 Show scheduled monuments</button>
+        <button class="secondary-btn" id="wacBtn" type="button">🏰 Show castle sites</button>
         <!-- No historic-map button for England, deliberately. Every other
              historic map on this page draws on this map - the US topo sheets,
              Norway's Amtskart - and the point of them is comparing old ground
@@ -2397,6 +2403,86 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     label: 'Castle site', source: 'Historic England NHLE'
   });
 
+  // ---- Scotland: Historic Environment Scotland's designations --------------
+  // An ArcGIS MapServer rather than a FeatureServer, which matters in exactly
+  // one way: it refuses resultRecordCount with "Pagination is not supported",
+  // so there is no cap to send. Its own maxRecordCount is 10,000 and these
+  // queries only ever run at zoom 11+, so a bbox never comes close.
+  //
+  // The name field is DES_TITLE, not Name as in England.
+  const HES_URL = 'https://inspire.hes.scot/arcgis/rest/services/HES/'
+    + 'HES_Designations/MapServer';
+  const hesUrl = (layerId, where) => (q) => HES_URL + '/' + layerId + '/query?'
+    + new URLSearchParams({
+      geometry: [q.getWest(), q.getSouth(), q.getEast(), q.getNorth()].join(','),
+      geometryType: 'esriGeometryEnvelope', inSR: '4326', outSR: '4326',
+      spatialRel: 'esriSpatialRelIntersects', outFields: 'DES_TITLE',
+      where: where || '1=1',
+      returnGeometry: 'true', maxAllowableOffset: '0.0001', f: 'geojson'
+    });
+  const hesName = p => (p.DES_TITLE || '').trim() || null;
+
+  // Scotland has 8,074 scheduled monuments, 737 of them castles by name.
+  // "tower house" is spelled out rather than matching "tower" on its own,
+  // which would pull in every water tower and bell tower in the country.
+  // "dun" is left out for the same reason and worse - it would match
+  // Dunbar, Dundee and Dunfermline.
+  const SCOT_CASTLE_WHERE =
+    "UPPER(DES_TITLE) LIKE '%CASTLE%' OR UPPER(DES_TITLE) LIKE '%MOTTE%'"
+    + " OR UPPER(DES_TITLE) LIKE '%TOWER HOUSE%'";
+  const scotlandMonuments = makeHeritageLayer({
+    legendId: 'sumLegend', color: '#e05a3a', buildUrl: hesUrl(5),
+    label: 'Scheduled Monument', source: 'Historic Environment Scotland',
+    nameOf: hesName
+  });
+  const scotlandCastles = makeHeritageLayer({
+    legendId: 'sucLegend', color: '#8e6bbf', buildUrl: hesUrl(5, SCOT_CASTLE_WHERE),
+    label: 'Castle site', source: 'Historic Environment Scotland',
+    nameOf: hesName
+  });
+
+  // ---- Wales: Cadw's scheduled monuments -----------------------------------
+  // The best-described register of the three British ones: every record
+  // carries a SiteType, so the castle layer is a typed filter rather than a
+  // search for the word "castle" in a name. 380 sites across six types, and
+  // no street-name noise at all to allow for.
+  //
+  // GeoServer refuses bbox and cql_filter as separate parameters - they are
+  // mutually exclusive, the same trap the Dutch WFS sets - so the bounding box
+  // goes inside the CQL instead, where they coexist happily.
+  //
+  // srsName is stated for the reason it is stated everywhere else here: this
+  // register is EPSG:27700 natively and will answer in metres if not asked
+  // otherwise, which draws a heritage layer off the coast of Africa while
+  // still naming real monuments.
+  const CADW_URL = 'https://datamap.gov.wales/geoserver/inspire-wg/wfs';
+  const cadwUrl = (extraCql) => (q) => CADW_URL + '?' + new URLSearchParams({
+    service: 'WFS', version: '2.0.0', request: 'GetFeature',
+    typeNames: 'inspire-wg:Cadw_SAM', outputFormat: 'application/json',
+    srsName: 'urn:ogc:def:crs:OGC:1.3:CRS84',
+    cql_filter: `BBOX(geom,${q.getWest()},${q.getSouth()},`
+      + `${q.getEast()},${q.getNorth()},'CRS:84')`
+      + (extraCql ? ' AND ' + extraCql : ''),
+    count: String(HE_MAX_FEATURES)
+  });
+  const cadwName = p => (p.Name || '').trim() || null;
+
+  // "Bell Tower" is deliberately not in this list even though it matches the
+  // word: there is exactly one and it is a church.
+  const WALES_CASTLE_TYPES =
+    "SiteType IN ('Castle','Motte','Motte and Bailey','Ringwork',"
+    + "'Ringwork and bailey','Tower')";
+  const walesMonuments = makeHeritageLayer({
+    legendId: 'wamLegend', color: '#e05a3a', buildUrl: cadwUrl(),
+    label: 'Scheduled Monument', source: 'Cadw / DataMapWales',
+    nameOf: cadwName
+  });
+  const walesCastles = makeHeritageLayer({
+    legendId: 'wacLegend', color: '#8e6bbf', buildUrl: cadwUrl(WALES_CASTLE_TYPES),
+    label: 'Castle site', source: 'Cadw / DataMapWales',
+    nameOf: cadwName
+  });
+
   // ---- Netherlands: RCE's national heritage register -----------------------
   // A WFS rather than an ArcGIS service, so the query shape differs, but it
   // hands back the same GeoJSON and goes through the same layer helper.
@@ -2617,6 +2703,10 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       'Scheduled monuments (England)': scheduledMonuments,
       'Battlefields (England)': englishBattlefields,
       'Castle sites (England)': englishCastles,
+      'Scheduled monuments (Scotland)': scotlandMonuments,
+      'Castle sites (Scotland)': scotlandCastles,
+      'Scheduled monuments (Wales)': walesMonuments,
+      'Castle sites (Wales)': walesCastles,
       'Cultural monuments (Norway)': norwayMonuments,
       'Protection zones (Norway)': norwayZones,
       'Historic maps 1826–1917 (Norway)': norwayHistoric,
@@ -2661,6 +2751,10 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   wireOverlayButton('smBtn', scheduledMonuments, '🏺 Scheduled monuments: on', '🏺 Show scheduled monuments');
   wireOverlayButton('ebBtn', englishBattlefields, '⚔️ English battlefields: on', '⚔️ Show English battlefields');
   wireOverlayButton('ecBtn', englishCastles, '🏰 Castle sites: on', '🏰 Show castle sites');
+  wireOverlayButton('sumBtn', scotlandMonuments, '🏺 Scheduled monuments: on', '🏺 Show scheduled monuments');
+  wireOverlayButton('sucBtn', scotlandCastles, '🏰 Castle sites: on', '🏰 Show castle sites');
+  wireOverlayButton('wamBtn', walesMonuments, '🏺 Scheduled monuments: on', '🏺 Show scheduled monuments');
+  wireOverlayButton('wacBtn', walesCastles, '🏰 Castle sites: on', '🏰 Show castle sites');
   wireOverlayButton('nomBtn', norwayMonuments, '🏺 Cultural monuments: on', '🏺 Show cultural monuments');
   wireOverlayButton('nozBtn', norwayZones, '🛡️ Protection zones: on', '🛡️ Show protection zones');
   wireOverlayButton('nohBtn', norwayHistoric, '📜 Historic maps: on', '📜 Show historic maps (1826–1917)');
