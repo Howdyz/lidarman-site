@@ -401,9 +401,20 @@
   /* --- Interactive tool --- */
   #tool { max-width: 1100px; margin: 0 auto 56px; padding: 0 24px; font-family: system-ui, sans-serif; }
   #tool h2 { max-width: 780px; margin: 0 auto 18px; font-family: var(--serif); font-size: 1.5em; border-bottom: 1px solid var(--rule); padding-bottom: 8px; }
-  #toolPanel { display: flex; gap: 0; background: #1a1a1a; color: #eee; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 20px var(--shadow); }
-  #toolSidebar { width: 300px; flex-shrink: 0; padding: 16px; box-sizing: border-box; }
-  #map { flex: 1; min-height: 520px; }
+  /* Grid rather than flex because the three pieces need a different
+     arrangement at each size, and only grid can put the map BETWEEN two
+     panels that are stacked in one column at smaller widths. Source order is
+     left panel, right panel, map; the areas do the rest. */
+  #toolPanel {
+    display: grid; gap: 0; background: #1a1a1a; color: #eee; border-radius: 8px;
+    overflow: hidden; box-shadow: 0 4px 20px var(--shadow);
+    grid-template-columns: 1fr;
+    grid-template-areas: "left" "right" "map";
+  }
+  .tool-side { padding: 16px; box-sizing: border-box; min-width: 0; }
+  #toolSidebar { grid-area: left; }
+  #toolSidebarRight { grid-area: right; }
+  #map { grid-area: map; min-height: 380px; min-width: 0; }
 
   /* Details for a tapped circle, on a phone.
      A Leaflet popup carrying a QR code covers a 375px map completely — it is
@@ -442,20 +453,42 @@
      at the same time; the sidebar keeps all its controls and scrolls inside
      itself instead of stretching the map. */
   @media (min-width: 601px) {
-    #toolPanel { height: min(82vh, 900px); }
-    #toolSidebar {
+    #toolPanel {
+      height: min(82vh, 900px);
+      grid-template-columns: 300px 1fr;
+      /* Explicit shares, not auto. An auto first row takes its full content
+         height - 701px of it - and leaves the layer buttons 37px to live in,
+         which is what happened on the first attempt at 1280px. */
+      grid-template-rows: minmax(0, 46%) minmax(0, 1fr);
+      grid-template-areas: "left map" "right map";
+    }
+    .tool-side {
       overflow-y: auto;
       /* Don't hand the scroll back to the page at the ends of the list. */
       overscroll-behavior: contain;
+      min-height: 0;
     }
     #map { height: 100%; min-height: 0; }
   }
-  @media (max-width: 600px) {
-    #toolPanel { flex-direction: column; }
-    #toolSidebar { width: 100%; box-sizing: border-box; }
-    #map { width: 100%; min-height: 380px; }
+
+  /* Desktop only, and only once there is width to spend. The controls were a
+     single ~1,500px column, so reaching the layer buttons meant scrolling
+     past the search box every time and then hunting for the one you wanted.
+     Split in two they both sit in view: finding a spot on the left,
+     everything that changes what the map shows on the right.
+
+     1440px is where this starts paying. Below it the second panel costs the
+     map more width than the split saves in scrolling - at 1280 the map would
+     drop from 903px to 603px, which is a worse tool, so those sizes keep the
+     single column they have now. */
+  @media (min-width: 1440px) {
+    #toolPanel {
+      grid-template-columns: 300px 1fr 300px;
+      grid-template-rows: minmax(0, 1fr);
+      grid-template-areas: "left map right";
+    }
   }
-  #toolSidebar label { display: block; font-size: 0.78em; color: #aaa; margin: 10px 0 3px; }
+  .tool-side label { display: block; font-size: 0.78em; color: #aaa; margin: 10px 0 3px; }
   .trail-legend {
     background: rgba(20,20,20,0.82); color: #eee; padding: 7px 9px;
     border-radius: 4px; font-size: 11px; line-height: 1.6;
@@ -495,7 +528,7 @@
     display: block; font-family: var(--mono); font-size: 0.72em; color: #888;
     text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 8px;
   }
-  #toolSidebar input[type=text], #toolSidebar input[type=number], #toolSidebar input[type=email], #toolSidebar select {
+  .tool-side input[type=text], .tool-side input[type=number], .tool-side input[type=email], .tool-side select {
     width: 100%; box-sizing: border-box; padding: 7px; border-radius: 4px; border: 1px solid #444;
     background: #262626; color: #eee; font-size: 0.9em;
   }
@@ -503,26 +536,26 @@
      fields are shut while locked rather than left open to type into and be
      refused — the refusal came back from the server, so it read as the tool
      failing rather than as the trial working as intended. */
-  #toolSidebar input.locked-field {
+  .tool-side input.locked-field {
     background: #1d1d1d; color: #6f6f6f; border-style: dashed; cursor: pointer;
   }
-  #toolSidebar input.locked-field::placeholder { color: #8d7c58; }
-  #toolSidebar button.locked-field {
+  .tool-side input.locked-field::placeholder { color: #8d7c58; }
+  .tool-side button.locked-field {
     background: #1d1d1d; color: #6f6f6f; border-style: dashed;
   }
-  #toolSidebar button.locked-field:hover { background: #242424; }
-  #toolSidebar button.primary {
+  .tool-side button.locked-field:hover { background: #242424; }
+  .tool-side button.primary {
     width: 100%; margin-top: 12px; padding: 9px 12px; border-radius: 4px; border: none;
     background: #3a7bd5; color: white; font-size: 0.92em; cursor: pointer;
   }
-  #toolSidebar button.primary:hover { background: #2f66b3; }
-  #toolSidebar button.primary:disabled { background: #555; cursor: not-allowed; }
-  #toolSidebar button.secondary-btn {
+  .tool-side button.primary:hover { background: #2f66b3; }
+  .tool-side button.primary:disabled { background: #555; cursor: not-allowed; }
+  .tool-side button.secondary-btn {
     width: 100%; margin-top: 8px; padding: 7px 12px; border-radius: 4px; border: 1px solid #444;
     background: #262626; color: #ddd; font-size: 0.85em; cursor: pointer;
   }
-  #toolSidebar button.secondary-btn:hover { background: #303030; }
-  #toolSidebar button.secondary-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .tool-side button.secondary-btn:hover { background: #303030; }
+  .tool-side button.secondary-btn:disabled { opacity: 0.6; cursor: not-allowed; }
   #locationStatus { font-size: 0.78em; color: #999; margin-top: 5px; min-height: 1.1em; }
   #trackStatus { font-size: 0.85em; color: #ccc; margin-top: 6px; min-height: 1.1em; line-height: 1.5; }
   #trackStatus b { font-size: 1.15em; color: #fff; }
@@ -552,7 +585,7 @@
   .hist-row .nm { flex: 1; }
   .hist-row .pdf { color: #8ab4f8; text-decoration: none; font-size: 0.88em; }
   .hist-row .pdf:hover { text-decoration: underline; }
-  #toolSidebar input[type=range] { width: 100%; box-sizing: border-box; margin: 0; accent-color: #3a7bd5; }
+  .tool-side input[type=range] { width: 100%; box-sizing: border-box; margin: 0; accent-color: #3a7bd5; }
   #toolStatus { font-size: 0.82em; color: #ffb74d; margin-top: 8px; min-height: 1.2em; }
   #locMaps { font-size: 0.82em; margin-top: 8px; color: #aaa; }
   #locMaps a { color: #8ab4f8; }
@@ -799,7 +832,11 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 <div id="tool">
   <h2 id="try-it">Try it</h2>
   <div id="toolPanel">
-    <div id="toolSidebar">
+    <!-- Two panels, one either side of the map on a wide screen. Left is
+         picking a place, right is everything that changes what the map
+         shows. Source order is left, right, map because that is the order
+         a narrow screen wants; the grid moves the map between them. -->
+    <div id="toolSidebar" class="tool-side">
       <!-- Shown only while the device is locked. Free searches are pinned to
            these three places server-side; this is the visible half of that. -->
       <div id="demoBox" hidden>
@@ -815,60 +852,6 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       <input type="number" id="radiusInput" value="300" min="50" max="500" step="50">
       <button class="primary" id="searchBtn">Search</button>
 
-      <!-- One place for everything that puts something ON the map. These were
-           scattered: state lines and trails sat with the lidar view controls,
-           while historic maps was stranded further down behind the colour
-           picker and a legend block. Reported three times as "I can't find
-           them" — by the site's own owner, which settles it. -->
-      <div class="layer-group">
-        <span class="layer-group-label">Map layers</span>
-        <button class="secondary-btn" id="referenceBtn" type="button">🌐 Borders &amp; names: on</button>
-        <!-- The rest are national datasets, grouped by the country they
-             cover. Labelling them beats letting someone in Norway press five
-             buttons in turn and watch nothing happen — the layers are not
-             broken there, they simply do not cover it, and saying so costs
-             one line per group. -->
-        <span class="layer-group-label" style="margin-top:10px;">England only</span>
-        <button class="secondary-btn" id="smBtn" type="button">🏺 Show scheduled monuments</button>
-        <button class="secondary-btn" id="ebBtn" type="button">⚔️ Show English battlefields</button>
-        <!-- No historic-map button for England, deliberately. Every other
-             historic map on this page draws on this map - the US topo sheets,
-             Norway's Amtskart - and the point of them is comparing old ground
-             against the hillshade in one view, which the spy lens now does.
-             A link out to another site cannot do that job, so it was removed
-             rather than left sitting among buttons that can.
-
-             England can only be an overlay by paying: NLS's seamless layers
-             moved to MapTiler Cloud in 2022, whose free tier is explicitly
-             non-commercial and whose commercial plan is $25/month. Ordnance
-             Survey publishes no historic layers of its own - checked
-             2026-09-22, the OS Maps API is present-day only and NLS keeps the
-             historic collection separately. Revisit if that changes, or if
-             the subscription ever becomes worth it. -->
-        <span class="layer-group-label" style="margin-top:10px;">Norway only</span>
-        <button class="secondary-btn" id="nomBtn" type="button">🏺 Show cultural monuments</button>
-        <button class="secondary-btn" id="nozBtn" type="button">🛡️ Show protection zones</button>
-        <button class="secondary-btn" id="nohBtn" type="button">📜 Show historic maps (1826–1917)</button>
-        <span class="layer-group-label" style="margin-top:10px;">Poland only</span>
-        <button class="secondary-btn" id="plmBtn" type="button">🏺 Show archaeological monuments</button>
-        <span class="layer-group-label" style="margin-top:10px;">Netherlands only</span>
-        <button class="secondary-btn" id="nlmBtn" type="button">🏺 Show rijksmonuments</button>
-        <button class="secondary-btn" id="nltBtn" type="button">🏛️ Show protected townscapes</button>
-        <span class="layer-group-label" style="margin-top:10px;">United States only</span>
-        <button class="secondary-btn" id="stateLinesBtn" type="button">🗺️ Show state lines</button>
-        <button class="secondary-btn" id="trailsBtn" type="button">🥾 Show trails west</button>
-        <button class="secondary-btn" id="vanishedBtn" type="button">🏚️ Show ghost towns</button>
-        <button class="secondary-btn" id="battlefieldsBtn" type="button">⚔️ Show battlefields</button>
-        <button class="secondary-btn" id="minesBtn" type="button">⛏️ Show mining camps</button>
-        <button class="secondary-btn" id="histBtn" type="button">🗺️ Historic maps here</button>
-        <div id="histStatus"></div>
-        <div id="histPanel"></div>
-        <div id="histControls" hidden>
-          <label>Historic map opacity <span id="histOpacityVal">70%</span></label>
-          <input type="range" id="histOpacity" min="0" max="100" step="5" value="70">
-          <button class="secondary-btn" id="histOffBtn" type="button">✖ Turn historic map off</button>
-        </div>
-      </div>
       <!-- Everything below is a secondary path. Search used to sit under
            all of it: on a phone the primary action was 435px and three
            buttons below the place field, and the button nearest the field was
@@ -927,6 +910,38 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         </optgroup>
         </select>
       </div>
+      <div id="toolStatus"></div>
+      <div id="locMaps" hidden>📜 <a id="locMapsLink" href="#" target="_blank" rel="noopener noreferrer"></a></div>
+      <div id="searchProgress" role="status" aria-live="polite" hidden>
+        <div class="sp-bar"><div class="sp-fill" id="spFill"></div></div>
+        <div class="sp-line">
+          <span id="spPhase">Fetching elevation data…</span>
+          <span class="sp-elapsed" id="spElapsed" aria-hidden="true">0s</span>
+        </div>
+        <div class="sp-foot">These are the usual steps and timings — the server
+          only reports back once the scan finishes.</div>
+        <div class="sp-note" id="spNote" hidden>Taking longer than usual — the
+          server may have been asleep. It's still working, so don't reload.</div>
+      </div>
+      <div id="trialStatus">Loading trial status…</div>
+      <!-- Someone who paid and then lost their browser storage comes back
+           looking exactly like a brand-new visitor — full trial, no paywall —
+           so this has to be reachable from the normal state, not just from
+           the "trial spent" one. -->
+      <div id="restoreRow" hidden><a id="restoreLink">Already paid? Restore access</a></div>
+      <div id="restoreBox" hidden>
+        <input type="email" id="restoreEmail" placeholder="email used at checkout"
+               autocomplete="email" inputmode="email">
+        <button class="secondary-btn" id="restoreBtn" type="button">Restore access</button>
+        <div id="restoreStatus"></div>
+      </div>
+    </div>
+    <div id="toolSidebarRight" class="tool-side">
+      <!-- View controls first. These are what you reach for the moment a
+           scan lands - lidar on/off, the spy lens, the colour style - and
+           burying them under sixteen layer buttons meant scrolling this
+           panel every single search. The layers are the browsing half and
+           can sit below. -->
       <button class="secondary-btn" id="viewToggleBtn" type="button" disabled>🔦 Lidar view: on</button>
       <button class="secondary-btn" id="spyToggleBtn" type="button" disabled>🔍 Spy lens: off</button>
       <button class="secondary-btn" id="circlesToggleBtn" type="button" disabled>⭕ Circles: on</button>
@@ -966,30 +981,59 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       <button class="secondary-btn" id="clearBtn" type="button">🧹 Clear</button>
       <button class="secondary-btn" id="trackBtn" type="button">🎯 Start tracking</button>
       <div id="trackStatus"></div>
-      <div id="toolStatus"></div>
-      <div id="locMaps" hidden>📜 <a id="locMapsLink" href="#" target="_blank" rel="noopener noreferrer"></a></div>
-      <div id="searchProgress" role="status" aria-live="polite" hidden>
-        <div class="sp-bar"><div class="sp-fill" id="spFill"></div></div>
-        <div class="sp-line">
-          <span id="spPhase">Fetching elevation data…</span>
-          <span class="sp-elapsed" id="spElapsed" aria-hidden="true">0s</span>
+      <!-- One place for everything that puts something ON the map. These were
+           scattered: state lines and trails sat with the lidar view controls,
+           while historic maps was stranded further down behind the colour
+           picker and a legend block. Reported three times as "I can't find
+           them" — by the site's own owner, which settles it. -->
+      <div class="layer-group">
+        <span class="layer-group-label">Map layers</span>
+        <button class="secondary-btn" id="referenceBtn" type="button">🌐 Borders &amp; names: on</button>
+        <!-- The rest are national datasets, grouped by the country they
+             cover. Labelling them beats letting someone in Norway press five
+             buttons in turn and watch nothing happen — the layers are not
+             broken there, they simply do not cover it, and saying so costs
+             one line per group. -->
+        <span class="layer-group-label" style="margin-top:10px;">England only</span>
+        <button class="secondary-btn" id="smBtn" type="button">🏺 Show scheduled monuments</button>
+        <button class="secondary-btn" id="ebBtn" type="button">⚔️ Show English battlefields</button>
+        <!-- No historic-map button for England, deliberately. Every other
+             historic map on this page draws on this map - the US topo sheets,
+             Norway's Amtskart - and the point of them is comparing old ground
+             against the hillshade in one view, which the spy lens now does.
+             A link out to another site cannot do that job, so it was removed
+             rather than left sitting among buttons that can.
+
+             England can only be an overlay by paying: NLS's seamless layers
+             moved to MapTiler Cloud in 2022, whose free tier is explicitly
+             non-commercial and whose commercial plan is $25/month. Ordnance
+             Survey publishes no historic layers of its own - checked
+             2026-09-22, the OS Maps API is present-day only and NLS keeps the
+             historic collection separately. Revisit if that changes, or if
+             the subscription ever becomes worth it. -->
+        <span class="layer-group-label" style="margin-top:10px;">Norway only</span>
+        <button class="secondary-btn" id="nomBtn" type="button">🏺 Show cultural monuments</button>
+        <button class="secondary-btn" id="nozBtn" type="button">🛡️ Show protection zones</button>
+        <button class="secondary-btn" id="nohBtn" type="button">📜 Show historic maps (1826–1917)</button>
+        <span class="layer-group-label" style="margin-top:10px;">Poland only</span>
+        <button class="secondary-btn" id="plmBtn" type="button">🏺 Show archaeological monuments</button>
+        <span class="layer-group-label" style="margin-top:10px;">Netherlands only</span>
+        <button class="secondary-btn" id="nlmBtn" type="button">🏺 Show rijksmonuments</button>
+        <button class="secondary-btn" id="nltBtn" type="button">🏛️ Show protected townscapes</button>
+        <span class="layer-group-label" style="margin-top:10px;">United States only</span>
+        <button class="secondary-btn" id="stateLinesBtn" type="button">🗺️ Show state lines</button>
+        <button class="secondary-btn" id="trailsBtn" type="button">🥾 Show trails west</button>
+        <button class="secondary-btn" id="vanishedBtn" type="button">🏚️ Show ghost towns</button>
+        <button class="secondary-btn" id="battlefieldsBtn" type="button">⚔️ Show battlefields</button>
+        <button class="secondary-btn" id="minesBtn" type="button">⛏️ Show mining camps</button>
+        <button class="secondary-btn" id="histBtn" type="button">🗺️ Historic maps here</button>
+        <div id="histStatus"></div>
+        <div id="histPanel"></div>
+        <div id="histControls" hidden>
+          <label>Historic map opacity <span id="histOpacityVal">70%</span></label>
+          <input type="range" id="histOpacity" min="0" max="100" step="5" value="70">
+          <button class="secondary-btn" id="histOffBtn" type="button">✖ Turn historic map off</button>
         </div>
-        <div class="sp-foot">These are the usual steps and timings — the server
-          only reports back once the scan finishes.</div>
-        <div class="sp-note" id="spNote" hidden>Taking longer than usual — the
-          server may have been asleep. It's still working, so don't reload.</div>
-      </div>
-      <div id="trialStatus">Loading trial status…</div>
-      <!-- Someone who paid and then lost their browser storage comes back
-           looking exactly like a brand-new visitor — full trial, no paywall —
-           so this has to be reachable from the normal state, not just from
-           the "trial spent" one. -->
-      <div id="restoreRow" hidden><a id="restoreLink">Already paid? Restore access</a></div>
-      <div id="restoreBox" hidden>
-        <input type="email" id="restoreEmail" placeholder="email used at checkout"
-               autocomplete="email" inputmode="email">
-        <button class="secondary-btn" id="restoreBtn" type="button">Restore access</button>
-        <div id="restoreStatus"></div>
       </div>
       <div class="cand-legend">
         <span class="dot" style="background:#ffd54f;"></span>rectangular&nbsp;&nbsp;
