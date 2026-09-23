@@ -2450,7 +2450,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     "UPPER(Name) LIKE '%CASTLE%' OR UPPER(Name) LIKE '%MOTTE%'"
     + " OR UPPER(Name) LIKE '%BAILEY%' OR UPPER(Name) LIKE '%RINGWORK%'";
   const englishCastles = makeHeritageLayer({
-    legendId: 'ecLegend', color: '#8e6bbf', buildUrl: heUrl(6, CASTLE_WHERE),
+    legendId: 'ecLegend', color: '#ffe600', buildUrl: heUrl(6, CASTLE_WHERE),
     label: 'Castle site', source: 'Historic England NHLE',
     labels: true,
   });
@@ -2488,7 +2488,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     nameOf: hesName
   });
   const scotlandCastles = makeHeritageLayer({
-    legendId: 'sucLegend', color: '#8e6bbf', buildUrl: hesUrl(5, SCOT_CASTLE_WHERE),
+    legendId: 'sucLegend', color: '#ffe600', buildUrl: hesUrl(5, SCOT_CASTLE_WHERE),
     label: 'Castle site', source: 'Historic Environment Scotland', labels: true,
     nameOf: hesName
   });
@@ -2530,7 +2530,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     nameOf: cadwName
   });
   const walesCastles = makeHeritageLayer({
-    legendId: 'wacLegend', color: '#8e6bbf', buildUrl: cadwUrl(WALES_CASTLE_TYPES),
+    legendId: 'wacLegend', color: '#ffe600', buildUrl: cadwUrl(WALES_CASTLE_TYPES),
     label: 'Castle site', source: 'Cadw / DataMapWales', labels: true,
     nameOf: cadwName
   });
