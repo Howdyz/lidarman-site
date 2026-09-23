@@ -601,6 +601,7 @@
     background: #2d3b2d; border-color: #5f8f5f; color: #eaffea;
   }
   #markupHint { font-size: 0.76em; color: #999; line-height: 1.5; margin-top: 8px; }
+  .layer-note { font-size: 0.76em; color: #999; line-height: 1.5; margin: 6px 0 2px; }
   /* Drawing needs the map to stop panning under the pointer. */
   #map.markup-drawing { cursor: crosshair; }
   #map.markup-noting { cursor: copy; }
@@ -1069,9 +1070,17 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         <button class="secondary-btn" id="smBtn" type="button">🏺 Show scheduled monuments</button>
         <button class="secondary-btn" id="ebBtn" type="button">⚔️ Show English battlefields</button>
         <button class="secondary-btn" id="ecBtn" type="button">🏰 Show castle sites</button>
-        <span class="layer-group-label" style="margin-top:10px;">Scotland only</span>
+        <!-- Scotland is the one country here with layers but no scan. Said on
+             the button group rather than only in the FAQ, because this is
+             where someone switches the layers on and reasonably assumes a
+             search will work too. -->
+        <span class="layer-group-label" style="margin-top:10px;">Scotland — map only</span>
         <button class="secondary-btn" id="sumBtn" type="button">🏺 Show scheduled monuments</button>
         <button class="secondary-btn" id="sucBtn" type="button">🏰 Show castle sites</button>
+        <div class="layer-note">These show you where things are. You can't scan
+          Scotland yet — its lidar covers about a third of the country and is
+          published as pictures rather than ground heights, so there's nothing
+          to read a hillshade from.</div>
         <span class="layer-group-label" style="margin-top:10px;">Wales only</span>
         <button class="secondary-btn" id="wamBtn" type="button">🏺 Show scheduled monuments</button>
         <button class="secondary-btn" id="wacBtn" type="button">🏰 Show castle sites</button>
@@ -1552,6 +1561,13 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       Northern Ireland aren't covered even though England and Wales are. If you
       search somewhere with no coverage, Lidarman will say so rather than hand
       you a blank map.
+    </p>
+    <p>
+      Scotland is a half-exception. You can put its scheduled monuments and
+      castle sites on the map and go and look at them, but you can't scan
+      there — Scotland's lidar covers about a third of the country and is
+      published as pictures rather than ground heights, so there's nothing to
+      read a hillshade from.
     </p>
     <p>
       Protected sites are flagged in all six. Each country's own register does
