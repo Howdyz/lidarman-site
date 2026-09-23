@@ -2447,7 +2447,9 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       transparent: true,
       version: '1.3.0',
       opacity: 0.85,
-      attribution: 'Kartverket'
+      attribution: 'Kartverket',
+      // Marks this as a layer the spy lens cuts through. See moveSpy.
+      className: 'spy-cut'
     });
 
   const noHistLegend = L.control({ position: 'bottomleft' });
@@ -3725,7 +3727,9 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         // out before the screen does, so asking for deeper tiles only costs
         // requests. Leaflet upscales the z17 tiles instead.
         maxNativeZoom: 17,
-        attribution: 'USGS Historical Topographic Map Collection'
+        attribution: 'USGS Historical Topographic Map Collection',
+        // Marks this as a layer the spy lens cuts through. See moveSpy.
+        className: 'spy-cut'
       });
       // Above the basemap, below the lidar composite. The composite is an
       // imageOverlay and so lives in overlayPane, which already sits above the
@@ -4147,29 +4151,66 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       ? compositeOverlay.getElement() : null;
   }
 
+  // Historic-map tiles currently carrying a mask, so they can be cleared once
+  // the lens moves off them.
+  const maskedTiles = new Set();
+
+  function applyMask(el, g) {
+    el.style.webkitMaskImage = g;
+    el.style.maskImage = g;
+  }
+
+  // A mask is resolved in the element's own untransformed box, so the pointer
+  // has to be divided back out of whatever CSS scale Leaflet has applied
+  // mid-zoom or the hole drifts.
+  function maskAt(el, clientX, clientY) {
+    const r = el.getBoundingClientRect();
+    const sx = r.width / (el.offsetWidth || r.width || 1);
+    const sy = r.height / (el.offsetHeight || r.height || 1);
+    const x = (clientX - r.left) / (sx || 1);
+    const y = (clientY - r.top) / (sy || 1);
+    const rad = SPY_RADIUS / (sx || 1);
+    return `radial-gradient(circle ${rad.toFixed(1)}px at ${x.toFixed(1)}px ${y.toFixed(1)}px,`
+      + ` transparent 0 ${(rad - 2).toFixed(1)}px, #000 ${rad.toFixed(1)}px)`;
+  }
+
+  // The historic map is a tile layer, and a tile layer's container is a
+  // zero-sized div — a mask on it has no box to resolve against and does
+  // nothing. The tiles themselves are 256px images with real boxes, so each
+  // one the lens touches is masked individually. Usually one to four.
+  function spyCutTiles() {
+    return document.querySelectorAll('.spy-cut .leaflet-tile');
+  }
+
   function clearSpyMask() {
     const img = spyImage();
-    if (!img) return;
-    img.style.webkitMaskImage = '';
-    img.style.maskImage = '';
+    if (img) applyMask(img, '');
+    for (const tile of maskedTiles) applyMask(tile, '');
+    maskedTiles.clear();
   }
 
   function moveSpy(clientX, clientY) {
     const img = spyImage();
     if (!img || !spyOn || !lidarViewOn) return;
-    const r = img.getBoundingClientRect();
-    // Leaflet scales this element with a CSS transform mid-zoom, and a mask is
-    // resolved in the element's own untransformed box, so the pointer has to
-    // be divided back out of that scale or the hole drifts while zooming.
-    const sx = r.width / (img.offsetWidth || r.width || 1);
-    const sy = r.height / (img.offsetHeight || r.height || 1);
-    const x = (clientX - r.left) / (sx || 1);
-    const y = (clientY - r.top) / (sy || 1);
-    const rad = SPY_RADIUS / (sx || 1);
-    const g = `radial-gradient(circle ${rad.toFixed(1)}px at ${x.toFixed(1)}px ${y.toFixed(1)}px,`
-      + ` transparent 0 ${(rad - 2).toFixed(1)}px, #000 ${rad.toFixed(1)}px)`;
-    img.style.webkitMaskImage = g;
-    img.style.maskImage = g;
+    applyMask(img, maskAt(img, clientX, clientY));
+
+    // Cutting the lidar alone only reaches the historic sheet and stops there,
+    // which is the one place the lens was least use: the whole point of an old
+    // map is comparing it against what is there now. So the same circle comes
+    // out of the historic map too — 1800s outside the ring, today inside it.
+    const touched = new Set();
+    for (const tile of spyCutTiles()) {
+      const r = tile.getBoundingClientRect();
+      if (clientX < r.left - SPY_RADIUS || clientX > r.right + SPY_RADIUS
+        || clientY < r.top - SPY_RADIUS || clientY > r.bottom + SPY_RADIUS) continue;
+      applyMask(tile, maskAt(tile, clientX, clientY));
+      touched.add(tile);
+      maskedTiles.add(tile);
+    }
+    // Tiles the lens has left, and tiles Leaflet has since detached.
+    for (const tile of maskedTiles) {
+      if (!touched.has(tile)) { applyMask(tile, ''); maskedTiles.delete(tile); }
+    }
   }
 
   function setSpy(on) {
