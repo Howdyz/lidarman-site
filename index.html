@@ -1052,6 +1052,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         <span class="layer-group-label" style="margin-top:10px;">England only</span>
         <button class="secondary-btn" id="smBtn" type="button">🏺 Show scheduled monuments</button>
         <button class="secondary-btn" id="ebBtn" type="button">⚔️ Show English battlefields</button>
+        <button class="secondary-btn" id="ecBtn" type="button">🏰 Show castle sites</button>
         <!-- No historic-map button for England, deliberately. Every other
              historic map on this page draws on this map - the US topo sheets,
              Norway's Amtskart - and the point of them is comparing old ground
@@ -2353,10 +2354,11 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     return group;
   }
 
-  const heUrl = (layerId) => (q) => HE_URL + '/' + layerId + '/query?' + new URLSearchParams({
+  const heUrl = (layerId, where) => (q) => HE_URL + '/' + layerId + '/query?' + new URLSearchParams({
     geometry: [q.getWest(), q.getSouth(), q.getEast(), q.getNorth()].join(','),
     geometryType: 'esriGeometryEnvelope', inSR: '4326', outSR: '4326',
     spatialRel: 'esriSpatialRelIntersects', outFields: 'Name',
+    where: where || '1=1',
     returnGeometry: 'true', maxAllowableOffset: '0.0001',
     resultRecordCount: String(HE_MAX_FEATURES), f: 'geojson'
   });
@@ -2368,6 +2370,31 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   const englishBattlefields = makeHeritageLayer({
     legendId: 'ebLegend', color: '#c9a227', buildUrl: heUrl(8),
     label: 'Registered Battlefield', source: 'Historic England NHLE'
+  });
+
+  // ---- England: castle sites -----------------------------------------------
+  // There is no castles layer in the NHLE - checked the service, it publishes
+  // eleven and none of them is one - so this is Scheduled Monuments filtered by
+  // name. 1,274 of the 20,001 scheduled monuments match, and the noise is 8
+  // street names ("Vault S of junction of High Street and Castle Way"), which
+  // is not worth excluding at the cost of dropping real sites.
+  //
+  // motte, bailey and ringwork are in there alongside castle because they are
+  // the earthwork forms, and those are the ones worth having on a lidar map:
+  // a stone keep is already on every map ever printed, while a motte ploughed
+  // flat three hundred years ago shows up in a hillshade and nowhere else.
+  // They only add 84 sites over "castle" alone, since most are named "<X>
+  // Castle" anyway - but those 84 are the invisible ones.
+  //
+  // Deliberately NOT the Listed Buildings layer, which matches 3,237 on the
+  // same word and is mostly Castle Cottage, the Castle Inn and 1 Castle
+  // Street. Scheduled Monuments is the archaeological list.
+  const CASTLE_WHERE =
+    "UPPER(Name) LIKE '%CASTLE%' OR UPPER(Name) LIKE '%MOTTE%'"
+    + " OR UPPER(Name) LIKE '%BAILEY%' OR UPPER(Name) LIKE '%RINGWORK%'";
+  const englishCastles = makeHeritageLayer({
+    legendId: 'ecLegend', color: '#8e6bbf', buildUrl: heUrl(6, CASTLE_WHERE),
+    label: 'Castle site', source: 'Historic England NHLE'
   });
 
   // ---- Netherlands: RCE's national heritage register -----------------------
@@ -2589,6 +2616,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     { 'Borders & place names': reference,
       'Scheduled monuments (England)': scheduledMonuments,
       'Battlefields (England)': englishBattlefields,
+      'Castle sites (England)': englishCastles,
       'Cultural monuments (Norway)': norwayMonuments,
       'Protection zones (Norway)': norwayZones,
       'Historic maps 1826–1917 (Norway)': norwayHistoric,
@@ -2632,6 +2660,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   wireOverlayButton('referenceBtn', reference, '🌐 Borders & names: on', '🌐 Show borders & names');
   wireOverlayButton('smBtn', scheduledMonuments, '🏺 Scheduled monuments: on', '🏺 Show scheduled monuments');
   wireOverlayButton('ebBtn', englishBattlefields, '⚔️ English battlefields: on', '⚔️ Show English battlefields');
+  wireOverlayButton('ecBtn', englishCastles, '🏰 Castle sites: on', '🏰 Show castle sites');
   wireOverlayButton('nomBtn', norwayMonuments, '🏺 Cultural monuments: on', '🏺 Show cultural monuments');
   wireOverlayButton('nozBtn', norwayZones, '🛡️ Protection zones: on', '🛡️ Show protection zones');
   wireOverlayButton('nohBtn', norwayHistoric, '📜 Historic maps: on', '📜 Show historic maps (1826–1917)');
