@@ -4190,9 +4190,12 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   }
 
   function moveSpy(clientX, clientY) {
-    const img = spyImage();
-    if (!img || !spyOn || !lidarViewOn) return;
-    applyMask(img, maskAt(img, clientX, clientY));
+    if (!spyOn) return;
+    // Each layer is cut only if it is actually showing. With the lidar view
+    // off there is no raster to make a hole in, but a historic map on its own
+    // is still worth looking through.
+    const img = lidarViewOn ? spyImage() : null;
+    if (img) applyMask(img, maskAt(img, clientX, clientY));
 
     // Cutting the lidar alone only reaches the historic sheet and stops there,
     // which is the one place the lens was least use: the whole point of an old
@@ -4222,12 +4225,12 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 
   spyToggleBtn.addEventListener('click', () => {
     if (!compositeOverlay) return;
-    // Spying with the raster faded to nothing would look like a dead button,
-    // so switching it on brings the lidar back rather than doing nothing.
-    if (!lidarViewOn) {
-      lidarViewOn = true;
-      viewToggleBtn.textContent = '🔦 Lidar view: on';
-    }
+    // This used to switch the lidar back on if it was off, on the reasoning
+    // that a lens with nothing to cut looks like a dead button. Reported as a
+    // bug, and rightly: turning one control off and having another turn it
+    // back on is the tool overruling you. It also stopped being true once the
+    // lens learned to cut historic maps, which is a real thing to look
+    // through with the lidar off.
     setSpy(!spyOn);
   });
 
@@ -4240,7 +4243,14 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   viewToggleBtn.addEventListener('click', () => {
     if (!compositeOverlay) return;
     lidarViewOn = !lidarViewOn;
-    if (!lidarViewOn && spyOn) setSpy(false);
+    // Same reasoning as the spy button: these two are independent controls.
+    // The lens stays on and goes on cutting whatever is left underneath. The
+    // raster's own mask is dropped so a hole does not reappear frozen in
+    // place when the lidar comes back.
+    if (!lidarViewOn) {
+      const img = spyImage();
+      if (img) applyMask(img, '');
+    }
     compositeOverlay.setOpacity(overlayOpacity());
     viewToggleBtn.textContent = lidarViewOn ? '🔦 Lidar view: on' : '🛰️ Lidar view: off';
   });
