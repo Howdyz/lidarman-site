@@ -1537,6 +1537,23 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   // 35px, which is the size of a fingertip without being greedy about it.
   const COARSE_POINTER = window.matchMedia('(pointer: coarse)').matches;
   const dotRenderer = L.canvas({ padding: 0.3 });
+
+  // A pane for every non-interactive shape layer on this map, and the reason
+  // it has to exist is not layering but clicks.
+  //
+  // A canvas renderer is ONE element covering the whole map, so `pointer-events`
+  // is all-or-nothing across it — `interactive: false` on the shapes inside
+  // does not help. Switching on a heritage layer therefore dropped a live
+  // canvas on top of the candidate circles' own canvas and swallowed every
+  // click meant for them: reported as "the circles are eating the clicks and
+  // not posting the information tag", with English battlefields on. The US
+  // battlefields layer had the same flaw and had had it all along.
+  //
+  // pointer-events:none on the pane makes the whole thing transparent to hit
+  // testing, so clicks fall straight through to the circles below. z-index 450
+  // also puts these above the lidar raster, where an outline is more use than
+  // buried under it, and below the marker pane so the circles stay on top.
+  // (the pane itself is created just after the map exists, below)
   // How close a finger has to land to select a circle. Not the renderer's
   // `tolerance`, which this replaced: that inflates every circle's hit area
   // independently, and Leaflet's canvas then picks whichever overlapping
@@ -1561,6 +1578,11 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   if (COARSE_POINTER) L.Draggable.prototype.options.clickTolerance = 12;
 
   const map = L.map('map').setView([39.8283, -98.5795], 4);
+
+  map.createPane('shapesPane');
+  map.getPane('shapesPane').style.zIndex = 450;
+  map.getPane('shapesPane').style.pointerEvents = 'none';
+  const shapeRenderer = () => L.canvas({ padding: 0.3, pane: 'shapesPane' });
 
   // Where a tapped feature's details go.
   //
@@ -1946,7 +1968,10 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
           // 957 polygons and ~67k vertices is a lot of DOM as SVG — one <path>
           // each, with a very long `d`. Canvas draws the same thing in one
           // element and pans without the browser re-laying-out any of it.
-          renderer: L.canvas({ padding: 0.3 }),
+          // shapesPane rather than a bare canvas: see its definition — a
+          // canvas is one element, so without a pointer-events:none pane it
+          // swallows every click aimed at the candidate circles underneath.
+          renderer: shapeRenderer(),
           style: f => {
             const st = BATTLE_STYLE[f.properties.w] || BATTLE_STYLE.cw;
             return { color: st.color, weight: 1.5, opacity: 0.9,
@@ -2150,7 +2175,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       if (drawn) group.removeLayer(drawn);
       drawn = L.geoJSON(gj, {
         interactive: false,
-        renderer: L.canvas({ padding: 0.3 }),
+        renderer: shapeRenderer(),
         style: f => Object.assign({ weight: 1.5, opacity: 0.9, fillOpacity: 0.15 },
                                   styleOf(f))
       }).addTo(group);
