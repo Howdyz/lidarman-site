@@ -586,6 +586,44 @@
   .hist-row .pdf { color: #8ab4f8; text-decoration: none; font-size: 0.88em; }
   .hist-row .pdf:hover { text-decoration: underline; }
   .tool-side input[type=range] { width: 100%; box-sizing: border-box; margin: 0; accent-color: #3a7bd5; }
+
+  /* ---- Markup: freehand drawing and note tags ---- */
+  #markupSwatches { display: flex; gap: 8px; margin: 8px 0 2px; }
+  .markup-swatch {
+    width: 30px; height: 30px; border-radius: 50%; cursor: pointer;
+    border: 2px solid #555; padding: 0; flex: 0 0 auto;
+  }
+  .markup-swatch[data-color="red"]    { background: #e53935; }
+  .markup-swatch[data-color="yellow"] { background: #fdd835; }
+  .markup-swatch[data-color="blue"]   { background: #1e88e5; }
+  .markup-swatch.on { border-color: #fff; box-shadow: 0 0 0 2px #1a1a1a, 0 0 0 4px #fff; }
+  .tool-side button.secondary-btn.markup-on {
+    background: #2d3b2d; border-color: #5f8f5f; color: #eaffea;
+  }
+  #markupHint { font-size: 0.76em; color: #999; line-height: 1.5; margin-top: 8px; }
+  /* Drawing needs the map to stop panning under the pointer. */
+  #map.markup-drawing { cursor: crosshair; }
+  #map.markup-noting { cursor: copy; }
+
+  /* A note tag is meant to be read in a screenshot, so it is paper-coloured
+     and sized like a label rather than styled like the dark panel. */
+  .note-tag {
+    position: relative;
+    min-width: 132px; max-width: 230px;
+    background: var(--paper); color: var(--ink);
+    border: 1px solid var(--rule); border-left: 5px solid #e53935;
+    border-radius: 4px; padding: 5px 20px 5px 8px;
+    font-family: system-ui, sans-serif; font-size: 12.5px; line-height: 1.45;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+  }
+  .note-tag .note-text { outline: none; min-height: 1.45em; white-space: pre-wrap; word-break: break-word; }
+  .note-tag .note-text:empty::before { content: attr(data-placeholder); color: #999; }
+  .note-tag .note-x {
+    position: absolute; top: 1px; right: 2px;
+    background: none; border: 0; padding: 0 3px;
+    color: var(--ink-soft); font-size: 15px; line-height: 1.1; cursor: pointer;
+  }
+  .note-tag .note-x:hover { color: #c0392b; }
   #toolStatus { font-size: 0.82em; color: #ffb74d; margin-top: 8px; min-height: 1.2em; }
   #locMaps { font-size: 0.82em; margin-top: 8px; color: #aaa; }
   #locMaps a { color: #8ab4f8; }
@@ -981,6 +1019,23 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       <button class="secondary-btn" id="clearBtn" type="button">🧹 Clear</button>
       <button class="secondary-btn" id="trackBtn" type="button">🎯 Start tracking</button>
       <div id="trackStatus"></div>
+      <!-- Markup. Deliberately has no save, no export and no storage: the
+           whole point is that you draw on a scan, screenshot it and move on.
+           Nothing here is sent anywhere or survives a reload. -->
+      <div class="layer-group">
+        <span class="layer-group-label">Markup <span style="opacity:.6; font-weight:normal;">— never saved</span></span>
+        <div id="markupSwatches">
+          <button class="markup-swatch on" type="button" data-color="red" title="Red" aria-label="Red"></button>
+          <button class="markup-swatch" type="button" data-color="yellow" title="Yellow" aria-label="Yellow"></button>
+          <button class="markup-swatch" type="button" data-color="blue" title="Blue" aria-label="Blue"></button>
+        </div>
+        <button class="secondary-btn" id="markupDrawBtn" type="button">✏️ Draw: off</button>
+        <button class="secondary-btn" id="markupNoteBtn" type="button">🏷️ Note tag: off</button>
+        <button class="secondary-btn" id="markupUndoBtn" type="button">↶ Undo last</button>
+        <button class="secondary-btn" id="markupClearBtn" type="button">🧹 Clear markup</button>
+        <div id="markupHint">Draw round anything worth a second look, drop a tag and
+          type a note. It all lives in this window only — screenshot to keep it.</div>
+      </div>
       <!-- One place for everything that puts something ON the map. These were
            scattered: state lines and trails sat with the lidar view controls,
            while historic maps was stranded further down behind the colour
@@ -4656,6 +4711,10 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   });
 
   map.on('click', (e) => {
+    // A markup tool owns the click while it is on: dropping a search pin
+    // every time someone places a note would be maddening.
+    if (markupTool === 'note') { addNoteTag(e.latlng); return; }
+    if (markupTool === 'draw') return;
     // On a phone a tap near a circle means that circle, not a new pin.
     if (COARSE_POINTER) {
       const hit = nearestTapTarget(e.containerPoint);
@@ -4663,6 +4722,152 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     }
     placeSearchPin(e.latlng.lat, e.latlng.lng, true);
   });
+
+  // ---- Markup: draw on the scan, pin notes, screenshot, done ---------------
+  //
+  // There is no save, no export and no storage here on purpose - asked for as
+  // "so i can screen shot them and never save anything". Everything below
+  // lives in page memory and dies with a reload, which also means there is no
+  // privacy question about where someone's dig sites end up.
+  const MARKUP_COLORS = { red: '#e53935', yellow: '#fdd835', blue: '#1e88e5' };
+  let markupTool = null;          // null | 'draw' | 'note'
+  let markupColor = 'red';
+  const markupItems = [];         // every layer drawn, oldest first, for undo
+
+  // Above the candidate circles so markup is never hidden behind them, below
+  // markerPane (600) so note tags and pins stay on top. pointerEvents none for
+  // the same reason the shapes pane has it: a canvas is one element covering
+  // the whole map, and an interactive one eats every click meant for the map.
+  map.createPane('markupPane');
+  map.getPane('markupPane').style.zIndex = 460;
+  map.getPane('markupPane').style.pointerEvents = 'none';
+  const markupRenderer = L.canvas({ padding: 0.3, pane: 'markupPane' });
+
+  const markupDrawBtn = document.getElementById('markupDrawBtn');
+  const markupNoteBtn = document.getElementById('markupNoteBtn');
+  const mapContainerEl = map.getContainer();
+
+  function markupLabels() {
+    markupDrawBtn.textContent = markupTool === 'draw' ? '\u270f\ufe0f Draw: on' : '\u270f\ufe0f Draw: off';
+    markupNoteBtn.textContent = markupTool === 'note' ? '🏷️ Note tag: on' : '🏷️ Note tag: off';
+    markupDrawBtn.classList.toggle('markup-on', markupTool === 'draw');
+    markupNoteBtn.classList.toggle('markup-on', markupTool === 'note');
+    mapContainerEl.classList.toggle('markup-drawing', markupTool === 'draw');
+    mapContainerEl.classList.toggle('markup-noting', markupTool === 'note');
+  }
+
+  function setMarkupTool(tool) {
+    markupTool = (markupTool === tool) ? null : tool;
+    // Drawing and panning are the same gesture, so one of them has to give.
+    if (markupTool === 'draw') map.dragging.disable();
+    else map.dragging.enable();
+    markupLabels();
+  }
+
+  markupDrawBtn.addEventListener('click', () => setMarkupTool('draw'));
+  markupNoteBtn.addEventListener('click', () => setMarkupTool('note'));
+
+  document.getElementById('markupSwatches').addEventListener('click', (e) => {
+    const b = e.target.closest('.markup-swatch');
+    if (!b) return;
+    markupColor = b.dataset.color;
+    document.querySelectorAll('.markup-swatch').forEach(el => el.classList.toggle('on', el === b));
+  });
+
+  document.getElementById('markupUndoBtn').addEventListener('click', () => {
+    const last = markupItems.pop();
+    if (last) map.removeLayer(last);
+  });
+  document.getElementById('markupClearBtn').addEventListener('click', () => {
+    while (markupItems.length) map.removeLayer(markupItems.pop());
+  });
+
+  // ---- freehand strokes ----
+  let stroke = null;
+  let strokeLastPt = null;
+
+  function strokeStart(e) {
+    if (markupTool !== 'draw' || e.button > 0) return;
+    e.preventDefault();
+    if (mapContainerEl.setPointerCapture) {
+      try { mapContainerEl.setPointerCapture(e.pointerId); } catch (err) { /* not fatal */ }
+    }
+    stroke = L.polyline([map.mouseEventToLatLng(e)], {
+      color: MARKUP_COLORS[markupColor],
+      weight: 4, opacity: 0.95, lineCap: 'round', lineJoin: 'round',
+      interactive: false, renderer: markupRenderer, pane: 'markupPane'
+    }).addTo(map);
+    strokeLastPt = { x: e.clientX, y: e.clientY };
+  }
+
+  function strokeMove(e) {
+    if (!stroke) return;
+    // One point per 3px. Following every pointer event puts hundreds of
+    // near-identical points in a stroke and the canvas starts to stutter.
+    const dx = e.clientX - strokeLastPt.x, dy = e.clientY - strokeLastPt.y;
+    if (dx * dx + dy * dy < 9) return;
+    strokeLastPt = { x: e.clientX, y: e.clientY };
+    stroke.addLatLng(map.mouseEventToLatLng(e));
+  }
+
+  function strokeEnd() {
+    if (!stroke) return;
+    // A single click with no drag leaves a one-point line, which draws
+    // nothing and would still cost an undo press to get rid of.
+    if (stroke.getLatLngs().length < 2) map.removeLayer(stroke);
+    else markupItems.push(stroke);
+    stroke = null;
+    strokeLastPt = null;
+  }
+
+  mapContainerEl.addEventListener('pointerdown', strokeStart);
+  mapContainerEl.addEventListener('pointermove', strokeMove);
+  mapContainerEl.addEventListener('pointerup', strokeEnd);
+  mapContainerEl.addEventListener('pointercancel', strokeEnd);
+
+  // ---- note tags ----
+  function addNoteTag(latlng) {
+    const hex = MARKUP_COLORS[markupColor];
+    const icon = L.divIcon({
+      className: 'note-tag-wrap',
+      iconSize: null,
+      // Top-left corner sits on the spot, so the tag reads as hanging off the
+      // point rather than covering it.
+      iconAnchor: [0, 0],
+      html: '<div class="note-tag" style="border-left-color:' + hex + '">'
+          + '<button class="note-x" type="button" title="Remove this note">\u00d7</button>'
+          + '<div class="note-text" contenteditable="true" spellcheck="false" '
+          + 'data-placeholder="Type a note\u2026"></div></div>'
+    });
+    const tag = L.marker(latlng, { icon, draggable: true, autoPan: false }).addTo(map);
+    markupItems.push(tag);
+
+    const el = tag.getElement();
+    // Without this, clicking into the note drops another note underneath it
+    // and scrolling the text zooms the map.
+    L.DomEvent.disableClickPropagation(el);
+    L.DomEvent.disableScrollPropagation(el);
+
+    const text = el.querySelector('.note-text');
+    // Leaflet's Draggable starts on pointerdown anywhere in the icon, which
+    // would swallow every attempt to place the caret or select a word. Stop
+    // it at the text; the rest of the tag still drags.
+    ['pointerdown', 'mousedown', 'touchstart'].forEach(ev =>
+      L.DomEvent.on(text, ev, L.DomEvent.stopPropagation));
+    // Paste as plain text - a paste from a web page otherwise arrives with
+    // its own markup and colours and wrecks the tag.
+    L.DomEvent.on(text, 'paste', (ev) => {
+      ev.preventDefault();
+      const plain = (ev.clipboardData || window.clipboardData).getData('text');
+      document.execCommand('insertText', false, plain);
+    });
+    el.querySelector('.note-x').addEventListener('click', () => {
+      const i = markupItems.indexOf(tag);
+      if (i >= 0) markupItems.splice(i, 1);
+      map.removeLayer(tag);
+    });
+    text.focus();
+  }
 
   // Returning from Stripe checkout success_url=...?unlocked=1
   if (new URLSearchParams(window.location.search).get('unlocked') === '1') {
