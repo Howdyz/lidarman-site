@@ -605,6 +605,22 @@
   #map.markup-drawing { cursor: crosshair; }
   #map.markup-noting { cursor: copy; }
 
+  /* Castle names drawn on the map. Leaflet positions the outer div with its
+     own transform, so the centring offset has to go on an inner span or it
+     would be overwritten every time the marker moves. */
+  .map-label { width: auto !important; height: auto !important; pointer-events: none; }
+  .map-label span {
+    position: absolute; left: 0; top: 0;
+    transform: translate(-50%, -50%);
+    white-space: nowrap;
+    font: 600 11.5px/1.2 system-ui, sans-serif;
+    color: #fff;
+    /* Four shadows rather than one: these sit on satellite imagery, which is
+       light over sand and near-black under trees, and a single outline
+       disappears against one or the other. */
+    text-shadow: 0 0 3px #000, 0 0 3px #000, 0 0 6px #000, 0 1px 2px #000;
+  }
+
   /* A note tag is meant to be read in a screenshot, so it is paper-coloured
      and sized like a label rather than styled like the dark panel. */
   .note-tag {
@@ -2253,7 +2269,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 
   function makeHeritageLayer(opts) {
     const group = L.layerGroup();
-    let drawn = null, lastBounds = null, loading = false;
+    let drawn = null, labels = null, lastBounds = null, loading = false;
 
     const legend = L.control({ position: 'bottomleft' });
     legend.onAdd = function () {
@@ -2299,12 +2315,45 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 
     function render(gj) {
       if (drawn) group.removeLayer(drawn);
+      if (labels) group.removeLayer(labels);
       drawn = L.geoJSON(gj, {
         interactive: false,
         renderer: shapeRenderer(),
         style: f => Object.assign({ weight: 1.5, opacity: 0.9, fillOpacity: 0.15 },
                                   styleOf(f))
       }).addTo(group);
+
+      // Names on the map itself, not only in the corner legend. Opt-in
+      // because it only makes sense for a sparse layer: the castle layers
+      // are a few dozen in view at most, while the scheduled-monument ones
+      // they are filtered out of would write hundreds of labels over each
+      // other.
+      //
+      // In shapesPane, which is pointer-events: none. A label is a DOM
+      // element sitting over the map, and an interactive one would eat
+      // clicks meant for the candidate circles underneath - the same bug the
+      // heritage canvas caused before that pane existed.
+      if (opts.labels) {
+        labels = L.layerGroup();
+        drawn.eachLayer(l => {
+          const raw = nameOf((l.feature && l.feature.properties) || {});
+          if (!raw || !l.getBounds) return;
+          // Historic England and HES both name a monument by locating it
+          // against a landmark - "Yester Castle,fort NW of". The part before
+          // the first comma is the name; the rest is directions, and on a
+          // label it is just noise.
+          let text = String(raw).split(',')[0].trim();
+          if (text.length > 34) text = text.slice(0, 33).trimEnd() + '\u2026';
+          labels.addLayer(L.marker(l.getBounds().getCenter(), {
+            interactive: false, keyboard: false, pane: 'shapesPane',
+            icon: L.divIcon({
+              className: 'map-label', iconSize: null,
+              html: '<span>' + escapeHtml(text) + '</span>'
+            })
+          }));
+        });
+        labels.addTo(group);
+      }
       const names = [...new Set((gj.features || [])
         .map(f => nameOf(f.properties || {})).filter(Boolean))];
       // Not every register names its features — Norway's protection zones
@@ -2324,6 +2373,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       if (!map.hasLayer(group) || loading) return;
       if (map.getZoom() < HE_MIN_ZOOM) {
         if (drawn) { group.removeLayer(drawn); drawn = null; }
+        if (labels) { group.removeLayer(labels); labels = null; }
         lastBounds = null;
         say(`Zoom in to load · ${opts.source}`);
         return;
@@ -2354,6 +2404,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       if (e.layer !== group) return;
       legend.remove();
       if (drawn) { group.removeLayer(drawn); drawn = null; }
+      if (labels) { group.removeLayer(labels); labels = null; }
       lastBounds = null;
     });
     map.on('moveend zoomend', refresh);
@@ -2400,7 +2451,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     + " OR UPPER(Name) LIKE '%BAILEY%' OR UPPER(Name) LIKE '%RINGWORK%'";
   const englishCastles = makeHeritageLayer({
     legendId: 'ecLegend', color: '#8e6bbf', buildUrl: heUrl(6, CASTLE_WHERE),
-    label: 'Castle site', source: 'Historic England NHLE'
+    label: 'Castle site', source: 'Historic England NHLE',
+    labels: true,
   });
 
   // ---- Scotland: Historic Environment Scotland's designations --------------
@@ -2437,7 +2489,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   });
   const scotlandCastles = makeHeritageLayer({
     legendId: 'sucLegend', color: '#8e6bbf', buildUrl: hesUrl(5, SCOT_CASTLE_WHERE),
-    label: 'Castle site', source: 'Historic Environment Scotland',
+    label: 'Castle site', source: 'Historic Environment Scotland', labels: true,
     nameOf: hesName
   });
 
@@ -2479,7 +2531,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   });
   const walesCastles = makeHeritageLayer({
     legendId: 'wacLegend', color: '#8e6bbf', buildUrl: cadwUrl(WALES_CASTLE_TYPES),
-    label: 'Castle site', source: 'Cadw / DataMapWales',
+    label: 'Castle site', source: 'Cadw / DataMapWales', labels: true,
     nameOf: cadwName
   });
 
