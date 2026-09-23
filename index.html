@@ -499,6 +499,18 @@
     width: 100%; box-sizing: border-box; padding: 7px; border-radius: 4px; border: 1px solid #444;
     background: #262626; color: #eee; font-size: 0.9em;
   }
+  /* A locked device can only search the three demo places. The free-text
+     fields are shut while locked rather than left open to type into and be
+     refused — the refusal came back from the server, so it read as the tool
+     failing rather than as the trial working as intended. */
+  #toolSidebar input.locked-field {
+    background: #1d1d1d; color: #6f6f6f; border-style: dashed; cursor: pointer;
+  }
+  #toolSidebar input.locked-field::placeholder { color: #8d7c58; }
+  #toolSidebar button.locked-field {
+    background: #1d1d1d; color: #6f6f6f; border-style: dashed;
+  }
+  #toolSidebar button.locked-field:hover { background: #242424; }
   #toolSidebar button.primary {
     width: 100%; margin-top: 12px; padding: 9px 12px; border-radius: 4px; border: none;
     background: #3a7bd5; color: white; font-size: 0.92em; cursor: pointer;
@@ -2914,17 +2926,88 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       blurb: 'A Civil War siege fort the trees have covered since 1865' }
   ];
   let demoRendered = false;
+  // null while the first status call is in flight. Only an explicit false
+  // locks anything — an unlocked customer who presses Search before the
+  // status lands must never be shown a paywall.
+  let deviceUnlocked = null;
+  const LOCKED_SEARCH_MSG =
+    'Free searches cover the three places listed beside the map. '
+    + 'Unlock to point the scanner anywhere you like.';
+
+  // Matches access.demo_location_for() on the server, including its 250 m
+  // tolerance. Used only to decide whether a search is worth sending; the
+  // server decides whether it runs.
+  const DEMO_TOLERANCE_M = 250;
+  function demoLocationFor(lat, lon) {
+    if (!isFinite(lat) || !isFinite(lon)) return null;
+    for (const d of DEMO_LOCATIONS) {
+      if (haversineDistanceMeters(lat, lon, d.lat, d.lon) <= DEMO_TOLERANCE_M) return d;
+    }
+    return null;
+  }
+
+  // The free-text fields are shut while the device is locked. They used to
+  // stay open on the theory that being refused is the moment this is worth
+  // buying, but the refusal arrived from the server after a spinner, which
+  // reads as the tool failing rather than as the trial doing its job. Locked
+  // and clearly labelled says the same thing instantly, and clicking the bar
+  // goes straight to the unlock prompt.
+  const LOCKABLE_FIELDS = ['placeInput', 'latInput', 'lonInput'];
+  const ORIGINAL_PLACEHOLDERS = {};
+  let lockClickWired = false;
+
+  function setSearchBarLocked(locked) {
+    for (const id of LOCKABLE_FIELDS) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      if (!(id in ORIGINAL_PLACEHOLDERS)) ORIGINAL_PLACEHOLDERS[id] = el.placeholder;
+      // readOnly, not disabled: a disabled input fires no click, and the
+      // click is what opens checkout. It also still accepts the value the
+      // demo buttons write into it.
+      el.readOnly = locked;
+      el.classList.toggle('locked-field', locked);
+      el.title = locked ? LOCKED_SEARCH_MSG : '';
+      if (locked) {
+        // Only the place field is cleared. Lat/lon may be holding the demo
+        // location a button just wrote there, and this runs again on every
+        // search response — wiping it would make a second press of Search
+        // fail on a place the visitor is plainly still looking at.
+        if (id === 'placeInput') el.value = '';
+        el.placeholder = id === 'placeInput'
+          ? '🔒 Unlock to search anywhere'
+          : '🔒 Locked';
+      } else {
+        el.placeholder = ORIGINAL_PLACEHOLDERS[id];
+      }
+    }
+    // "Use my location" is a search entry point too: it drops the visitor's
+    // own coordinates into the fields, which is the one place a locked device
+    // can never scan. Leaving it live sends someone through a permission
+    // prompt to reach a paywall.
+    const geoBtn = document.getElementById('useLocationBtn');
+    if (geoBtn) {
+      geoBtn.classList.toggle('locked-field', locked);
+      geoBtn.textContent = locked
+        ? '🔒 Use my location — unlock first'
+        : '📍 Use my location';
+      geoBtn.title = locked ? LOCKED_SEARCH_MSG : '';
+    }
+    if (lockClickWired) return;
+    lockClickWired = true;
+    for (const id of LOCKABLE_FIELDS) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      el.addEventListener('click', () => {
+        if (el.readOnly) { el.blur(); showPaywall(LOCKED_SEARCH_MSG); }
+      });
+    }
+  }
 
   function renderDemoLocations() {
     const box = document.getElementById('demoBox');
     if (!box) return;
     box.hidden = false;
-    // "e.g. Gettysburg, PA" invites precisely the search a locked device
-    // cannot run. The box stays enabled on purpose — trying somewhere of your
-    // own and being told it needs an unlock is the moment this is worth
-    // buying — but it should not advertise a place that will be refused.
-    const placeEl = document.getElementById('placeInput');
-    if (placeEl) placeEl.placeholder = 'Unlock to search anywhere';
+    setSearchBarLocked(true);
     if (demoRendered) return;
     demoRendered = true;
     const wrap = document.getElementById('demoButtons');
@@ -2947,11 +3030,11 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   function renderTrialStatus(data) {
     trialEl.textContent = '';
     restoreRow.hidden = !!data.unlocked;
+    deviceUnlocked = !!data.unlocked;
     if (data.unlocked) {
       const box = document.getElementById('demoBox');
       if (box) box.hidden = true;
-      const placeEl = document.getElementById('placeInput');
-      if (placeEl) placeEl.placeholder = 'e.g. Gettysburg, PA';
+      setSearchBarLocked(false);
       trialEl.textContent = '✅ Unlocked on this device — no subscription.';
       trialEl.classList.add('unlocked');
       restoreBox.hidden = true;
@@ -3150,7 +3233,23 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       }
       body.lat = la; body.lon = lo;
     }
-    else { setStatus('Enter a place name or lat/lon.', true); return; }
+    else {
+      setStatus(deviceUnlocked === false
+        ? 'Pick one of the three free places above.'
+        : 'Enter a place name or lat/lon.', true);
+      return;
+    }
+
+    // A locked device can only scan the three demo places. The server enforces
+    // this as well and is what actually decides; stopping here saves the round
+    // trip and, more to the point, answers instantly instead of after a
+    // spinner and a 403.
+    if (deviceUnlocked === false && !demoLocationFor(body.lat, body.lon)) {
+      setStatus('');
+      renderDemoLocations();
+      showPaywall(LOCKED_SEARCH_MSG);
+      return;
+    }
 
     setStatus('Fetching + processing LIDAR data (usually 30-90s)…');
     showLocMaps('');
@@ -4293,6 +4392,9 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   const useLocationBtn = document.getElementById('useLocationBtn');
   const locationStatusEl = document.getElementById('locationStatus');
   useLocationBtn.addEventListener('click', () => {
+    // Locked devices can only scan the three demo places, so there is nothing
+    // for a location fix to do here except lead to a refusal.
+    if (deviceUnlocked === false) { showPaywall(LOCKED_SEARCH_MSG); return; }
     if (!navigator.geolocation) {
       locationStatusEl.textContent = "This browser can't share your location.";
       return;
