@@ -788,6 +788,15 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   <h2 id="try-it">Try it</h2>
   <div id="toolPanel">
     <div id="toolSidebar">
+      <!-- Shown only while the device is locked. Free searches are pinned to
+           these three places server-side; this is the visible half of that. -->
+      <div id="demoBox" hidden>
+        <span class="layer-group-label">Free searches — pick a place</span>
+        <div id="demoButtons"></div>
+        <div id="demoNote" style="font-size:.85em; opacity:.75; line-height:1.55; margin:8px 0 14px;">
+          These three show everything the tool does. Unlock to point it at your own ground.
+        </div>
+      </div>
       <label>Place name</label>
       <input type="text" id="placeInput" placeholder="e.g. Gettysburg, PA">
       <label>Search radius (meters) <span style="opacity:.6; font-weight:normal;">— 50 to 500</span></label>
@@ -2893,16 +2902,55 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   const restoreBox = document.getElementById('restoreBox');
   const restoreStatus = document.getElementById('restoreStatus');
 
+  // The three places a locked device may search. Hard-coded to match
+  // access.DEMO_LOCATIONS on the server; the server is what enforces them, so
+  // a mismatch here costs a confusing rejection rather than a free search.
+  const DEMO_LOCATIONS = [
+    { id: 'serpent-mound', name: 'Serpent Mound, Ohio', lat: 39.025820, lon: -83.430120,
+      blurb: 'The whole effigy in bare earth — tail coil and all' },
+    { id: 'stonehenge', name: 'Stonehenge, England', lat: 51.178889, lon: -1.826111,
+      blurb: 'The henge, the Avenue and a field of barrows' },
+    { id: 'fort-patrick-kelly', name: 'Fort Patrick Kelly, Virginia', lat: 37.176614, lon: -77.349177,
+      blurb: 'A Civil War siege fort the trees have covered since 1865' }
+  ];
+  let demoRendered = false;
+
+  function renderDemoLocations() {
+    const box = document.getElementById('demoBox');
+    if (!box) return;
+    box.hidden = false;
+    if (demoRendered) return;
+    demoRendered = true;
+    const wrap = document.getElementById('demoButtons');
+    for (const d of DEMO_LOCATIONS) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'secondary-btn';
+      b.innerHTML = `📍 ${escapeHtml(d.name)}<br><span style="opacity:.7; font-size:.85em;">`
+        + `${escapeHtml(d.blurb)}</span>`;
+      b.addEventListener('click', () => {
+        document.getElementById('placeInput').value = '';
+        document.getElementById('latInput').value = d.lat;
+        document.getElementById('lonInput').value = d.lon;
+        runSearch();
+      });
+      wrap.appendChild(b);
+    }
+  }
+
   function renderTrialStatus(data) {
     trialEl.textContent = '';
     restoreRow.hidden = !!data.unlocked;
     if (data.unlocked) {
+      const box = document.getElementById('demoBox');
+      if (box) box.hidden = true;
       trialEl.textContent = '✅ Unlocked on this device — no subscription.';
       trialEl.classList.add('unlocked');
       restoreBox.hidden = true;
       return;
     }
     trialEl.classList.remove('unlocked');
+    renderDemoLocations();
     const used = data.scansUsed || 0;
     const allowed = data.scansAllowed || 3;
     const left = Math.max(0, allowed - used);
@@ -3135,6 +3183,18 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       .then(async r => {
         const data = await r.json();
         if (r.status === 402) { setStatus(''); stopSearchProgress(); searchBtn.disabled = false; showPaywall(data.message); renderTrialStatus(data); return; }
+        // A locked device asking for somewhere other than the three free
+        // places. Raise the unlock prompt rather than an error: wanting a
+        // specific spot is the moment this tool is worth paying for, and the
+        // message names that rather than scolding.
+        if (r.status === 403 && data.error === 'demo_only') {
+          setStatus('');
+          stopSearchProgress();
+          searchBtn.disabled = false;
+          renderDemoLocations();
+          showPaywall(data.message);
+          return;
+        }
         if (!r.ok) { setStatus(data.error || 'Search failed.', true); stopSearchProgress(); searchBtn.disabled = false; return; }
 
         setStatus('');
