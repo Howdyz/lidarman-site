@@ -563,7 +563,6 @@
     border-color: #3a7bd5; background: #1d2b3f; color: #cfe1fa;
   }
   #layerNone { font-size: 0.82em; color: #9a9a9a; line-height: 1.5; margin: 8px 0; }
-  #layerAllBtn { margin-top: 4px; }
   .tool-side label { display: block; font-size: 0.78em; color: #aaa; margin: 10px 0 3px; }
   .trail-legend {
     background: rgba(20,20,20,0.82); color: #eee; padding: 7px 9px;
@@ -1085,7 +1084,6 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       <button class="secondary-btn" id="viewToggleBtn" type="button" disabled>🔦 Lidar view: on</button>
       <button class="secondary-btn" id="spyToggleBtn" type="button" disabled>🔍 Spy lens: off</button>
       <button class="secondary-btn" id="circlesToggleBtn" type="button" disabled>⭕ Circles: on</button>
-      <button class="secondary-btn" id="zoomLockBtn" type="button">🔓 Lock zoom</button>
       <label>Color style</label>
       <select id="styleSelect" disabled>
         <option value="composite">Composite (default)</option>
@@ -1101,6 +1099,18 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
            picker and a legend block. Reported three times as "I can't find
            them" — by the site's own owner, which settles it. -->
       <div class="layer-group">
+        <label for="countrySelect">Country</label>
+        <select id="countrySelect">
+          <option value="auto">Where I'm looking</option>
+          <option value="us">United States</option>
+          <option value="england">England</option>
+          <option value="scotland">Scotland — map only</option>
+          <option value="wales">Wales</option>
+          <option value="netherlands">Netherlands</option>
+          <option value="norway">Norway</option>
+          <option value="poland">Poland</option>
+          <option value="all">Every country</option>
+        </select>
         <button class="secondary-btn" id="referenceBtn" type="button">🌐 Borders &amp; names: on</button>
         <!-- The rest are national datasets, grouped by the country they
              cover. Labelling them beats letting someone in Norway press five
@@ -1169,8 +1179,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         <button class="secondary-btn" id="minesBtn" type="button">⛏️ Show mining camps</button>
         <button class="secondary-btn" id="histBtn" type="button">🗺️ Historic maps here</button>
         </div>
-        <div id="layerNone" hidden>No map layers cover this spot yet.</div>
-        <button class="secondary-btn" id="layerAllBtn" type="button">🌍 Show every country’s layers</button>
+        <div id="layerNone" hidden>No layers cover this spot. Pick a country above to see what there is.</div>
         <div id="histStatus"></div>
         <div id="histPanel"></div>
         <div id="histControls" hidden>
@@ -1918,7 +1927,17 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   // so mouse dragging keeps its 3px precision.
   if (COARSE_POINTER) L.Draggable.prototype.options.clickTolerance = 12;
 
-  const map = L.map('map').setView([39.8283, -98.5795], 4);
+  const map = L.map('map', {
+    // Zoom through the +/- buttons only. The wheel was the real nuisance:
+    // scrolling the page with the pointer anywhere over the map zoomed the map
+    // instead of moving the page, and now that the map is the full width of the
+    // screen there is almost nowhere else to put the pointer. Double-click goes
+    // with it, because a click on the map already means "drop a pin here".
+    // Pinch is deliberately left alone - it is how a phone zooms, it cannot be
+    // triggered by accident, and taking it away would break the map on touch.
+    scrollWheelZoom: false,
+    doubleClickZoom: false,
+  }).setView([39.8283, -98.5795], 4);
 
   map.createPane('shapesPane');
   map.getPane('shapesPane').style.zIndex = 450;
@@ -2999,7 +3018,13 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     netherlands: [[50.70, 53.60, 3.30, 7.30]],
     poland:      [[49.00, 54.90, 14.10, 24.20]],
   };
-  let showAllLayers = false;
+  // 'auto' follows the map, a country name pins the list to that country, and
+  // 'all' shows the lot. Read fresh on every sync rather than cached, so the
+  // dropdown and the map can't disagree about what is on screen.
+  function layerFilter() {
+    const sel = document.getElementById('countrySelect');
+    return sel ? sel.value : 'auto';
+  }
 
   // Called from wireOverlayButton below, which is why the boxes above it are
   // declared first rather than beside the function.
@@ -3058,59 +3083,27 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     const groups = document.querySelectorAll('.layer-country');
     if (!groups.length) return;          // called once before the dock exists
     const c = map.getCenter();
+    const pick = layerFilter();
     let shown = 0;
     groups.forEach(g => {
-      const boxes = LAYER_BOXES[g.dataset.country] || [];
+      const key = g.dataset.country;
+      const boxes = LAYER_BOXES[key] || [];
       const here = boxes.some(b => c.lat >= b[0] && c.lat <= b[1]
                                 && c.lng >= b[2] && c.lng <= b[3]);
       // Never hide a group holding a layer that is currently on.
       const live = !!g.querySelector('.layer-on');
-      const show = here || live || showAllLayers;
+      const show = live || (pick === 'all') ||
+                   (pick === 'auto' ? here : pick === key);
       g.hidden = !show;
       if (show) shown++;
     });
     const none = document.getElementById('layerNone');
     if (none) none.hidden = shown > 0;
-    const all = document.getElementById('layerAllBtn');
-    if (all) {
-      all.hidden = shown > 0 && !showAllLayers;
-      all.textContent = showAllLayers
-        ? '\u{1F30D} Show only layers for this area'
-        : '\u{1F30D} Show every country\u2019s layers';
-    }
   }
   map.on('moveend', syncLayerGroups);
-  const layerAllBtn = document.getElementById('layerAllBtn');
-  if (layerAllBtn) layerAllBtn.addEventListener('click', () => {
-    showAllLayers = !showAllLayers;
-    syncLayerGroups();
-  });
+  const countrySelect = document.getElementById('countrySelect');
+  if (countrySelect) countrySelect.addEventListener('change', syncLayerGroups);
   syncLayerGroups();
-
-  // Zoom lock: pins minZoom/maxZoom to the current zoom level, which makes
-  // Leaflet itself refuse every zoom trigger (scroll wheel, pinch,
-  // double-click, keyboard, the +/- buttons) — including zoom changes
-  // requested programmatically later (fitBounds after a search, jumping to
-  // a battlefield, live tracking), which just pan/re-center at the locked
-  // zoom instead of changing it. One flag covers every path, no need to
-  // intercept each interaction separately.
-  const zoomLockBtn = document.getElementById('zoomLockBtn');
-  let zoomLocked = false;
-  const UNLOCKED_MIN_ZOOM = 0;
-  const UNLOCKED_MAX_ZOOM = 20;
-  zoomLockBtn.addEventListener('click', () => {
-    zoomLocked = !zoomLocked;
-    if (zoomLocked) {
-      const z = map.getZoom();
-      map.setMinZoom(z);
-      map.setMaxZoom(z);
-      zoomLockBtn.textContent = '🔒 Zoom locked (click to unlock)';
-    } else {
-      map.setMinZoom(UNLOCKED_MIN_ZOOM);
-      map.setMaxZoom(UNLOCKED_MAX_ZOOM);
-      zoomLockBtn.textContent = '🔓 Lock zoom';
-    }
-  });
 
   let compositeOverlay = null;
   let candidateMarkers = L.layerGroup().addTo(map);
