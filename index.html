@@ -560,6 +560,8 @@
        bottom-right - that corner is Leaflet's attribution. */
     #toolPanel .leaflet-top.leaflet-left,
     #toolPanel .leaflet-bottom.leaflet-left { margin-left: 338px; }
+    /* And the top-right corner, which holds Leaflet's own layers control. */
+    #toolPanel .leaflet-top.leaflet-right { margin-right: 338px; }
   }
   /* Collapsible dock sections. The right dock carries four groups and only the
      view controls are wanted on every scan, so the rest open on demand. */
@@ -1214,6 +1216,11 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       <button class="secondary-btn" id="viewToggleBtn" type="button" disabled>🔦 Lidar view: on</button>
       <button class="secondary-btn" id="spyToggleBtn" type="button" disabled>🔍 Spy lens: off</button>
       <button class="secondary-btn" id="circlesToggleBtn" type="button" disabled>⭕ Circles: on</button>
+      <label for="baseSelect">Base map</label>
+      <select id="baseSelect">
+        <option value="satellite">Satellite</option>
+        <option value="streets">Streets</option>
+      </select>
       <label>Color style</label>
       <select id="styleSelect" disabled>
         <option value="composite">Composite (default)</option>
@@ -2043,6 +2050,24 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   const streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
   });
+
+  // Kept in step with Leaflet's own control through the map's baselayerchange
+  // event rather than from this handler, so switching from either side leaves
+  // both showing the same thing.
+  const baseSelect = document.getElementById('baseSelect');
+  const BASE_LAYERS = { satellite: satellite, streets: streets };
+  if (baseSelect) {
+    baseSelect.addEventListener('change', () => {
+      const next = BASE_LAYERS[baseSelect.value];
+      if (!next || map.hasLayer(next)) return;
+      Object.values(BASE_LAYERS).forEach(l => { if (map.hasLayer(l)) map.removeLayer(l); });
+      map.addLayer(next);
+    });
+    map.on('baselayerchange', (e) => {
+      const name = Object.keys(BASE_LAYERS).find(k => BASE_LAYERS[k] === e.layer);
+      if (name) baseSelect.value = name;
+    });
+  }
 
   // Borders and place names, on by default, and the only map layer here that
   // works outside the United States.
