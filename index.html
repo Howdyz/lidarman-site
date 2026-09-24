@@ -553,8 +553,13 @@
     }
     .tool-side::-webkit-scrollbar-thumb:hover { background-clip: border-box; }
     /* The zoom buttons default to the top-left corner, which is now under the
-       left dock. Push them clear rather than moving them somewhere unexpected. */
-    #toolPanel .leaflet-top.leaflet-left { margin-left: 338px; }
+       left dock. Push them clear rather than moving them somewhere unexpected.
+       The bottom-left corner needs the same treatment: the trail, ghost-town
+       and battlefield keys are all bottomleft controls, and a key hidden
+       behind the dock is a layer whose colours mean nothing. They cannot go
+       bottom-right - that corner is Leaflet's attribution. */
+    #toolPanel .leaflet-top.leaflet-left,
+    #toolPanel .leaflet-bottom.leaflet-left { margin-left: 338px; }
   }
   /* Collapsible dock sections. The right dock carries four groups and only the
      view controls are wanted on every scan, so the rest open on demand. */
