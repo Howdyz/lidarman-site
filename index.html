@@ -313,8 +313,11 @@
 
   /* Placed after the tool, not above it: the search field's position on a
      phone was the whole point of the landing rework and nothing goes back in
-     front of it. Deliberately names no competitor — their prices change,
-     and the range is what stays true of the category. */
+     front of it. Names competitors and quotes their own pages, so every
+     figure here has to be re-checked when the footer date is bumped. The
+     Subterrix section makes specific factual claims about a specific
+     product: everything in it was read off a logged-in account on the date
+     in the footer, and nothing goes in it that wasn't seen directly. */
   .cost-compare {
     max-width: 780px; margin: 0 auto 56px; padding: 22px 24px;
     box-sizing: border-box;
@@ -342,6 +345,25 @@
   /* Ours reads as the answer to the three above it, not another row of them. */
   .cc-row.cc-mine { background: rgba(0,0,0,0.035); }
   .cc-row.cc-mine .cc-name, .cc-row.cc-mine .cc-price { color: var(--accent); }
+
+  /* The Subterrix teardown. Set apart from the price table because it is a
+     different kind of argument: the table is about money, this is about
+     whether the thing works. */
+  .cc-case { margin: 26px 0 0; padding-top: 20px; border-top: 1px solid var(--rule); }
+  .cc-case h3 {
+    font-family: var(--serif); font-size: 1.12em; margin: 0 0 10px;
+  }
+  .cc-case p { margin: 0 0 12px; }
+  /* Their words, verbatim, so the reader can weigh them without taking ours. */
+  .cc-quote {
+    margin: 14px 0; padding: 12px 16px;
+    border-left: 3px solid var(--rule);
+    font-size: 0.92em; color: var(--ink-soft); line-height: 1.5;
+  }
+  .cc-quote b { color: var(--ink); }
+  .cc-quote .cc-src {
+    display: block; margin-top: 8px; font-size: 0.85em; font-style: italic;
+  }
 
   nav.toc {
     font-size: 0.88em; color: var(--ink-soft); margin-bottom: 48px;
@@ -1172,8 +1194,10 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     </div>
     <div class="cc-row">
       <span class="cc-name">Subterrix Elite</span>
-      <span class="cc-price">$149/yr</span>
-      <span class="cc-terms">$19.99/mo · credit-metered · has a free tier, LIDAR view included</span>
+      <span class="cc-price">$308.99/yr</span>
+      <span class="cc-terms">$149/yr Elite, plus $159.99/yr for Motherlode — their
+        own checkout calls it &ldquo;a separate subscription from your Subterrix
+        membership.&rdquo; Metered on top: every terrain scan spends credits</span>
     </div>
     <div class="cc-row cc-mine">
       <span class="cc-name">Lidarman</span>
@@ -1191,8 +1215,78 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     It does one job: read the ground and flag the shapes that don't look
     natural. If that's the part you were after, you shouldn't have to rent it.
   </p>
-  <p class="cc-foot">Prices as advertised on each company's own pricing page,
-    checked 13 September 2026. They can change them any time — go and look
+
+  <div class="cc-case">
+    <h3>A word about the &ldquo;AI&rdquo; one</h3>
+    <p>
+      Subterrix is the one people ask about, so here is what a paid account
+      actually gets you. Elite is $149 a year. Paydirt, their gold tool, is
+      not in it — that's a second subscription called Motherlode at $159.99 a
+      year, which their own checkout describes as separate from your
+      membership. Together, $308.99 a year, every year.
+    </p>
+    <p>
+      Then it meters you anyway. A terrain scan costs 2 credits. Seeing the
+      cellar holes it found costs another. A property report costs 5. The free
+      tier is 20 credits a month, so ten scans — and you pay again to see what
+      was in them. Their front page says their terrain analysis is
+      &ldquo;free to explore.&rdquo; It isn't. It wants your name, your email,
+      a password, your detector model and a list of what you collect, and
+      <em>then</em> it charges you credits.
+    </p>
+    <p>
+      The bigger claim is the one on the front page: 77 million data points,
+      five AI models, &ldquo;ZERO guesswork.&rdquo; Here is what five
+      cross-validating AI models produced on a real scan of Gettysburg — the
+      most thoroughly detected ground in America.
+    </p>
+    <div class="cc-quote">
+      <b>1 · START HERE — Multi-Signal Convergence Zone</b><br>
+      &ldquo;Depression detected (<b>11.4&nbsp;m deep</b>) — possible cellar
+      hole, well, or root cellar.&rdquo;<br>
+      &ldquo;Start at the edges of the depression and work inward.&rdquo;<br>
+      <span style="opacity:0.8;">&ldquo;Large area — may be a natural drainage
+      basin rather than man-made.&rdquo;</span>
+      <span class="cc-src">Their second pick was 14.1&nbsp;m deep. Their third,
+      5.1&nbsp;m. All three labelled possible cellar holes.</span>
+    </div>
+    <p>
+      A cellar hole is about half a metre deep. Fourteen metres is forty-six
+      feet. Those are drainage basins in the middle of a built-up borough, and
+      the software half-knows it — it prints the words &ldquo;may be a natural
+      drainage basin&rdquo; directly underneath, and still ranks it first, and
+      still tells you to start there and work inward.
+    </p>
+    <p>
+      The damning part is on the same screen. That scan's own cellar-hole
+      layer — the part that costs the extra credit — reports a genuine one at
+      0.5&nbsp;m deep, 38&nbsp;m², 4.6&nbsp;×&nbsp;12.6&nbsp;m. So the software
+      knows exactly what a cellar hole measures. The recommendation engine
+      sitting on top of it ignores its own detector and sends you to a storm
+      drain, labelled START HERE.
+    </p>
+    <p>
+      That is what &ldquo;zero guesswork&rdquo; buys, and it is worse than a
+      blank map. A blank map costs you nothing. A confident wrong answer costs
+      you a Saturday, a tank of fuel, and the drive home.
+    </p>
+    <p>
+      Lidarman won't do that, and not by accident — it is the thing the
+      classifier was built to refuse. Anything deeper than three metres is
+      named <em>&ldquo;too deep for a structure — landform&rdquo;</em>. A hollow
+      whose floor ramps instead of sitting flat is named <em>&ldquo;bowl-shaped
+      — reads natural&rdquo;</em>. Every reading is gated on measurements that
+      support it, and anything failing the gates is called unclassified rather
+      than given a flattering guess. On a real forest scan, 627 of 693
+      candidates came back unclassified — because that is what they were. You
+      get the depth, the footprint, the floor profile and the coordinates, and
+      you decide. Once, for $25.
+    </p>
+  </div>
+
+  <p class="cc-foot">Prices and quotations taken from each company's own pages;
+    the Subterrix figures, credit costs and scan output were read off a
+    logged-in account on 24 September 2026. Any of it can change — go and look
     rather than taking our word for it.</p>
 </div>
 
@@ -3670,10 +3764,26 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
             : `score: ${c.score.toFixed(2)}`;
           // Floor profile — the evidence that separates a dug foundation from
           // a weathered hollow. Only shown when it was actually measurable.
+          // The percentage is meaningless to anyone who hasn't read the
+          // method, so it carries its own calibration: the reference figures
+          // are the geometric ones in the write-up below (an ideal paraboloid
+          // basin scores 0.25, a flat-floored pad approaches 1.0).
+          //
+          // Max depth alone can't tell a flat floor from a point dimple —
+          // 0.50 m peaking over a 0.45 m mean is a floor, 0.50 m over a
+          // 0.10 m mean is a divot. relief_mean_m was already computed and
+          // already in the response; it was simply never shown.
+          const depthStr = (c.relief_max_m != null)
+            ? `${c.relief_max_m.toFixed(2)} m deep`
+              + (c.relief_mean_m != null
+                  ? ` <span style="opacity:0.7;">(avg ${c.relief_mean_m.toFixed(2)} m)</span>` : '')
+            : '';
           const floorLine = (c.floor_flat != null)
             ? `<br>floor ${Math.round(c.floor_flat * 100)}% flat`
-              + (c.relief_max_m != null ? ` · ${c.relief_max_m.toFixed(2)} m deep` : '')
-            : (c.relief_max_m != null ? `<br>${c.relief_max_m.toFixed(2)} m deep` : '');
+              + `<span style="opacity:0.7;"> — a natural bowl reads ~25%,`
+              + ` a built floor near 100%</span>`
+              + (depthStr ? `<br>${depthStr}` : '')
+            : (depthStr ? `<br>${depthStr}` : '');
           const readLine = c.interpretation
             ? `<br><span style="${evidenced ? 'color:#8a5f16; font-weight:600;' : 'opacity:0.7;'}">${c.interpretation}</span>`
             : '';
@@ -3705,8 +3815,15 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
                 qr = `<div style="margin-top:8px; text-align:center;">${qrSvg(url, 104)}`
                    + `<div style="font-size:0.78em; opacity:0.7; margin-top:2px;">scan to open on your phone</div></div>`;
               } catch (e) { qr = ''; }   // never let the QR break the popup
-              return `<b>#${c.rank} ${c.shape} (${c.kind})</b>${landLine}${readLine}<br>${scoreLine}<br>~${Math.round(c.area_m2)} m²${dims}${floorLine}`
+              // Measurements first, ranking last. The score is a sort key,
+              // not a verdict — leading with it invited reading it as a
+              // confidence, which it is not (it is shape x size x floor).
+              // What a detectorist decides on is the reading and the
+              // dimensions, so those go at the top.
+              return `<b>#${c.rank} ${c.shape} (${c.kind})</b>${landLine}${readLine}`
+                + `<br>~${Math.round(c.area_m2)} m²${dims}${floorLine}`
                 + `<br><span style="font-family:ui-monospace,monospace; font-size:0.85em; opacity:0.75;">${c.lat.toFixed(6)}, ${c.lon.toFixed(6)}</span>`
+                + `<br><span style="opacity:0.7; font-size:0.9em;">${scoreLine}</span>`
                 + `<br><button class="cand-track-btn" data-lat="${c.lat}" data-lon="${c.lon}" style="margin-top:6px; padding:4px 10px; cursor:pointer;">🎯 Track this</button>`
                 + qr;
             })
