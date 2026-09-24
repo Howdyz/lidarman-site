@@ -1216,6 +1216,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       <button class="secondary-btn" id="viewToggleBtn" type="button" disabled>🔦 Lidar view: on</button>
       <button class="secondary-btn" id="spyToggleBtn" type="button" disabled>🔍 Spy lens: off</button>
       <button class="secondary-btn" id="circlesToggleBtn" type="button" disabled>⭕ Circles: on</button>
+      <button class="secondary-btn" id="clearBtn" type="button">🧹 Clear</button>
       <label for="baseSelect">Base map</label>
       <select id="baseSelect">
         <option value="satellite">Satellite</option>
@@ -1290,10 +1291,9 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       </div>
       </details>
       <details class="dock-sec" id="secMore">
-        <summary>Pin &amp; track</summary>
-        <button class="secondary-btn" id="clearBtn" type="button">🧹 Clear</button>
-      <button class="secondary-btn" id="trackBtn" type="button">🎯 Start tracking</button>
-      <div id="trackStatus"></div>
+        <summary>Live tracking</summary>
+        <button class="secondary-btn" id="trackBtn" type="button">🎯 Start tracking</button>
+        <div id="trackStatus"></div>
       </details>
     </div>
     <div id="map"></div>
