@@ -632,10 +632,6 @@
     text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 8px;
   }
   .alt-ways { margin-top: 14px; }
-  .alt-ways-label {
-    display: block; font-family: var(--mono); font-size: 0.72em; color: #888;
-    text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 8px;
-  }
   .tool-side input[type=text], .tool-side input[type=number], .tool-side input[type=email], .tool-side select {
     width: 100%; box-sizing: border-box; padding: 7px; border-radius: 4px; border: 1px solid #444;
     background: #262626; color: #eee; font-size: 0.9em;
@@ -1977,6 +1973,35 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     scrollWheelZoom: false,
     doubleClickZoom: false,
   }).setView([39.8283, -98.5795], 4);
+
+  // A popup opens where you clicked, not in a fixed corner, so on a wide screen
+  // it can open underneath a dock - and because #map carries z-index:0 it is a
+  // stacking context, so the popup is drawn *under* the dock rather than over
+  // it. Leaflet's own autoPan is no help: it only keeps a popup inside the map
+  // container, and the docks are inside that container. So nudge the map once
+  // the popup has been placed, by however much it takes to clear the dock.
+  //
+  // Skipped when the docks are not floating - below 1024px they sit in the
+  // normal flow and nothing overlaps.
+  map.on('popupopen', function (e) {
+    const el = e.popup.getElement();
+    if (!el) return;
+    const p = el.getBoundingClientRect();
+    let shift = 0;
+    document.querySelectorAll('.tool-side').forEach(function (dock) {
+      if (getComputedStyle(dock).position !== 'absolute') return;
+      const d = dock.getBoundingClientRect();
+      if (p.right <= d.left || p.left >= d.right
+          || p.bottom <= d.top || p.top >= d.bottom) return;
+      // Push it out the near side, with a little daylight.
+      const right = d.right - p.left + 12;
+      const left = d.left - p.right - 12;
+      const move = Math.abs(right) < Math.abs(left) ? right : left;
+      if (Math.abs(move) > Math.abs(shift)) shift = move;
+    });
+    // panBy moves the view, so the content moves the other way.
+    if (shift) map.panBy([-shift, 0], { animate: true });
+  });
 
   map.createPane('shapesPane');
   map.getPane('shapesPane').style.zIndex = 450;
