@@ -493,23 +493,77 @@
     #map { height: 100%; min-height: 0; }
   }
 
-  /* Desktop only, and only once there is width to spend. The controls were a
-     single ~1,500px column, so reaching the layer buttons meant scrolling
-     past the search box every time and then hunting for the one you wanted.
-     Split in two they both sit in view: finding a spot on the left,
-     everything that changes what the map shows on the right.
+  /* Desktop: the panels stop taking width off the map and float on top of it.
+     Splitting the column in two (the previous attempt) moved the controls but
+     kept them competing with the map for the same pixels - at 1440 the two
+     300px docks plus gutters cost the map 648px, and the layer list was still
+     twenty buttons deep whatever the screen size. Floating them costs the map
+     nothing, and the layer list now shows only the country you are looking at.
 
-     1440px is where this starts paying. Below it the second panel costs the
-     map more width than the split saves in scrolling - at 1280 the map would
-     drop from 903px to 603px, which is a worse tool, so those sizes keep the
-     single column they have now. */
-  @media (min-width: 1440px) {
+     1024 rather than 1440: once the docks are out of the flow there is no
+     width penalty to wait for. Below it the stacked grid above still applies,
+     because a 310px panel floating over a 700px map is worse than a list. */
+  @media (min-width: 1024px) {
+    /* Full-bleed. #tool is a direct child of body with no .wrap around it, so
+       dropping its max-width is enough - no 100vw, which would overflow by the
+       scrollbar's width and give the page a horizontal scroll. */
+    #tool { max-width: none; padding-left: 0; padding-right: 0; }
+    #tool > h2 { padding-left: 24px; padding-right: 24px; }
+    #featureInfo { margin-left: 24px; margin-right: 24px; }
+
     #toolPanel {
-      grid-template-columns: 300px 1fr 300px;
-      grid-template-rows: minmax(0, 1fr);
-      grid-template-areas: "left map right";
+      display: block; position: relative;
+      height: min(92vh, 1200px);
+      border-radius: 0;
     }
+    /* z-index 0 rather than auto: it makes the map its own stacking context,
+       so nothing inside Leaflet (controls sit at 800) can climb over a dock. */
+    #map { position: absolute; inset: 0; height: 100%; width: 100%; z-index: 0; }
+
+    .tool-side {
+      position: absolute; z-index: 2; top: 14px; width: 310px;
+      /* Short of the bottom so Leaflet's attribution stays legible. */
+      max-height: calc(100% - 68px);
+      overflow-y: auto; overscroll-behavior: contain;
+      padding: 13px 14px;
+      background: rgba(18,18,18,0.93);
+      -webkit-backdrop-filter: blur(9px); backdrop-filter: blur(9px);
+      border: 1px solid rgba(255,255,255,0.11); border-radius: 10px;
+      box-shadow: 0 10px 34px rgba(0,0,0,0.55);
+    }
+    #toolSidebar { left: 14px; }
+    #toolSidebarRight { right: 14px; }
+    /* The zoom buttons default to the top-left corner, which is now under the
+       left dock. Push them clear rather than moving them somewhere unexpected. */
+    #toolPanel .leaflet-top.leaflet-left { margin-left: 338px; }
   }
+  /* Collapsible dock sections. The right dock carries four groups and only the
+     view controls are wanted on every scan, so the rest open on demand. */
+  .dock-title {
+    display: block; font-size: 0.72em; letter-spacing: 0.12em;
+    text-transform: uppercase; color: #8d8d8d; margin-bottom: 9px;
+  }
+  .dock-sec { border-top: 1px solid rgba(255,255,255,0.10); margin-top: 11px; }
+  .dock-sec > summary {
+    cursor: pointer; list-style: none; padding: 9px 0 7px;
+    font-size: 0.78em; letter-spacing: 0.09em; text-transform: uppercase;
+    color: #b4b4b4; display: flex; align-items: center; gap: 8px;
+  }
+  .dock-sec > summary::-webkit-details-marker { display: none; }
+  .dock-sec > summary:hover { color: #fff; }
+  .dock-sec > summary::after {
+    content: '+'; margin-left: auto; font-size: 1.25em; line-height: 1;
+    color: #7d7d7d; font-weight: 400;
+  }
+  .dock-sec[open] > summary::after { content: '\2212'; }
+  .dock-sec > summary:focus-visible { outline: 2px solid #3a7bd5; outline-offset: 2px; }
+  .dock-sec .sec-note { font-size: 0.74em; color: #8d8d8d; text-transform: none; letter-spacing: 0; }
+  /* A layer that is on should read as on at a glance, not only in its label. */
+  .tool-side button.secondary-btn.layer-on {
+    border-color: #3a7bd5; background: #1d2b3f; color: #cfe1fa;
+  }
+  #layerNone { font-size: 0.82em; color: #9a9a9a; line-height: 1.5; margin: 8px 0; }
+  #layerAllBtn { margin-top: 4px; }
   .tool-side label { display: block; font-size: 0.78em; color: #aaa; margin: 10px 0 3px; }
   .trail-legend {
     background: rgba(20,20,20,0.82); color: #eee; padding: 7px 9px;
@@ -545,7 +599,7 @@
     display: block; font-family: var(--mono); font-size: 0.72em; color: #9ecbff;
     text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 8px;
   }
-  .alt-ways { margin-top: 18px; padding-top: 12px; border-top: 1px solid #333; }
+  .alt-ways { margin-top: 14px; }
   .alt-ways-label {
     display: block; font-family: var(--mono); font-size: 0.72em; color: #888;
     text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 8px;
@@ -930,6 +984,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
           These three show everything the tool does. Unlock to point it at your own ground.
         </div>
       </div>
+      <span class="dock-title">Find a place</span>
       <label>Place name</label>
       <input type="text" id="placeInput" placeholder="e.g. Gettysburg, PA">
       <label>Search radius (meters) <span style="opacity:.6; font-weight:normal;">— 50 to 500</span></label>
@@ -942,8 +997,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
            "Show it on the map (no scan)" — the one that deliberately does not
            search. Someone typing a place and pressing the obvious button got a
            map pan and no result. -->
-      <div class="alt-ways">
-        <span class="alt-ways-label">Other ways to pick a spot</span>
+      <details class="dock-sec alt-ways">
+        <summary>Other ways to pick a spot</summary>
         <label>Lat, lon</label>
         <div style="display:flex; gap:6px;">
           <input type="text" id="latInput" placeholder="lat — 39.0262 or 39°01′34″N">
@@ -993,7 +1048,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
           <option value="43.1412,-102.3618">Wounded Knee, SD (1890)</option>
         </optgroup>
         </select>
-      </div>
+      </details>
       <div id="toolStatus"></div>
       <div id="locMaps" hidden>📜 <a id="locMapsLink" href="#" target="_blank" rel="noopener noreferrer"></a></div>
       <div id="searchProgress" role="status" aria-live="polite" hidden>
@@ -1021,11 +1076,12 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       </div>
     </div>
     <div id="toolSidebarRight" class="tool-side">
-      <!-- View controls first. These are what you reach for the moment a
-           scan lands - lidar on/off, the spy lens, the colour style - and
-           burying them under sixteen layer buttons meant scrolling this
-           panel every single search. The layers are the browsing half and
-           can sit below. -->
+      <span class="dock-title">Tools</span>
+      <!-- Pinned, never collapsed: these four plus the colour picker are what
+           you reach for the moment a scan lands. Everything else earns its
+           place behind a heading, because the previous version put thirty-five
+           controls on screen at once and the layer list alone was twenty
+           buttons - of which at most seven ever applied to where you were. -->
       <button class="secondary-btn" id="viewToggleBtn" type="button" disabled>🔦 Lidar view: on</button>
       <button class="secondary-btn" id="spyToggleBtn" type="button" disabled>🔍 Spy lens: off</button>
       <button class="secondary-btn" id="circlesToggleBtn" type="button" disabled>⭕ Circles: on</button>
@@ -1037,65 +1093,22 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         <option value="slope">Slope (viridis)</option>
         <option value="lrm">Local relief (red/blue)</option>
       </select>
-      <details class="legend-details">
-        <summary>ℹ️ Which color style should I use?</summary>
-        <div class="legend-details-body">
-          <p><b>Composite (default)</b> — a blend of several signals into one image. Raised edges like walls and foundation outlines tend to show up warm and bright; sunken spots fade toward blue/purple. A solid all-around view.</p>
-          <p><b>Hillshade</b> — looks like sunlit terrain, the easiest one to read at a glance. Great for getting your bearings, though it can occasionally underplay a feature if it happens to face the "wrong" way relative to the simulated sun.</p>
-          <p><b>Slope</b> — lights up every edge and change in steepness in yellow, no matter which direction it faces. Best for not missing anything — but on its own it can't tell you whether an edge is a bump or a dip.</p>
-          <p><b>Local relief (red/blue)</b> — the clearest view for sorting bumps from dips: <b>red = higher</b> than the ground around it, <b>blue = lower</b>. This is the same layer the automatic candidate-detector itself is looking at.</p>
-          <p style="margin-top:10px;"><b>What to use for what:</b></p>
-          <p>🛤️ <b>Sunken paths &amp; old roads</b> — Local relief, look for a blue trail. Slope is a good backup (shows as two parallel yellow edges where the path dips in and climbs back out).</p>
-          <p>🕳️ <b>Basements &amp; cellars</b> — Local relief (a blue rectangle), and check Slope too — steep cellar walls often show up as a bright yellow "picture frame" outline around a darker, flatter floor.</p>
-          <p>🧱 <b>Foundations (old wall stubs)</b> — Local relief or Composite, look for a thin red outline.</p>
-          <p>🪨 <b>Walls, berms &amp; mounds</b> — Composite or Local relief — these are raised, so they read warm/red on both.</p>
-          <p style="margin-top:10px;">Quick workflow: start with <b>Slope</b> to catch every edge in view, switch to <b>Local relief</b> to figure out if what you found is raised or sunken, then <b>Hillshade</b> as a gut-check that it looks like real terrain.</p>
-        </div>
-      </details>
-      <details class="legend-details">
-        <summary>ℹ️ What are the historic maps?</summary>
-        <div class="legend-details-body">
-          <p>Every USGS topographic sheet ever printed — about 180,000 of them, going back to 1884 — laid over the map at whatever opacity you like. Press the button and you get the sheets that cover wherever the map is currently centred, oldest first.</p>
-          <p><b>Why this matters more than any other layer here.</b> Lidar tells you the ground has a rectangular dip in it. A 1902 topo sheet with a black square drawn on that exact spot tells you it was a building. One is a candidate; the two together are a target. This is the cheapest confirmation step available, and it costs nothing.</p>
-          <p>Things worth hunting for on an old sheet: solid black squares, which are buildings; a <i>School</i>, <i>Ch</i>, <i>P.O.</i>, <i>Mill</i> or <i>Cem</i> label with nothing there today; roads that no longer exist; and anything the surveyor took the trouble to print <i>Ruins</i> beside. Conventions shifted between eras and map series, so read the sheet's own margin legend rather than assuming.</p>
-          <p><b>Coverage.</b> Each sheet only covers its own quadrangle — a rectangle, outlined on the map when a sheet is on. Pan outside that rectangle and the overlay stops; press the button again to list the sheets for the new spot. Older maps come at coarser scales (1:125,000 or 1:62,500), so zoom out a little if a very old sheet looks blurry — that is the paper, not the screen.</p>
-          <p>Source: the USGS Historical Topographic Map Collection. <b>TIF</b> next to a sheet downloads the original full-resolution georeferenced scan — several megabytes, and the thing to take if you want it offline or in QGIS.</p>
-        </div>
-      </details>
-      <button class="secondary-btn" id="clearBtn" type="button">🧹 Clear</button>
-      <button class="secondary-btn" id="trackBtn" type="button">🎯 Start tracking</button>
-      <div id="trackStatus"></div>
-      <!-- Markup. Deliberately has no save, no export and no storage: the
-           whole point is that you draw on a scan, screenshot it and move on.
-           Nothing here is sent anywhere or survives a reload. -->
-      <div class="layer-group">
-        <span class="layer-group-label">Markup <span style="opacity:.6; font-weight:normal;">— never saved</span></span>
-        <div id="markupSwatches">
-          <button class="markup-swatch on" type="button" data-color="red" title="Red" aria-label="Red"></button>
-          <button class="markup-swatch" type="button" data-color="yellow" title="Yellow" aria-label="Yellow"></button>
-          <button class="markup-swatch" type="button" data-color="blue" title="Blue" aria-label="Blue"></button>
-        </div>
-        <button class="secondary-btn" id="markupDrawBtn" type="button">✏️ Draw: off</button>
-        <button class="secondary-btn" id="markupNoteBtn" type="button">🏷️ Note tag: off</button>
-        <button class="secondary-btn" id="markupUndoBtn" type="button">↶ Undo last</button>
-        <button class="secondary-btn" id="markupClearBtn" type="button">🧹 Clear markup</button>
-        <div id="markupHint">Draw round anything worth a second look, drop a tag and
-          type a note. It all lives in this window only — screenshot to keep it.</div>
-      </div>
-      <!-- One place for everything that puts something ON the map. These were
+      <details class="dock-sec" id="secLayers" open>
+        <summary>Map layers</summary>
+        <!-- One place for everything that puts something ON the map. These were
            scattered: state lines and trails sat with the lidar view controls,
            while historic maps was stranded further down behind the colour
            picker and a legend block. Reported three times as "I can't find
            them" — by the site's own owner, which settles it. -->
       <div class="layer-group">
-        <span class="layer-group-label">Map layers</span>
         <button class="secondary-btn" id="referenceBtn" type="button">🌐 Borders &amp; names: on</button>
         <!-- The rest are national datasets, grouped by the country they
              cover. Labelling them beats letting someone in Norway press five
              buttons in turn and watch nothing happen — the layers are not
              broken there, they simply do not cover it, and saying so costs
              one line per group. -->
-        <span class="layer-group-label" style="margin-top:10px;">England only</span>
+        <div class="layer-country" data-country="england">
+        <span class="layer-group-label">England</span>
         <button class="secondary-btn" id="smBtn" type="button">🏺 Show scheduled monuments</button>
         <button class="secondary-btn" id="ebBtn" type="button">⚔️ Show English battlefields</button>
         <button class="secondary-btn" id="ecBtn" type="button">🏰 Show castle sites</button>
@@ -1103,14 +1116,18 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
              the button group rather than only in the FAQ, because this is
              where someone switches the layers on and reasonably assumes a
              search will work too. -->
-        <span class="layer-group-label" style="margin-top:10px;">Scotland — map only</span>
+        </div>
+        <div class="layer-country" data-country="scotland">
+        <span class="layer-group-label">Scotland — map only</span>
         <button class="secondary-btn" id="sumBtn" type="button">🏺 Show scheduled monuments</button>
         <button class="secondary-btn" id="sucBtn" type="button">🏰 Show castle sites</button>
         <div class="layer-note">These show you where things are. You can't scan
           Scotland yet — its lidar covers about a third of the country and is
           published as pictures rather than ground heights, so there's nothing
           to read a hillshade from.</div>
-        <span class="layer-group-label" style="margin-top:10px;">Wales only</span>
+        </div>
+        <div class="layer-country" data-country="wales">
+        <span class="layer-group-label">Wales</span>
         <button class="secondary-btn" id="wamBtn" type="button">🏺 Show scheduled monuments</button>
         <button class="secondary-btn" id="wacBtn" type="button">🏰 Show castle sites</button>
         <!-- No historic-map button for England, deliberately. Every other
@@ -1127,22 +1144,33 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
              2026-09-22, the OS Maps API is present-day only and NLS keeps the
              historic collection separately. Revisit if that changes, or if
              the subscription ever becomes worth it. -->
-        <span class="layer-group-label" style="margin-top:10px;">Norway only</span>
+        </div>
+        <div class="layer-country" data-country="norway">
+        <span class="layer-group-label">Norway</span>
         <button class="secondary-btn" id="nomBtn" type="button">🏺 Show cultural monuments</button>
         <button class="secondary-btn" id="nozBtn" type="button">🛡️ Show protection zones</button>
         <button class="secondary-btn" id="nohBtn" type="button">📜 Show historic maps (1826–1917)</button>
-        <span class="layer-group-label" style="margin-top:10px;">Poland only</span>
+        </div>
+        <div class="layer-country" data-country="poland">
+        <span class="layer-group-label">Poland</span>
         <button class="secondary-btn" id="plmBtn" type="button">🏺 Show archaeological monuments</button>
-        <span class="layer-group-label" style="margin-top:10px;">Netherlands only</span>
+        </div>
+        <div class="layer-country" data-country="netherlands">
+        <span class="layer-group-label">Netherlands</span>
         <button class="secondary-btn" id="nlmBtn" type="button">🏺 Show rijksmonuments</button>
         <button class="secondary-btn" id="nltBtn" type="button">🏛️ Show protected townscapes</button>
-        <span class="layer-group-label" style="margin-top:10px;">United States only</span>
+        </div>
+        <div class="layer-country" data-country="us">
+        <span class="layer-group-label">United States</span>
         <button class="secondary-btn" id="stateLinesBtn" type="button">🗺️ Show state lines</button>
         <button class="secondary-btn" id="trailsBtn" type="button">🥾 Show trails west</button>
         <button class="secondary-btn" id="vanishedBtn" type="button">🏚️ Show ghost towns</button>
         <button class="secondary-btn" id="battlefieldsBtn" type="button">⚔️ Show battlefields</button>
         <button class="secondary-btn" id="minesBtn" type="button">⛏️ Show mining camps</button>
         <button class="secondary-btn" id="histBtn" type="button">🗺️ Historic maps here</button>
+        </div>
+        <div id="layerNone" hidden>No map layers cover this spot yet.</div>
+        <button class="secondary-btn" id="layerAllBtn" type="button">🌍 Show every country’s layers</button>
         <div id="histStatus"></div>
         <div id="histPanel"></div>
         <div id="histControls" hidden>
@@ -1151,7 +1179,54 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
           <button class="secondary-btn" id="histOffBtn" type="button">✖ Turn historic map off</button>
         </div>
       </div>
-      <div class="cand-legend">
+      </details>
+      <details class="dock-sec" id="secMarkup">
+        <summary>Markup <span class="sec-note">never saved</span></summary>
+        <!-- Markup. Deliberately has no save, no export and no storage: the
+           whole point is that you draw on a scan, screenshot it and move on.
+           Nothing here is sent anywhere or survives a reload. -->
+      <div class="layer-group">
+        <div id="markupSwatches">
+          <button class="markup-swatch on" type="button" data-color="red" title="Red" aria-label="Red"></button>
+          <button class="markup-swatch" type="button" data-color="yellow" title="Yellow" aria-label="Yellow"></button>
+          <button class="markup-swatch" type="button" data-color="blue" title="Blue" aria-label="Blue"></button>
+        </div>
+        <button class="secondary-btn" id="markupDrawBtn" type="button">✏️ Draw: off</button>
+        <button class="secondary-btn" id="markupNoteBtn" type="button">🏷️ Note tag: off</button>
+        <button class="secondary-btn" id="markupUndoBtn" type="button">↶ Undo last</button>
+        <button class="secondary-btn" id="markupClearBtn" type="button">🧹 Clear markup</button>
+        <div id="markupHint">Draw round anything worth a second look, drop a tag and
+          type a note. It all lives in this window only — screenshot to keep it.</div>
+      </div>
+      </details>
+      <details class="dock-sec" id="secGuide">
+        <summary>Reading the map</summary>
+        <details class="legend-details">
+        <summary>ℹ️ Which color style should I use?</summary>
+        <div class="legend-details-body">
+          <p><b>Composite (default)</b> — a blend of several signals into one image. Raised edges like walls and foundation outlines tend to show up warm and bright; sunken spots fade toward blue/purple. A solid all-around view.</p>
+          <p><b>Hillshade</b> — looks like sunlit terrain, the easiest one to read at a glance. Great for getting your bearings, though it can occasionally underplay a feature if it happens to face the "wrong" way relative to the simulated sun.</p>
+          <p><b>Slope</b> — lights up every edge and change in steepness in yellow, no matter which direction it faces. Best for not missing anything — but on its own it can't tell you whether an edge is a bump or a dip.</p>
+          <p><b>Local relief (red/blue)</b> — the clearest view for sorting bumps from dips: <b>red = higher</b> than the ground around it, <b>blue = lower</b>. This is the same layer the automatic candidate-detector itself is looking at.</p>
+          <p style="margin-top:10px;"><b>What to use for what:</b></p>
+          <p>🛤️ <b>Sunken paths &amp; old roads</b> — Local relief, look for a blue trail. Slope is a good backup (shows as two parallel yellow edges where the path dips in and climbs back out).</p>
+          <p>🕳️ <b>Basements &amp; cellars</b> — Local relief (a blue rectangle), and check Slope too — steep cellar walls often show up as a bright yellow "picture frame" outline around a darker, flatter floor.</p>
+          <p>🧱 <b>Foundations (old wall stubs)</b> — Local relief or Composite, look for a thin red outline.</p>
+          <p>🪨 <b>Walls, berms &amp; mounds</b> — Composite or Local relief — these are raised, so they read warm/red on both.</p>
+          <p style="margin-top:10px;">Quick workflow: start with <b>Slope</b> to catch every edge in view, switch to <b>Local relief</b> to figure out if what you found is raised or sunken, then <b>Hillshade</b> as a gut-check that it looks like real terrain.</p>
+        </div>
+      </details>
+        <details class="legend-details">
+        <summary>ℹ️ What are the historic maps?</summary>
+        <div class="legend-details-body">
+          <p>Every USGS topographic sheet ever printed — about 180,000 of them, going back to 1884 — laid over the map at whatever opacity you like. Press the button and you get the sheets that cover wherever the map is currently centred, oldest first.</p>
+          <p><b>Why this matters more than any other layer here.</b> Lidar tells you the ground has a rectangular dip in it. A 1902 topo sheet with a black square drawn on that exact spot tells you it was a building. One is a candidate; the two together are a target. This is the cheapest confirmation step available, and it costs nothing.</p>
+          <p>Things worth hunting for on an old sheet: solid black squares, which are buildings; a <i>School</i>, <i>Ch</i>, <i>P.O.</i>, <i>Mill</i> or <i>Cem</i> label with nothing there today; roads that no longer exist; and anything the surveyor took the trouble to print <i>Ruins</i> beside. Conventions shifted between eras and map series, so read the sheet's own margin legend rather than assuming.</p>
+          <p><b>Coverage.</b> Each sheet only covers its own quadrangle — a rectangle, outlined on the map when a sheet is on. Pan outside that rectangle and the overlay stops; press the button again to list the sheets for the new spot. Older maps come at coarser scales (1:125,000 or 1:62,500), so zoom out a little if a very old sheet looks blurry — that is the paper, not the screen.</p>
+          <p>Source: the USGS Historical Topographic Map Collection. <b>TIF</b> next to a sheet downloads the original full-resolution georeferenced scan — several megabytes, and the thing to take if you want it offline or in QGIS.</p>
+        </div>
+      </details>
+        <div class="cand-legend">
         <span class="dot" style="background:#ffd54f;"></span>rectangular&nbsp;&nbsp;
         <span class="dot" style="background:#4dd0e1;"></span>circular&nbsp;&nbsp;
         <span class="dot" style="background:#ff7043;"></span>irregular
@@ -1165,6 +1240,13 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         </details>
         <br>Click the map to drop a pin there — drag it to fine-tune, then search or save it from its popup.
       </div>
+      </details>
+      <details class="dock-sec" id="secMore">
+        <summary>Pin &amp; track</summary>
+        <button class="secondary-btn" id="clearBtn" type="button">🧹 Clear</button>
+      <button class="secondary-btn" id="trackBtn" type="button">🎯 Start tracking</button>
+      <div id="trackStatus"></div>
+      </details>
     </div>
     <div id="map"></div>
   </div>
@@ -2896,6 +2978,31 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   // Both paths drive the same layer objects and both stay in step, because the
   // button labels are updated from the map's own overlayadd/overlayremove
   // events rather than from the click handlers.
+  // Twenty layer buttons across seven countries, of which at most seven ever
+  // apply to where you are standing: in Ohio, thirteen of them are dead weight,
+  // in England sixteen are. Showing only the country in view is the difference
+  // between a list you read and a list you scan past.
+  //
+  // The boxes are the backend's own coverage rectangles (location_fetch.py
+  // PROVIDERS, plus the Scotland entry from _KNOWN_GAPS), so a country's layers
+  // appear exactly where its data does. They overlap on purpose - England's box
+  // reaches into Wales and southern Scotland, and near those borders you want
+  // all three groups, not a guess about which side of the line you are on.
+  const LAYER_BOXES = {
+    us: [[24.0, 50.0, -125.5, -66.5], [51.0, 72.0, -180.0, -129.0],
+         [51.0, 56.0, 172.0, 180.0], [18.5, 22.5, -160.5, -154.5],
+         [17.6, 18.6, -67.5, -64.5]],
+    england:     [[49.85, 55.88, -7.11, 2.09]],
+    scotland:    [[55.00, 60.90, -8.70, -0.70]],
+    wales:       [[51.30, 53.50, -5.40, -2.63]],
+    norway:      [[57.9, 71.3, 4.0, 31.5]],
+    netherlands: [[50.70, 53.60, 3.30, 7.30]],
+    poland:      [[49.00, 54.90, 14.10, 24.20]],
+  };
+  let showAllLayers = false;
+
+  // Called from wireOverlayButton below, which is why the boxes above it are
+  // declared first rather than beside the function.
   function wireOverlayButton(btnId, layer, onLabel, offLabel) {
     const btn = document.getElementById(btnId);
     btn.addEventListener('click', () => {
@@ -2907,14 +3014,24 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       // as a dead button. Instant, not smooth — smooth silently no-ops here.
       window.revealMap();
     });
-    const sync = (e) => { if (e.layer === layer) btn.textContent = map.hasLayer(layer) ? onLabel : offLabel; };
+    const paint = () => {
+      const on = map.hasLayer(layer);
+      btn.textContent = on ? onLabel : offLabel;
+      // A live layer has to read as live from the dock, because the dock now
+      // hides the country groups you have panned away from - and a group
+      // holding a layer that is switched on must stay on screen, or the only
+      // control that can switch it back off disappears with it.
+      btn.classList.toggle('layer-on', on);
+      syncLayerGroups();
+    };
+    const sync = (e) => { if (e.layer === layer) paint(); };
     map.on('overlayadd', sync);
     map.on('overlayremove', sync);
     // Set the label once at wire time as well as on events. Every layer here
     // used to start off, so the markup's own text was always right; the
     // reference layer starts *on*, and without this its button would sit there
     // reading "Show borders & names" while they were already showing.
-    btn.textContent = map.hasLayer(layer) ? onLabel : offLabel;
+    paint();
   }
   wireOverlayButton('referenceBtn', reference, '🌐 Borders & names: on', '🌐 Show borders & names');
   wireOverlayButton('smBtn', scheduledMonuments, '🏺 Scheduled monuments: on', '🏺 Show scheduled monuments');
@@ -2936,6 +3053,39 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   wireOverlayButton('vanishedBtn', vanishedPlaces, '🏚️ Ghost towns: on', '🏚️ Show ghost towns');
   wireOverlayButton('battlefieldsBtn', battlefields, '⚔️ Battlefields: on', '⚔️ Show battlefields');
   wireOverlayButton('minesBtn', oldMines, '⛏️ Mining camps: on', '⛏️ Show mining camps');
+
+  function syncLayerGroups() {
+    const groups = document.querySelectorAll('.layer-country');
+    if (!groups.length) return;          // called once before the dock exists
+    const c = map.getCenter();
+    let shown = 0;
+    groups.forEach(g => {
+      const boxes = LAYER_BOXES[g.dataset.country] || [];
+      const here = boxes.some(b => c.lat >= b[0] && c.lat <= b[1]
+                                && c.lng >= b[2] && c.lng <= b[3]);
+      // Never hide a group holding a layer that is currently on.
+      const live = !!g.querySelector('.layer-on');
+      const show = here || live || showAllLayers;
+      g.hidden = !show;
+      if (show) shown++;
+    });
+    const none = document.getElementById('layerNone');
+    if (none) none.hidden = shown > 0;
+    const all = document.getElementById('layerAllBtn');
+    if (all) {
+      all.hidden = shown > 0 && !showAllLayers;
+      all.textContent = showAllLayers
+        ? '\u{1F30D} Show only layers for this area'
+        : '\u{1F30D} Show every country\u2019s layers';
+    }
+  }
+  map.on('moveend', syncLayerGroups);
+  const layerAllBtn = document.getElementById('layerAllBtn');
+  if (layerAllBtn) layerAllBtn.addEventListener('click', () => {
+    showAllLayers = !showAllLayers;
+    syncLayerGroups();
+  });
+  syncLayerGroups();
 
   // Zoom lock: pins minZoom/maxZoom to the current zoom level, which makes
   // Leaflet itself refuse every zoom trigger (scroll wheel, pinch,
