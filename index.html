@@ -513,7 +513,9 @@
 
     #toolPanel {
       display: block; position: relative;
-      height: min(92vh, 1200px);
+      /* 95vh, not 92: the layer list is the tallest thing on the page and every
+         vertical pixel here is one fewer button below the fold. */
+      height: min(95vh, 1200px);
       border-radius: 0;
     }
     /* z-index 0 rather than auto: it makes the map its own stacking context,
@@ -522,8 +524,7 @@
 
     .tool-side {
       position: absolute; z-index: 2; top: 14px; width: 310px;
-      /* Short of the bottom so Leaflet's attribution stays legible. */
-      max-height: calc(100% - 68px);
+      max-height: calc(100% - 28px);
       overflow-y: auto; overscroll-behavior: contain;
       padding: 13px 14px;
       background: rgba(18,18,18,0.93);
@@ -532,7 +533,25 @@
       box-shadow: 0 10px 34px rgba(0,0,0,0.55);
     }
     #toolSidebar { left: 14px; }
-    #toolSidebarRight { right: 14px; }
+    /* Search and the layer list live together on the left now - finding a
+       place and choosing what sits on top of it are the same job. That
+       leaves the right dock holding only how the scan renders, so it is
+       the one that can stop short of Leaflet's attribution. */
+    #toolSidebarRight { right: 14px; max-height: calc(100% - 52px); }
+    /* A dock taller than its box scrolls, and until now it did so with the
+       platform's overlay scrollbar - invisible until you already knew to
+       scroll. On a 1366x768 laptop the right dock holds 915px of controls in
+       637px, so "mining camps" and "historic maps" sat below the edge with
+       nothing to say they were there, and the honest reading of that is that
+       the tools are missing. Always-on, and wide enough to see. */
+    .tool-side { scrollbar-width: thin; scrollbar-color: #5a5a5a transparent; }
+    .tool-side::-webkit-scrollbar { width: 10px; }
+    .tool-side::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 5px; }
+    .tool-side::-webkit-scrollbar-thumb {
+      background: #5a5a5a; border-radius: 5px;
+      border: 2px solid transparent; background-clip: content-box;
+    }
+    .tool-side::-webkit-scrollbar-thumb:hover { background-clip: border-box; }
     /* The zoom buttons default to the top-left corner, which is now under the
        left dock. Push them clear rather than moving them somewhere unexpected. */
     #toolPanel .leaflet-top.leaflet-left { margin-left: 338px; }
@@ -541,11 +560,11 @@
      view controls are wanted on every scan, so the rest open on demand. */
   .dock-title {
     display: block; font-size: 0.72em; letter-spacing: 0.12em;
-    text-transform: uppercase; color: #8d8d8d; margin-bottom: 9px;
+    text-transform: uppercase; color: #8d8d8d; margin-bottom: 6px;
   }
   .dock-sec { border-top: 1px solid rgba(255,255,255,0.10); margin-top: 11px; }
   .dock-sec > summary {
-    cursor: pointer; list-style: none; padding: 9px 0 7px;
+    cursor: pointer; list-style: none; padding: 7px 0 5px;
     font-size: 0.78em; letter-spacing: 0.09em; text-transform: uppercase;
     color: #b4b4b4; display: flex; align-items: center; gap: 8px;
   }
@@ -563,7 +582,7 @@
     border-color: #3a7bd5; background: #1d2b3f; color: #cfe1fa;
   }
   #layerNone { font-size: 0.82em; color: #9a9a9a; line-height: 1.5; margin: 8px 0; }
-  .tool-side label { display: block; font-size: 0.78em; color: #aaa; margin: 10px 0 3px; }
+  .tool-side label { display: block; font-size: 0.78em; color: #aaa; margin: 7px 0 2px; }
   .trail-legend {
     background: rgba(20,20,20,0.82); color: #eee; padding: 7px 9px;
     border-radius: 4px; font-size: 11px; line-height: 1.6;
@@ -593,6 +612,13 @@
   .layer-group {
     margin-top: 16px; padding: 10px 10px 12px; border-radius: 5px;
     background: #202020; border: 1px solid #333;
+  }
+  /* Inside a dock section the surrounding box is a card drawn inside a card:
+     the section already has its own rule and heading, and the inner frame
+     spends 40px of height saying nothing. Height here is buttons below the
+     fold, so it goes. */
+  .dock-sec .layer-group {
+    margin-top: 0; padding: 0; background: none; border: 0; border-radius: 0;
   }
   .layer-group-label {
     display: block; font-family: var(--mono); font-size: 0.72em; color: #9ecbff;
@@ -626,8 +652,9 @@
   .tool-side button.primary:hover { background: #2f66b3; }
   .tool-side button.primary:disabled { background: #555; cursor: not-allowed; }
   .tool-side button.secondary-btn {
-    width: 100%; margin-top: 8px; padding: 7px 12px; border-radius: 4px; border: 1px solid #444;
+    width: 100%; margin-top: 6px; padding: 6px 11px; border-radius: 4px; border: 1px solid #444;
     background: #262626; color: #ddd; font-size: 0.85em; cursor: pointer;
+    text-align: left;
   }
   .tool-side button.secondary-btn:hover { background: #303030; }
   .tool-side button.secondary-btn:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -1048,49 +1075,6 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         </optgroup>
         </select>
       </details>
-      <div id="toolStatus"></div>
-      <div id="locMaps" hidden>📜 <a id="locMapsLink" href="#" target="_blank" rel="noopener noreferrer"></a></div>
-      <div id="searchProgress" role="status" aria-live="polite" hidden>
-        <div class="sp-bar"><div class="sp-fill" id="spFill"></div></div>
-        <div class="sp-line">
-          <span id="spPhase">Fetching elevation data…</span>
-          <span class="sp-elapsed" id="spElapsed" aria-hidden="true">0s</span>
-        </div>
-        <div class="sp-foot">These are the usual steps and timings — the server
-          only reports back once the scan finishes.</div>
-        <div class="sp-note" id="spNote" hidden>Taking longer than usual — the
-          server may have been asleep. It's still working, so don't reload.</div>
-      </div>
-      <div id="trialStatus">Loading trial status…</div>
-      <!-- Someone who paid and then lost their browser storage comes back
-           looking exactly like a brand-new visitor — full trial, no paywall —
-           so this has to be reachable from the normal state, not just from
-           the "trial spent" one. -->
-      <div id="restoreRow" hidden><a id="restoreLink">Already paid? Restore access</a></div>
-      <div id="restoreBox" hidden>
-        <input type="email" id="restoreEmail" placeholder="email used at checkout"
-               autocomplete="email" inputmode="email">
-        <button class="secondary-btn" id="restoreBtn" type="button">Restore access</button>
-        <div id="restoreStatus"></div>
-      </div>
-    </div>
-    <div id="toolSidebarRight" class="tool-side">
-      <span class="dock-title">Tools</span>
-      <!-- Pinned, never collapsed: these four plus the colour picker are what
-           you reach for the moment a scan lands. Everything else earns its
-           place behind a heading, because the previous version put thirty-five
-           controls on screen at once and the layer list alone was twenty
-           buttons - of which at most seven ever applied to where you were. -->
-      <button class="secondary-btn" id="viewToggleBtn" type="button" disabled>🔦 Lidar view: on</button>
-      <button class="secondary-btn" id="spyToggleBtn" type="button" disabled>🔍 Spy lens: off</button>
-      <button class="secondary-btn" id="circlesToggleBtn" type="button" disabled>⭕ Circles: on</button>
-      <label>Color style</label>
-      <select id="styleSelect" disabled>
-        <option value="composite">Composite (default)</option>
-        <option value="hillshade">Hillshade (grayscale)</option>
-        <option value="slope">Slope (viridis)</option>
-        <option value="lrm">Local relief (red/blue)</option>
-      </select>
       <details class="dock-sec" id="secLayers" open>
         <summary>Map layers</summary>
         <!-- One place for everything that puts something ON the map. These were
@@ -1189,6 +1173,49 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         </div>
       </div>
       </details>
+      <div id="toolStatus"></div>
+      <div id="locMaps" hidden>📜 <a id="locMapsLink" href="#" target="_blank" rel="noopener noreferrer"></a></div>
+      <div id="searchProgress" role="status" aria-live="polite" hidden>
+        <div class="sp-bar"><div class="sp-fill" id="spFill"></div></div>
+        <div class="sp-line">
+          <span id="spPhase">Fetching elevation data…</span>
+          <span class="sp-elapsed" id="spElapsed" aria-hidden="true">0s</span>
+        </div>
+        <div class="sp-foot">These are the usual steps and timings — the server
+          only reports back once the scan finishes.</div>
+        <div class="sp-note" id="spNote" hidden>Taking longer than usual — the
+          server may have been asleep. It's still working, so don't reload.</div>
+      </div>
+      <div id="trialStatus">Loading trial status…</div>
+      <!-- Someone who paid and then lost their browser storage comes back
+           looking exactly like a brand-new visitor — full trial, no paywall —
+           so this has to be reachable from the normal state, not just from
+           the "trial spent" one. -->
+      <div id="restoreRow" hidden><a id="restoreLink">Already paid? Restore access</a></div>
+      <div id="restoreBox" hidden>
+        <input type="email" id="restoreEmail" placeholder="email used at checkout"
+               autocomplete="email" inputmode="email">
+        <button class="secondary-btn" id="restoreBtn" type="button">Restore access</button>
+        <div id="restoreStatus"></div>
+      </div>
+    </div>
+    <div id="toolSidebarRight" class="tool-side">
+      <span class="dock-title">Tools</span>
+      <!-- Pinned, never collapsed: these four plus the colour picker are what
+           you reach for the moment a scan lands. Everything else earns its
+           place behind a heading, because the previous version put thirty-five
+           controls on screen at once and the layer list alone was twenty
+           buttons - of which at most seven ever applied to where you were. -->
+      <button class="secondary-btn" id="viewToggleBtn" type="button" disabled>🔦 Lidar view: on</button>
+      <button class="secondary-btn" id="spyToggleBtn" type="button" disabled>🔍 Spy lens: off</button>
+      <button class="secondary-btn" id="circlesToggleBtn" type="button" disabled>⭕ Circles: on</button>
+      <label>Color style</label>
+      <select id="styleSelect" disabled>
+        <option value="composite">Composite (default)</option>
+        <option value="hillshade">Hillshade (grayscale)</option>
+        <option value="slope">Slope (viridis)</option>
+        <option value="lrm">Local relief (red/blue)</option>
+      </select>
       <details class="dock-sec" id="secMarkup">
         <summary>Markup <span class="sec-note">never saved</span></summary>
         <!-- Markup. Deliberately has no save, no export and no storage: the
