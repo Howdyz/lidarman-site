@@ -1283,7 +1283,9 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
             — that's fill. On the relief view it reads as a bulge where the
             slope ought to be smooth. The scan names that shape when it finds
             it: <b>"mounded and irregular — possible dump or spoil heap"</b>,
-            and those get the same gold circle as a cellar hole.</p>
+            drawn as a <b style="color:#1e7a46;">green</b> circle so you can
+            pick the dumps out of a scan at a glance without reading every
+            tag.</p>
           <p><b>Work out from a ghost town.</b> Switch on Ghost towns, pick one,
             and scan the ground just downhill of it. A settlement that lasted
             forty years put its rubbish somewhere, and it isn't far.</p>
@@ -1312,12 +1314,20 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         <span class="dot" style="background:#ffd54f;"></span>rectangular&nbsp;&nbsp;
         <span class="dot" style="background:#4dd0e1;"></span>circular&nbsp;&nbsp;
         <span class="dot" style="background:#ff7043;"></span>irregular
+        <br><span class="dot" style="background:#8a5f16;"></span>structure&nbsp;&nbsp;
+        <span class="dot" style="background:#2e9e5b;"></span>dump&nbsp;&nbsp;
+        <span class="dot" style="background:#c0392b;"></span>off limits
         <details class="legend-details">
           <summary>ℹ️ What do these mean?</summary>
           <div class="legend-details-body">
+            <p>The first three colours are the <b>shape</b> of what the scan found. Most circles are one of these.</p>
             <p><span class="dot" style="background:#ffd54f;"></span><b>Rectangular</b> — the shape closely fills its own bounding rectangle. Best match for building foundations, walls, or other rectilinear structures.</p>
             <p><span class="dot" style="background:#4dd0e1;"></span><b>Circular</b> — the shape closely matches a circle. Best match for mounds, pits, or other circular features.</p>
             <p><span class="dot" style="background:#ff7043;"></span><b>Irregular</b> — doesn't clearly match either. Lowest-confidence tier: could be a real irregular feature (a bend in an old path), or just terrain noise/shadow artifacts. Worth a look, but verify before trusting it.</p>
+            <p style="margin-top:10px;">The last three are <b>bigger, thicker circles</b>, and they override the shape colour — the scan has something to say about this one beyond its outline, so it stops being just a shape.</p>
+            <p><span class="dot" style="background:#8a5f16;"></span><b>Structure</b> — the floor profile holds up: a cellar hole, dug foundation or building platform. These are rare, a handful per scan, and they're the ones to walk to first.</p>
+            <p><span class="dot" style="background:#2e9e5b;"></span><b>Dump</b> — raised, lumpy and shallow: a possible dump or spoil heap. Same strength of evidence as a structure, different find — see <i>Finding bottle dumps</i> above.</p>
+            <p><span class="dot" style="background:#c0392b;"></span><b>Off limits</b> — dashed red. The candidate sits on protected land the scan could name. Read the popup before you plan anything around it.</p>
           </div>
         </details>
         <br>Click the map to drop a pin there — drag it to fine-tune, then search, save or remove it from its popup.
@@ -4159,6 +4169,11 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         if (data.center) fetchScanWeather(data.center[0], data.center[1]);
         const all = data.candidates || [];
         const INTERPRETED = /cellar hole|building platform|dump or spoil heap/;
+        // A dump reading is evidence of the same quality as a cellar hole, but
+        // it is not the same find — one is a building, the other is where the
+        // building's rubbish went. They earned the same gold ring until a user
+        // pointed out that made them indistinguishable on the map.
+        const DUMP = /dump or spoil heap/;
         const shown = all.slice(0, 60);
         const shownSet = new Set(shown);
         all.forEach(c => {
@@ -4169,6 +4184,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         });
         shown.forEach(c => {
           const evidenced = c.interpretation && INTERPRETED.test(c.interpretation);
+          const isDump = evidenced && DUMP.test(c.interpretation);
           // width/height/angle and lat/lon are already in every candidate record
           // (see candidates.csv) — showing them lets you judge whether a hit is a
           // plausible foundation footprint or a metre-wide sliver before walking to it.
@@ -4206,7 +4222,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
               + (depthStr ? `<br>${depthStr}` : '')
             : (depthStr ? `<br>${depthStr}` : '');
           const readLine = c.interpretation
-            ? `<br><span style="${evidenced ? 'color:#8a5f16; font-weight:600;' : 'opacity:0.7;'}">${c.interpretation}</span>`
+            ? `<br><span style="${evidenced ? `color:${isDump ? '#1e7a46' : '#8a5f16'}; font-weight:600;` : 'opacity:0.7;'}">${c.interpretation}</span>`
             : '';
           // Land ownership as a compact line of information, not a banner.
           // Knowing the local rules is the operator's job; this just says what
@@ -4222,7 +4238,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
           bindDetails(L.circleMarker([c.lat, c.lon], {
               renderer: dotRenderer,
               radius: evidenced ? 9 : 6,
-              color: prohibited ? '#c0392b' : (evidenced ? '#8a5f16' : shapeColor(c.shape)),
+              color: prohibited ? '#c0392b'
+                : (isDump ? '#2e9e5b' : (evidenced ? '#8a5f16' : shapeColor(c.shape))),
               weight: prohibited ? 3 : (evidenced ? 3 : 2),
               dashArray: prohibited ? '3 3' : null,
               fillOpacity: evidenced ? 0.35 : 0.2 }),
