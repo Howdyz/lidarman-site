@@ -3296,9 +3296,50 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     const none = document.getElementById('layerNone');
     if (none) none.hidden = shown > 0;
   }
+  // Picking a country pinned the layer list to it and left the map wherever it
+  // already was. From the user's side that is a dropdown that does nothing:
+  // choose Norway from Ohio and the Norwegian buttons appear, over Ohio. So a
+  // country pick now takes you there as well.
+  //
+  // The first box only. LAYER_BOXES.us holds five rectangles - CONUS, Alaska,
+  // the Aleutians across the antimeridian, Hawaii and Puerto Rico - and
+  // fitting all five frames the Pacific Ocean with the country around its
+  // edges. The first entry of each list is that country's main coverage.
+  function goToCountry(key) {
+    const box = (LAYER_BOXES[key] || [])[0];
+    if (!box) return;            // 'auto' and 'all' are not places
+    // The boxes are [south, north, west, east]; Leaflet wants corners.
+    const bounds = L.latLngBounds([box[0], box[2]], [box[1], box[3]]);
+    // Below 900px the map sits under the controls, so moving it without this
+    // is the dead-button trap every other map-moving control here avoids.
+    window.revealMap();
+    // Keep the country clear of whatever is covering the map. The same test
+    // floatOverlays uses: above 1024px the two 310px docks are laid over the
+    // map rather than beside it, and the sticky header eats the top of it
+    // once the page has scrolled - so framing England without this puts it
+    // behind the very list you just used to ask for it.
+    const leftDock = document.getElementById('toolSidebar');
+    const floating = leftDock && getComputedStyle(leftDock).position === 'absolute';
+    // animate:false is load-bearing, not a preference. Leaflet drops an
+    // animated move when the destination is far outside the current view, so
+    // with the default the dropdown worked for Scotland and Wales - a screen
+    // or two away - and silently did nothing for Norway, Poland or the US
+    // from a European view. Verified: the same fitBounds that moved nothing
+    // animated lands on 65.8, 17.7 with animation off. A jump between
+    // continents has nothing to animate anyway.
+    const pad = floating
+      ? { paddingTopLeft: [330, Math.max(20, visibleSlice().top + 20)],
+          paddingBottomRight: [330, 44] }
+      : { padding: [20, 20] };
+    map.fitBounds(bounds, Object.assign({ animate: false }, pad));
+  }
+
   map.on('moveend', syncLayerGroups);
   const countrySelect = document.getElementById('countrySelect');
-  if (countrySelect) countrySelect.addEventListener('change', syncLayerGroups);
+  if (countrySelect) countrySelect.addEventListener('change', () => {
+    syncLayerGroups();
+    goToCountry(countrySelect.value);
+  });
   syncLayerGroups();
 
   // A short forecast for the ground you are about to walk. One request per
