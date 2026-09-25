@@ -671,8 +671,12 @@
   #paywallRestore a { color: #8ab4f8; text-decoration: none; cursor: pointer; }
   #paywallRestore a:hover { text-decoration: underline; }
   #restoreRow { margin-top: 7px; font-size: 0.75em; }
-  #restoreRow a { color: #8ab4f8; text-decoration: none; cursor: pointer; }
-  #restoreRow a:hover { text-decoration: underline; }
+  /* A button, not a link: it runs script rather than going anywhere, and an
+     <a> with no href cannot be reached by keyboard. Styled back to looking
+     like the quiet link it reads as. */
+  #restoreRow button { color: #8ab4f8; text-decoration: none; cursor: pointer;
+    background: none; border: 0; padding: 0; font: inherit; }
+  #restoreRow button:hover { text-decoration: underline; }
   #restoreBox { margin-top: 8px; }
   #restoreBox button { margin-top: 6px; }
   #restoreStatus { font-size: 0.75em; color: #999; margin-top: 6px; line-height: 1.5; }
@@ -1015,9 +1019,9 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         </div>
       </div>
       <span class="dock-title">Find a place</span>
-      <label>Place name</label>
+      <label for="placeInput">Place name</label>
       <input type="text" id="placeInput" placeholder="e.g. Gettysburg, PA">
-      <label>Search radius (meters) <span style="opacity:.6; font-weight:normal;">— 50 to 500</span></label>
+      <label for="radiusInput">Search radius (meters) <span style="opacity:.6; font-weight:normal;">— 50 to 500</span></label>
       <input type="number" id="radiusInput" value="300" min="50" max="500" step="50">
       <button class="primary" id="searchBtn">Search</button>
 
@@ -1029,10 +1033,10 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
            map pan and no result. -->
       <details class="dock-sec alt-ways">
         <summary>Other ways to pick a spot</summary>
-        <label>Lat, lon</label>
+        <label for="latInput">Lat, lon</label>
         <div style="display:flex; gap:6px;">
-          <input type="text" id="latInput" placeholder="lat — 39.0262 or 39°01′34″N">
-          <input type="text" id="lonInput" placeholder="lon — -83.4285 or 83°25′42″W">
+          <input type="text" id="latInput" aria-label="Latitude" placeholder="lat — 39.0262 or 39°01′34″N">
+          <input type="text" id="lonInput" aria-label="Longitude" placeholder="lon — -83.4285 or 83°25′42″W">
         </div>
         <button class="secondary-btn" id="goPlaceBtn" type="button">🔎 Show it on the map (no scan)</button>
         <button class="secondary-btn" id="useLocationBtn" type="button">📍 Use my location</button>
@@ -1041,7 +1045,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         <div id="parksStatus"></div>
         <div id="parksPanel" style="display:none; max-height:280px; overflow-y:auto; margin-top:6px;
            border:1px solid rgba(255,255,255,0.12); border-radius:4px;"></div>
-        <label>...or pick a famous battlefield (US sites)</label>
+        <label for="battlefieldSelect">...or pick a famous battlefield (US sites)</label>
         <select id="battlefieldSelect">
         <option value="">— Select a battlefield —</option>
         <optgroup label="Civil War">
@@ -1171,7 +1175,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         <div id="histStatus"></div>
         <div id="histPanel"></div>
         <div id="histControls" hidden>
-          <label>Historic map opacity <span id="histOpacityVal">70%</span></label>
+          <label for="histOpacity">Historic map opacity <span id="histOpacityVal">70%</span></label>
           <input type="range" id="histOpacity" min="0" max="100" step="5" value="70">
           <button class="secondary-btn" id="histOffBtn" type="button">✖ Turn historic map off</button>
         </div>
@@ -1195,9 +1199,9 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
            looking exactly like a brand-new visitor — full trial, no paywall —
            so this has to be reachable from the normal state, not just from
            the "trial spent" one. -->
-      <div id="restoreRow" hidden><a id="restoreLink">Already paid? Restore access</a></div>
+      <div id="restoreRow" hidden><button type="button" id="restoreLink">Already paid? Restore access</button></div>
       <div id="restoreBox" hidden>
-        <input type="email" id="restoreEmail" placeholder="email used at checkout"
+        <input type="email" id="restoreEmail" aria-label="Email used at checkout" placeholder="email used at checkout"
                autocomplete="email" inputmode="email">
         <button class="secondary-btn" id="restoreBtn" type="button">Restore access</button>
         <div id="restoreStatus"></div>
@@ -1219,7 +1223,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         <option value="satellite">Satellite</option>
         <option value="streets">Streets</option>
       </select>
-      <label>Color style</label>
+      <label for="styleSelect">Color style</label>
       <select id="styleSelect" disabled>
         <option value="composite">Composite (default)</option>
         <option value="hillshade">Hillshade (grayscale)</option>
@@ -1936,11 +1940,30 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 (function () {
   const API_BASE = 'https://lidarman-backend.onrender.com';
 
+  // Storage does not just return null when it is unavailable - it throws.
+  // "Block all cookies", an enterprise policy, Safari lockdown and several
+  // in-app browsers all make even *reading* localStorage raise SecurityError.
+  // This was the tenth line of this IIFE with no guard, so that one throw
+  // aborted the entire script: no map, no tiles, no layers, and a Search
+  // button sitting there wired to nothing. Verified by shimming a throwing
+  // localStorage against the real page - mapRendered false, 0 tiles loaded,
+  // and nothing on screen to tell the visitor why.
+  //
+  // An in-memory id is a worse id: it does not survive a reload, so a visitor
+  // in that state gets three fresh free searches each time. That is the right
+  // trade. The demo lock and the paywall are both enforced server-side, and a
+  // slightly leaky trial beats a page that looks broken to everyone whose
+  // browser blocks site data.
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* no storage */ } },
+  };
+
   function getDeviceId() {
-    let id = localStorage.getItem('lidarmanDeviceId');
+    let id = store.get('lidarmanDeviceId');
     if (!id) {
       id = (crypto.randomUUID ? crypto.randomUUID() : ('id-' + Math.random().toString(36).slice(2) + Date.now()));
-      localStorage.setItem('lidarmanDeviceId', id);
+      store.set('lidarmanDeviceId', id);
     }
     return id;
   }
@@ -2117,6 +2140,27 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   window.addEventListener('load', floatOverlays);
   floatOverlays();
 
+  // Scroll and resize are not the only things that change what this measures.
+  // Its two inputs are the sticky header's height and where the panel sits in
+  // the viewport, and neither is final when 'load' fires. Measured at 1366x768
+  // on a reload that restored the scroll position: the header had not stuck
+  // yet, so the offset came out 0.6px instead of 61, the top of the left dock
+  // sat behind the banner, and 238px of the layer list was cut off. One pixel
+  // of scroll put it right, which is exactly why it survived this long.
+  //
+  // So re-measure when the inputs actually settle: once the web fonts land,
+  // because they decide the header's height, and whenever the header or the
+  // panel changes size for any other reason.
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(floatOverlays).catch(function () {});
+  }
+  if (window.ResizeObserver) {
+    const ro = new ResizeObserver(floatOverlays);
+    const hdrEl = document.querySelector('header.top');
+    if (hdrEl) ro.observe(hdrEl);
+    if (panelEl) ro.observe(panelEl);
+  }
+
   map.createPane('shapesPane');
   map.getPane('shapesPane').style.zIndex = 450;
   map.getPane('shapesPane').style.pointerEvents = 'none';
@@ -2253,6 +2297,12 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     const el = document.getElementById('map');
     if (el && el.getBoundingClientRect().top > window.innerHeight * 0.75) {
       el.scrollIntoView({ block: 'center' });
+      // The docks and the zoom corner are positioned against the visible slice
+      // of the panel, which this scroll has just changed. Re-measure here
+      // rather than waiting on a scroll event: a programmatic scroll was
+      // measured leaving both docks clamped at 140px with the layer list cut
+      // off, and nothing recovered it until the visitor scrolled by hand.
+      floatOverlays();
     }
   };
 

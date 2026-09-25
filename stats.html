@@ -350,7 +350,7 @@ const secretInput = document.getElementById('secretInput');
       // sessionStorage would only let this tab keep firing 401s at endpoints
       // that are now closed, and the point of pressing this was to stand the
       // credential down.
-      sessionStorage.removeItem('lidarman_admin_secret');
+      try { sessionStorage.removeItem('lidarman_admin_secret'); } catch (e) {}
       document.getElementById('suspendControls').classList.add('hidden');
       result.classList.remove('hidden');
       result.innerHTML = 'Admin access suspended until <b>'
@@ -368,8 +368,11 @@ const secretInput = document.getElementById('secretInput');
   });
 })();
 
-function getSecret(){ return sessionStorage.getItem('lidarman_admin_secret') || ''; }
-function setSecret(s){ sessionStorage.setItem('lidarman_admin_secret', s); }
+// Same trap as the device id on the tool page: storage throws rather than
+// returning null when a browser blocks site data, and an unguarded read here
+// would take the whole dashboard down with it.
+function getSecret(){ try { return sessionStorage.getItem('lidarman_admin_secret') || ''; } catch (e) { return ''; } }
+function setSecret(s){ try { sessionStorage.setItem('lidarman_admin_secret', s); } catch (e) { /* this tab only, then */ } }
 
 async function loadStats(){
   gateError.classList.add('hidden');
@@ -378,7 +381,7 @@ async function loadStats(){
   try {
     const res = await fetch(API_BASE + '/api/stats', { headers: { 'x-admin-secret': secret } });
     if (res.status === 401) {
-      sessionStorage.removeItem('lidarman_admin_secret');
+      try { sessionStorage.removeItem('lidarman_admin_secret'); } catch (e) {}
       gateError.textContent = 'Wrong secret.';
       gateError.classList.remove('hidden');
       gate.classList.remove('hidden');
