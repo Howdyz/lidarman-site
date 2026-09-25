@@ -2025,9 +2025,15 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     // above had not settled, so the height came back near zero - which made
     // the clamp zero and pinned the control in place however far you scrolled.
     const r = panelEl.getBoundingClientRect();
-    const scrolledPast = Math.max(0, -r.top);
+    // The site header is position:sticky at top:0, so the top of the window is
+    // already spoken for - pinning the buttons there put them underneath it.
+    // Its rect bottom is where the page actually becomes visible.
+    const header = document.querySelector('header.top');
+    const clearOf = (header ? header.getBoundingClientRect().bottom : 0) + 12;
+    const naturalTop = r.top + 10;               // Leaflet's own corner inset
+    const wanted = Math.max(0, clearOf - naturalTop);
     const limit = Math.max(0, r.height - 110);   // never leave the bottom of the map
-    zoomCorner.style.transform = 'translateY(' + Math.min(scrolledPast, limit) + 'px)';
+    zoomCorner.style.transform = 'translateY(' + Math.min(wanted, limit) + 'px)';
   }
   window.addEventListener('scroll', floatZoomControl, { passive: true });
   window.addEventListener('resize', floatZoomControl);
