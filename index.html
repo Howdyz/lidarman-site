@@ -3828,7 +3828,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   function refreshTrialStatus(attempt) {
     attempt = attempt || 0;
     fetch(`${API_BASE}/api/access/status?deviceId=${encodeURIComponent(deviceId)}`)
-      .then(r => r.json()).then(renderTrialStatus)
+      .then(r => r.json()).then(d => { noteBackendOk(); renderTrialStatus(d); })
       .catch(() => {
         // This used to be .catch(() => {}) — a transient failure left
         // "Loading trial status…" on screen permanently, with no message and
@@ -3836,9 +3836,56 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         // backend sleeps on Render's free tier, so the first request of the
         // day routinely fails or stalls while it wakes; retry, then say so.
         if (attempt < 2) { setTimeout(() => refreshTrialStatus(attempt + 1), 4000); return; }
-        trialEl.textContent = "Couldn't reach the server — it may be waking up. Reload in a moment.";
+        noteBackendFailure();
+        trialEl.textContent = wakingOr(
+          "Couldn't reach the server — it may be waking up. Reload in a moment.");
       });
   }
+
+  // Render's free tier sleeps, so the first request of the day routinely fails
+  // while the backend wakes. "It may be waking up, reload in a moment" is the
+  // right thing to say then, and it is true within about a minute.
+  //
+  // It stops being true when the service is suspended or properly down, and
+  // then that same sentence sends people into an endless refresh. Happened for
+  // real on 2026-09-25, when the free plan's monthly instance hours ran out and
+  // the backend returned an instant 503 to everything for hours.
+  //
+  // So: remember when the failures started and change the wording once it is
+  // plainly past a cold start. The timestamp lives in localStorage because a
+  // reload is exactly what we told them to do - keeping it in memory would
+  // restart the clock every time and the honest message would never appear.
+  const COLD_START_GRACE_MS = 90000;
+  const BACKEND_DOWN_MSG =
+    'Search is offline right now \u2014 this is on our side, not yours. '
+    + 'The map, layers and parks near you all still work. '
+    + 'Your unlock and any saved spots are safe.';
+  let backendDownSince = null;
+
+  function backendDownStart() {
+    if (backendDownSince !== null) return backendDownSince;
+    try {
+      const v = parseInt(localStorage.getItem('lidarman_backend_down') || '', 10);
+      if (v) { backendDownSince = v; }
+    } catch (e) { /* storage is an optimisation */ }
+    return backendDownSince;
+  }
+  function noteBackendFailure() {
+    if (backendDownStart() !== null) return;
+    backendDownSince = Date.now();
+    try { localStorage.setItem('lidarman_backend_down', String(backendDownSince)); }
+    catch (e) { /* private window - the in-memory copy still works this session */ }
+  }
+  function noteBackendOk() {
+    backendDownSince = null;
+    try { localStorage.removeItem('lidarman_backend_down'); } catch (e) {}
+  }
+  // True once the backend has been refusing for longer than a cold start takes.
+  function backendLooksDown() {
+    const t = backendDownStart();
+    return t !== null && (Date.now() - t) > COLD_START_GRACE_MS;
+  }
+  function wakingOr(msg) { return backendLooksDown() ? BACKEND_DOWN_MSG : msg; }
 
   function showPaywall(message) {
     paywallMessage.textContent = message || "You've used your free searches for this device.";
@@ -3870,7 +3917,9 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       })
       .catch(() => {
         restore();
-        showPaywall("Couldn't reach the payment server — it may still be waking up. Give it a few seconds and try again.");
+        noteBackendFailure();
+        showPaywall(wakingOr("Couldn't reach the payment server — it may still be waking up."
+          + ' Give it a few seconds and try again.'));
       });
   }
 
@@ -3930,8 +3979,9 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         // nothing — that is how the unlock button used to fail.
         btn.disabled = false;
         restoreStatus.className = 'err';
-        restoreStatus.textContent = "Couldn't reach the server — it may still be waking up. "
-          + 'Give it a few seconds and try again.';
+        noteBackendFailure();
+        restoreStatus.textContent = wakingOr("Couldn't reach the server — it may still be waking up. "
+          + 'Give it a few seconds and try again.');
       });
   });
 
@@ -4063,6 +4113,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
           showPaywall(data.message);
           return;
         }
+        noteBackendOk();
         if (!r.ok) { setStatus(data.error || 'Search failed.', true); stopSearchProgress(); searchBtn.disabled = false; return; }
 
         setStatus('');
@@ -4273,7 +4324,15 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 
         showLocMaps((document.getElementById('placeInput').value || '').trim() || areas[0] || '');
       })
-      .catch(err => { setStatus('Request failed: ' + err, true); stopSearchProgress(); searchBtn.disabled = false; });
+      .catch(err => {
+        // A raw "Request failed: TypeError: Failed to fetch" is the worst thing
+        // to hand someone who just pressed the main button on the page.
+        noteBackendFailure();
+        setStatus(wakingOr("Couldn't reach the server — it may be waking up."
+          + ' Give it a few seconds and try again.'), true);
+        stopSearchProgress();
+        searchBtn.disabled = false;
+      });
   }
 
   // ---- Move the map to a typed place, without spending a search ------------
@@ -5446,8 +5505,9 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         // Wording matters more than usual here: the failure looks identical
         // to deletion from the user's side, and these are dig spots they
         // went out and found. Say plainly that nothing is lost.
-        setStatus("Couldn't load your saved spots — the server may still be waking up. "
-          + 'They are not lost; reload in a moment.', true);
+        noteBackendFailure();
+        setStatus(wakingOr("Couldn't load your saved spots — the server may still be waking up. "
+          + 'They are not lost; reload in a moment.'), true);
       });
   }
 
@@ -5468,7 +5528,9 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     })
       .then(r => {
         if (!r.ok) {
-          setStatus("Couldn't save that spot — the server may still be waking up. Try again in a moment.", true);
+          noteBackendFailure();
+          setStatus(wakingOr("Couldn't save that spot — the server may still be waking up."
+            + ' Try again in a moment.'), true);
           return;
         }
         setStatus('');
