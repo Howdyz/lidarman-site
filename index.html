@@ -4728,8 +4728,19 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       return `lidarman_parks_${(Math.round(la / 0.05) * 0.05).toFixed(2)}_${(Math.round(lo / 0.05) * 0.05).toFixed(2)}`;
     }
 
+    // Every request gets its own deadline. overpass-api.de balances across
+    // backends of differing health - measured on 2026-09-25, one query answered
+    // in 29s and the next returned 504 - and a mirror can accept the connection
+    // and then send nothing at all: kumi.systems sat on one for 90s and zero
+    // bytes. Without an abort that is a button that never comes back.
+    const OVERPASS_DEADLINE_MS = 45000;
+
     function askOverpass(url, query) {
-      return fetch(url, { method: 'POST', body: new URLSearchParams({ data: query }) })
+      const ctl = new AbortController();
+      const killer = setTimeout(() => ctl.abort(), OVERPASS_DEADLINE_MS);
+      return fetch(url, { method: 'POST', signal: ctl.signal,
+                          body: new URLSearchParams({ data: query }) })
+        .finally(() => clearTimeout(killer))
         .then(r => r.json())
         .then(d => {
           // Overpass reports failures as HTTP 200 with a "remark", and a
@@ -4741,6 +4752,38 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         });
     }
 
+    // Hedged request. Waiting on the primary alone and only falling back once
+    // it has properly failed means a slow-but-alive backend costs you the full
+    // wait - and that is the common case here, not the rare one. So: primary
+    // gets a head start, then the mirrors join in and the first answer wins.
+    //
+    // They are woken only when the primary is slow or has already failed, never
+    // on every press, because these are free public servers and asking three at
+    // once by default is how you get blocked.
+    function raceOverpass(query) {
+      const primary = askOverpass(OVERPASS[0], query);
+      const mirrors = new Promise((resolve, reject) => {
+        let started = false;
+        const fire = () => {
+          if (started) return;
+          started = true;
+          // Ask the primary again as well as the mirrors. The failures here are
+          // per-backend, not per-query: overpass-api.de announces a different
+          // backend on each request, and on 2026-09-25 a 25km query 504'd twice
+          // while an 80km one over the same point answered fine - so a second
+          // ask often simply lands somewhere healthy. 504s come back in under
+          // 8s, which makes the retry cheap.
+          const attempts = [askOverpass(OVERPASS[0], query)]
+            .concat(OVERPASS.slice(1).map(u => askOverpass(u, query)));
+          Promise.any(attempts).then(resolve, reject);
+        };
+        const t = setTimeout(fire, 6000);
+        primary.then(() => clearTimeout(t),
+                     () => { clearTimeout(t); fire(); });
+      });
+      return Promise.any([primary, mirrors]);
+    }
+
     function fetchParks(la, lo) {
       const key = cacheKey(la, lo);
       try {
@@ -4749,10 +4792,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       } catch (e) { /* cache is an optimisation */ }
 
       const q = `[out:json][timeout:50];nwr["leisure"="park"]["name"](around:80000,${la},${lo});out center tags;`;
-      // Primary alone first; race the rest only if it misses, so the healthy
-      // instance is not left waiting behind a sick one.
-      return askOverpass(OVERPASS[0], q)
-        .catch(() => Promise.any(OVERPASS.slice(1).map(u => askOverpass(u, q))))
+      return raceOverpass(q)
         .then(d => {
           const seen = new Set(), out = [];
           (d.elements || []).forEach(el => {
