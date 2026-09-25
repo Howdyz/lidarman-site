@@ -2011,34 +2011,64 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   //
   // Clamped so they never leave the bottom of the map, and skipped entirely on
   // the stacked layout, where the map is 380px and nothing scrolls away.
+  // Everything that sits on top of the map - the zoom buttons and both docks -
+  // is anchored to the panel, so it rides up out of the window as you scroll
+  // while the map is still on screen. Slide each one down to the top of
+  // whatever slice of the map is actually visible, and cap the docks to that
+  // slice so their bottoms do not hang off the edge either.
+  //
+  // Measured fresh every call, never cached. An earlier attempt cached the
+  // panel's height once at startup, before the page above had settled, and a
+  // near-zero height made the clamp zero - which looked exactly like the
+  // handler never running. requestAnimationFrame is no good here either: it is
+  // paused outright in a hidden tab.
   const zoomCorner = document.querySelector('#toolPanel .leaflet-top.leaflet-left');
   const panelEl = document.getElementById('toolPanel');
-  function floatZoomControl() {
-    if (!zoomCorner || !panelEl) return;
-    const dock = document.getElementById('toolSidebar');
-    if (!dock || getComputedStyle(dock).position !== 'absolute') {
-      zoomCorner.style.transform = '';   // stacked layout: leave it where it is
+
+  function visibleSlice() {
+    const r = panelEl.getBoundingClientRect();
+    const header = document.querySelector('header.top');
+    // The site header is position:sticky at top:0, so the top of the window is
+    // already spoken for - this is where the page actually becomes visible.
+    const headerBottom = header ? header.getBoundingClientRect().bottom : 0;
+    return {
+      rect: r,
+      top: Math.max(0, headerBottom - r.top),                  // in panel coords
+      bottom: Math.min(r.height, window.innerHeight - r.top),
+    };
+  }
+
+  function floatOverlays() {
+    if (!panelEl) return;
+    const leftDock = document.getElementById('toolSidebar');
+    const floating = leftDock && getComputedStyle(leftDock).position === 'absolute';
+    const docks = document.querySelectorAll('.tool-side');
+    if (!floating) {
+      // Stacked layout: the map is 380px and nothing scrolls away from you.
+      if (zoomCorner) zoomCorner.style.transform = '';
+      docks.forEach(function (d) { d.style.transform = ''; d.style.maxHeight = ''; });
       return;
     }
-    // Measured fresh every time, not cached. An earlier version cached the
-    // panel's offset and height once at startup, and at that point the page
-    // above had not settled, so the height came back near zero - which made
-    // the clamp zero and pinned the control in place however far you scrolled.
-    const r = panelEl.getBoundingClientRect();
-    // The site header is position:sticky at top:0, so the top of the window is
-    // already spoken for - pinning the buttons there put them underneath it.
-    // Its rect bottom is where the page actually becomes visible.
-    const header = document.querySelector('header.top');
-    const clearOf = (header ? header.getBoundingClientRect().bottom : 0) + 12;
-    const naturalTop = r.top + 10;               // Leaflet's own corner inset
-    const wanted = Math.max(0, clearOf - naturalTop);
-    const limit = Math.max(0, r.height - 110);   // never leave the bottom of the map
-    zoomCorner.style.transform = 'translateY(' + Math.min(wanted, limit) + 'px)';
+    const v = visibleSlice();
+    if (zoomCorner) {
+      const limit = Math.max(0, v.rect.height - 110);   // never leave the map
+      zoomCorner.style.transform = 'translateY(' + Math.min(v.top, limit) + 'px)';
+    }
+    docks.forEach(function (d) {
+      // The right dock stops further short of the bottom, to leave Leaflet's
+      // attribution readable in that corner.
+      const bottomGap = d.id === 'toolSidebarRight' ? 56 : 28;
+      const room = v.bottom - v.top - bottomGap;
+      const limit = Math.max(0, v.rect.height - 120);
+      d.style.transform = 'translateY(' + Math.min(v.top, limit) + 'px)';
+      d.style.maxHeight = Math.max(140, room) + 'px';
+    });
   }
-  window.addEventListener('scroll', floatZoomControl, { passive: true });
-  window.addEventListener('resize', floatZoomControl);
-  window.addEventListener('load', floatZoomControl);
-  floatZoomControl();
+
+  window.addEventListener('scroll', floatOverlays, { passive: true });
+  window.addEventListener('resize', floatOverlays);
+  window.addEventListener('load', floatOverlays);
+  floatOverlays();
 
   map.createPane('shapesPane');
   map.getPane('shapesPane').style.zIndex = 450;
