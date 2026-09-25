@@ -1283,7 +1283,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
             <p><span class="dot" style="background:#ff7043;"></span><b>Irregular</b> — doesn't clearly match either. Lowest-confidence tier: could be a real irregular feature (a bend in an old path), or just terrain noise/shadow artifacts. Worth a look, but verify before trusting it.</p>
           </div>
         </details>
-        <br>Click the map to drop a pin there — drag it to fine-tune, then search or save it from its popup.
+        <br>Click the map to drop a pin there — drag it to fine-tune, then search, save or remove it from its popup.
       </div>
       </details>
       <details class="dock-sec" id="secMore">
@@ -5275,6 +5275,9 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       <div style="font-family:var(--mono, monospace); font-size:0.85em; margin-bottom:6px;">${lat.toFixed(5)}, ${lon.toFixed(5)}</div>
       <button class="pin-search-btn" style="margin-right:6px; padding:4px 10px; cursor:pointer;">Search here</button>
       <button class="pin-save-btn" style="padding:4px 10px; cursor:pointer;">📌 Save spot</button>
+      <div style="margin-top:7px;">
+        <button class="pin-remove-btn" style="padding:3px 9px; cursor:pointer; font-size:0.85em; opacity:0.8;">✖ Remove pin</button>
+      </div>
     </div>`;
   }
 
@@ -5306,6 +5309,14 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       const ll = searchPin.getLatLng();
       map.closePopup();
       saveSpotAt(ll.lat, ll.lng);
+    });
+    // Takes away the pin and nothing else. Clear in the dock also drops the
+    // pin, but it wipes the whole scan with it - the overlay, the candidates,
+    // the tracking - which is no use when the pin is just in your way.
+    const removeBtnEl = el.querySelector('.pin-remove-btn');
+    if (removeBtnEl) removeBtnEl.addEventListener('click', () => {
+      map.closePopup();
+      if (searchPin) { map.removeLayer(searchPin); searchPin = null; }
     });
     const trackBtnEl = el.querySelector('.cand-track-btn');
     if (trackBtnEl) trackBtnEl.addEventListener('click', () => {
