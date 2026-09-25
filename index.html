@@ -4725,7 +4725,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 
     function cacheKey(la, lo) {
       // ~5.5 km buckets, so re-pressing the button never re-queries.
-      return `lidarman_parks_${(Math.round(la / 0.05) * 0.05).toFixed(2)}_${(Math.round(lo / 0.05) * 0.05).toFixed(2)}`;
+      return `lidarman_parks2_${(Math.round(la / 0.05) * 0.05).toFixed(2)}_${(Math.round(lo / 0.05) * 0.05).toFixed(2)}`;
     }
 
     // Every request gets its own deadline. overpass-api.de balances across
@@ -4784,6 +4784,120 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       return Promise.any([primary, mirrors]);
     }
 
+    // ---- United States: PAD-US ---------------------------------------------
+    // Overpass is the only source that covers every country the tool searches,
+    // so it stays for the rest of them. But in the US the USGS Protected Areas
+    // Database answers the same question in about a second instead of thirty,
+    // finds more, and - unlike OpenStreetMap - knows whether the public may
+    // actually set foot on the place. Measured 2026-09-25 over a 50-mile box at
+    // Gettysburg: 2,227 open-access parks in 0.76s, against 1,631 in 29.5s.
+    //
+    // Public domain (USGS), carrying nothing but the usual no-warranty notice.
+    // The faster Esri "USA Parks" layer was rejected for this: 0.41s, but it is
+    // under the Esri Master License Agreement with TomTom's data behind it, and
+    // answering an anonymous request is not the same as granting a licence.
+    const PADUS_URL = 'https://services.arcgis.com/v01gqwM5QqNysAAi/arcgis/rest/'
+                    + 'services/Manager_Name_PADUS/FeatureServer/0/query';
+    // Park-like designations that the public may enter. Unfiltered, PAD-US
+    // returns every protected parcel in the box - 42,044 at Gettysburg, led by
+    // Aberdeen Proving Ground and Fort Detrick, both closed to the public.
+    const PADUS_WHERE = "Des_Tp IN ('LP','SP','NP','LREC','SREC','REC','LOTH')"
+                      + " AND Pub_Access IN ('OA','RA') AND Unit_Nm<>''";
+    const PADUS_LABEL = { SP: 'state park', NP: 'national park',
+                          SREC: 'state recreation', REC: 'recreation area',
+                          LREC: 'recreation area' };
+
+    function inUnitedStates(la, lo) {
+      const boxes = (typeof LAYER_BOXES !== 'undefined' && LAYER_BOXES.us) || [];
+      return boxes.some(b => la >= b[0] && la <= b[1] && lo >= b[2] && lo <= b[3]);
+    }
+
+    function usEnvelope(la, lo, miles) {
+      const dLat = miles / 69.0;
+      // cos() guarded so a high latitude cannot blow the longitude span up.
+      const dLon = miles / (69.0 * Math.max(0.15, Math.cos(la * Math.PI / 180)));
+      return JSON.stringify({ xmin: lo - dLon, ymin: la - dLat,
+                              xmax: lo + dLon, ymax: la + dLat,
+                              spatialReference: { wkid: 4326 } });
+    }
+
+    function askPadus(la, lo, miles) {
+      const qs = new URLSearchParams({
+        where: PADUS_WHERE, geometry: usEnvelope(la, lo, miles),
+        geometryType: 'esriGeometryEnvelope', inSR: '4326',
+        spatialRel: 'esriSpatialRelIntersects',
+        outFields: 'Unit_Nm,Des_Tp,Pub_Access', returnGeometry: 'false',
+        returnCentroid: 'true', outSR: '4326', f: 'json',
+        resultRecordCount: '2000'
+      });
+      const ctl = new AbortController();
+      const killer = setTimeout(() => ctl.abort(), 15000);
+      return fetch(PADUS_URL + '?' + qs.toString(), { signal: ctl.signal })
+        .finally(() => clearTimeout(killer))
+        .then(r => r.json())
+        .then(d => {
+          // ArcGIS reports failures as HTTP 200 with an error object.
+          if (d.error) throw new Error(d.error.message || 'PAD-US error');
+          return d.features || [];
+        });
+    }
+
+    function padusRows(features, la, lo) {
+      const seen = new Set(), out = [];
+      features.forEach(f => {
+        const a = f.attributes || {}, c = f.centroid || {};
+        const name = (a.Unit_Nm || '').trim();
+        if (!name || c.y == null || c.x == null) return;
+        // One unit is often many parcels - 2,000 rows carried 1,830 names.
+        const k = name.toLowerCase();
+        if (seen.has(k)) return;
+        seen.add(k);
+        out.push({ name: name, lat: c.y, lon: c.x,
+                   land: PADUS_LABEL[a.Des_Tp] || null,
+                   mi: haversineMi(la, lo, c.y, c.x) });
+      });
+      out.sort((a, b) => a.mi - b.mi);
+      return out;
+    }
+
+    // 25 miles first. A 50-mile box matches 2,227 parks against a 2,000-row
+    // server cap, so the far edge can crowd out the near ground - and the near
+    // ground is what anyone actually wants. Widen only if it comes back thin.
+    function fetchParksUS(la, lo) {
+      return askPadus(la, lo, 25).then(near => {
+        const rows = padusRows(near, la, lo);
+        if (rows.length >= 25) return rows;
+        return askPadus(la, lo, 50).then(wide => padusRows(wide, la, lo));
+      });
+    }
+
+    function fetchParksOverpass(la, lo) {
+      const q = `[out:json][timeout:50];nwr["leisure"="park"]["name"](around:80000,${la},${lo});out center tags;`;
+      return raceOverpass(q).then(d => {
+        const seen = new Set(), out = [];
+        (d.elements || []).forEach(el => {
+          const t = el.tags || {};
+          if (!t.name) return;
+          const plat = el.type === 'node' ? el.lat : (el.center || {}).lat;
+          const plon = el.type === 'node' ? el.lon : (el.center || {}).lon;
+          if (plat == null || plon == null) return;
+          const k = `${t.name.toLowerCase()}|${plat.toFixed(3)}|${plon.toFixed(3)}`;
+          if (seen.has(k)) return;
+          seen.add(k);
+          const title = (t.protection_title || '').toLowerCase();
+          const op = (t.operator || '').toLowerCase();
+          const owner = (t.ownership || '').toLowerCase();
+          let land = null;
+          if (title.includes('state park') || t.name.toLowerCase().includes('state park')) land = 'state park';
+          else if (owner === 'state' || op.includes('department of natural resources')) land = 'state land';
+          out.push({ name: t.name, lat: plat, lon: plon, land,
+                     mi: haversineMi(la, lo, plat, plon) });
+        });
+        out.sort((a, b) => a.mi - b.mi);
+        return out;
+      });
+    }
+
     function fetchParks(la, lo) {
       const key = cacheKey(la, lo);
       try {
@@ -4791,34 +4905,21 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         if (hit && Date.now() - hit.t < PARK_TTL_MS) return Promise.resolve(hit.d);
       } catch (e) { /* cache is an optimisation */ }
 
-      const q = `[out:json][timeout:50];nwr["leisure"="park"]["name"](around:80000,${la},${lo});out center tags;`;
-      return raceOverpass(q)
-        .then(d => {
-          const seen = new Set(), out = [];
-          (d.elements || []).forEach(el => {
-            const t = el.tags || {};
-            if (!t.name) return;
-            const plat = el.type === 'node' ? el.lat : (el.center || {}).lat;
-            const plon = el.type === 'node' ? el.lon : (el.center || {}).lon;
-            if (plat == null || plon == null) return;
-            const k = `${t.name.toLowerCase()}|${plat.toFixed(3)}|${plon.toFixed(3)}`;
-            if (seen.has(k)) return;
-            seen.add(k);
-            const title = (t.protection_title || '').toLowerCase();
-            const op = (t.operator || '').toLowerCase();
-            const owner = (t.ownership || '').toLowerCase();
-            let land = null;
-            if (title.includes('state park') || t.name.toLowerCase().includes('state park')) land = 'state park';
-            else if (owner === 'state' || op.includes('department of natural resources')) land = 'state land';
-            out.push({ name: t.name, lat: plat, lon: plon, land,
-                       mi: haversineMi(la, lo, plat, plon) });
-          });
-          out.sort((a, b) => a.mi - b.mi);
-          const trimmed = out.slice(0, 300);
-          try { localStorage.setItem(key, JSON.stringify({ t: Date.now(), d: trimmed })); }
-          catch (e) { /* quota — fine */ }
-          return trimmed;
-        });
+      const keep = (rows) => {
+        const trimmed = rows.slice(0, 300);
+        try { localStorage.setItem(key, JSON.stringify({ t: Date.now(), d: trimmed })); }
+        catch (e) { /* quota - fine */ }
+        return trimmed;
+      };
+
+      // Overpass is still the fallback inside the US as well as the only option
+      // outside it: PAD-US is one service, and one service is a single point of
+      // failure for a button that used to work everywhere.
+      if (inUnitedStates(la, lo)) {
+        return fetchParksUS(la, lo).then(keep)
+          .catch(() => fetchParksOverpass(la, lo).then(keep));
+      }
+      return fetchParksOverpass(la, lo).then(keep);
     }
 
     function haversineMi(la1, lo1, la2, lo2) {
