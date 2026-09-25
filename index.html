@@ -1263,6 +1263,42 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         </div>
       </details>
         <details class="legend-details">
+        <summary>ℹ️ Finding bottle dumps</summary>
+        <div class="legend-details-body">
+          <p>Nobody keeps a list of old dumps — the ones worth digging were
+            informal, and most closed before anyone was writing them down. So
+            you find them the way you'd find anything else here: on an old
+            sheet, and in the shape of the ground.</p>
+          <p><b>Read the words on the topo sheet.</b> Turn on the historic map
+            and hunt for <i>Dump</i>, <i>Disposal</i>, <i>Sewage Disposal</i> or
+            <i>Incinerator</i> printed in plain text. They're marked far more
+            often than people expect, and a label on a 1940s sheet with nothing
+            there today is about as good as this gets.</p>
+          <p><b>Then think like the town.</b> Refuse went downhill, downwind and
+            just out of sight: the head of a ravine, a hollow behind the
+            cemetery, a worked-out gravel pit or quarry, the outside bend of a
+            creek. Rarely more than a quarter-mile from the last house.</p>
+          <p><b>What it looks like in the terrain.</b> A ravine that stops being
+            a ravine. Ground should keep falling and instead goes flat or lumpy
+            — that's fill. On the relief view it reads as a bulge where the
+            slope ought to be smooth. The scan names that shape when it finds
+            it: <b>"mounded and irregular — possible dump or spoil heap"</b>,
+            and those get the same gold circle as a cellar hole.</p>
+          <p><b>Work out from a ghost town.</b> Switch on Ghost towns, pick one,
+            and scan the ground just downhill of it. A settlement that lasted
+            forty years put its rubbish somewhere, and it isn't far.</p>
+          <p style="margin-top:10px;"><b>Two honest warnings.</b> Not every lump
+            is a bottle dump — spoil heaps, field-clearance piles, forestry
+            brash and natural slumps all read the same way, which is why that
+            label says "possible" and stops there. And a modern landfill is a
+            different thing entirely: capped, monitored, and full of things you
+            don't want to put a shovel through. If it's on today's map as a
+            landfill, it isn't what you're after.</p>
+          <p>Permission is the same as anywhere else on this map — an old
+            dump still sits on somebody's ground.</p>
+        </div>
+      </details>
+      <details class="legend-details">
         <summary>ℹ️ What are the historic maps?</summary>
         <div class="legend-details-body">
           <p>Every USGS topographic sheet ever printed — about 180,000 of them, going back to 1884 — laid over the map at whatever opacity you like. Press the button and you get the sheets that cover wherever the map is currently centred, oldest first.</p>
@@ -3255,6 +3291,46 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   if (countrySelect) countrySelect.addEventListener('change', syncLayerGroups);
   syncLayerGroups();
 
+  // A short forecast for the ground you are about to walk. One request per
+  // search rather than one per circle: the search radius maxes out at 500 m,
+  // so every candidate in a scan shares the same sky.
+  //
+  // Open-Meteo: free, no key, global - which matters, because this has to work
+  // in Telemark and Powys as well as Ohio. Fahrenheit in the US, Celsius
+  // everywhere else, off the same coverage boxes the layer list uses.
+  let scanWeather = null;
+
+  function fetchScanWeather(lat, lon) {
+    scanWeather = null;
+    const boxes = (typeof LAYER_BOXES !== 'undefined' && LAYER_BOXES.us) || [];
+    const us = boxes.some(b => lat >= b[0] && lat <= b[1] && lon >= b[2] && lon <= b[3]);
+    const url = 'https://api.open-meteo.com/v1/forecast'
+      + '?latitude=' + lat.toFixed(4) + '&longitude=' + lon.toFixed(4)
+      + '&current=temperature_2m'
+      + '&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max'
+      + '&temperature_unit=' + (us ? 'fahrenheit' : 'celsius')
+      + '&timezone=auto&forecast_days=1';
+    const ctl = new AbortController();
+    const killer = setTimeout(() => ctl.abort(), 6000);
+    return fetch(url, { signal: ctl.signal })
+      .finally(() => clearTimeout(killer))
+      .then(r => r.json())
+      .then(d => {
+        const now = (d.current || {}).temperature_2m;
+        if (now == null) return;
+        const day = d.daily || {};
+        const hi = (day.temperature_2m_max || [])[0];
+        const lo = (day.temperature_2m_min || [])[0];
+        const rain = (day.precipitation_probability_max || [])[0];
+        let out = Math.round(now) + (us ? '\u00B0F' : '\u00B0C');
+        if (hi != null && lo != null) out += ' (' + Math.round(lo) + '\u2013' + Math.round(hi) + ')';
+        if (rain != null) out += ' \u00B7 rain ' + Math.round(rain) + '%';
+        scanWeather = out;
+      })
+      // Weather is a nicety. It must never turn a paid scan into a failure.
+      .catch(() => {});
+  }
+
   let compositeOverlay = null;
   let candidateMarkers = L.layerGroup().addTo(map);
   let savedMarkers = L.layerGroup().addTo(map);
@@ -4029,8 +4105,9 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         // actually supports a structure reading. Those are rare — 8 of 693 on
         // the Petersham test scan — and ranking alone buried all of them past
         // rank 60, so the evidence would have been computed and never seen.
+        if (data.center) fetchScanWeather(data.center[0], data.center[1]);
         const all = data.candidates || [];
-        const INTERPRETED = /cellar hole|building platform/;
+        const INTERPRETED = /cellar hole|building platform|dump or spoil heap/;
         const shown = all.slice(0, 60);
         const shownSet = new Set(shown);
         all.forEach(c => {
@@ -4116,6 +4193,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
               return `<b>#${c.rank} ${c.shape} (${c.kind})</b>${landLine}${readLine}`
                 + `<br>~${Math.round(c.area_m2)} m²${dims}${floorLine}`
                 + `<br><span style="font-family:ui-monospace,monospace; font-size:0.85em; opacity:0.75;">${c.lat.toFixed(6)}, ${c.lon.toFixed(6)}</span>`
+                + (scanWeather ? `<br><span style="opacity:0.75;">\u{1F326}\uFE0F ${scanWeather}</span>` : '')
                 + `<br><span style="opacity:0.7; font-size:0.9em;">${scoreLine}</span>`
                 + `<br><button class="cand-track-btn" data-lat="${c.lat}" data-lon="${c.lon}" style="margin-top:6px; padding:4px 10px; cursor:pointer;">🎯 Track this</button>`
                 + qr;
