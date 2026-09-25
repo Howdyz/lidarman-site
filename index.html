@@ -2003,6 +2003,37 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     if (shift) map.panBy([-shift, 0], { animate: true });
   });
 
+  // The panel is 95vh tall, so the moment the page scrolls at all the zoom
+  // buttons - pinned to the top corner of the map - ride up out of the window
+  // while most of the map is still on screen, and you have to scroll back to
+  // reach them. Slide them down by however much of the panel has gone past the
+  // top of the window so they stay where you are looking.
+  //
+  // Clamped so they never leave the bottom of the map, and skipped entirely on
+  // the stacked layout, where the map is 380px and nothing scrolls away.
+  const zoomCorner = document.querySelector('#toolPanel .leaflet-top.leaflet-left');
+  const panelEl = document.getElementById('toolPanel');
+  function floatZoomControl() {
+    if (!zoomCorner || !panelEl) return;
+    const dock = document.getElementById('toolSidebar');
+    if (!dock || getComputedStyle(dock).position !== 'absolute') {
+      zoomCorner.style.transform = '';   // stacked layout: leave it where it is
+      return;
+    }
+    // Measured fresh every time, not cached. An earlier version cached the
+    // panel's offset and height once at startup, and at that point the page
+    // above had not settled, so the height came back near zero - which made
+    // the clamp zero and pinned the control in place however far you scrolled.
+    const r = panelEl.getBoundingClientRect();
+    const scrolledPast = Math.max(0, -r.top);
+    const limit = Math.max(0, r.height - 110);   // never leave the bottom of the map
+    zoomCorner.style.transform = 'translateY(' + Math.min(scrolledPast, limit) + 'px)';
+  }
+  window.addEventListener('scroll', floatZoomControl, { passive: true });
+  window.addEventListener('resize', floatZoomControl);
+  window.addEventListener('load', floatZoomControl);
+  floatZoomControl();
+
   map.createPane('shapesPane');
   map.getPane('shapesPane').style.zIndex = 450;
   map.getPane('shapesPane').style.pointerEvents = 'none';
