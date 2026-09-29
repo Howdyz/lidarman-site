@@ -637,7 +637,7 @@
     width: 100%; box-sizing: border-box; padding: 7px; border-radius: 4px; border: 1px solid #444;
     background: #262626; color: #eee; font-size: 0.9em;
   }
-  /* A locked device can only search the three demo places. The free-text
+  /* A locked device can only search the demo places. The free-text
      fields are shut while locked rather than left open to type into and be
      refused — the refusal came back from the server, so it read as the tool
      failing rather than as the trial working as intended. */
@@ -1012,12 +1012,12 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
          a narrow screen wants; the grid moves the map between them. -->
     <div id="toolSidebar" class="tool-side">
       <!-- Shown only while the device is locked. Free searches are pinned to
-           these three places server-side; this is the visible half of that. -->
+           these places server-side; this is the visible half of that. -->
       <div id="demoBox" hidden>
         <span class="layer-group-label">Free searches — pick a place</span>
         <div id="demoButtons"></div>
         <div id="demoNote" style="font-size:.85em; opacity:.75; line-height:1.55; margin:8px 0 14px;">
-          These three show everything the tool does. Unlock to point it at your own ground.
+          Any of these shows everything the tool does. Unlock to point it at your own ground.
         </div>
       </div>
       <span class="dock-title">Find a place</span>
@@ -1052,7 +1052,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         <option value="">— Select a battlefield —</option>
         <optgroup label="Civil War">
           <option value="39.8309,-77.2311">Gettysburg, PA (1863)</option>
-          <option value="39.4762,-77.7517">Antietam, MD (1862)</option>
+          <option value="39.47038,-77.73860">Antietam — Bloody Lane, MD (1862)</option>
           <option value="38.8146,-77.5222">Manassas / Bull Run, VA (1861 &amp; 1862)</option>
           <option value="35.1400,-88.3450">Shiloh, TN (1862)</option>
           <option value="32.3526,-90.8779">Vicksburg, MS (1863)</option>
@@ -1060,7 +1060,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
           <option value="38.3141,-77.6350">Chancellorsville, VA (1863)</option>
         </optgroup>
         <optgroup label="Revolutionary War">
-          <option value="37.2380,-76.5083">Yorktown, VA (1781)</option>
+          <option value="37.22792,-76.49847">Yorktown — Redoubts 9 &amp; 10, VA (1781)</option>
           <option value="43.0117,-73.6459">Saratoga, NY (1777)</option>
           <option value="35.1378,-81.8129">Cowpens, SC (1781)</option>
         </optgroup>
@@ -1073,7 +1073,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
           <option value="32.9767,-85.7341">Horseshoe Bend, AL (1814)</option>
           <option value="42.2030,-104.5459">Fort Laramie, WY (1834)</option>
           <option value="38.5641,-102.5170">Sand Creek, CO (1864)</option>
-          <option value="44.5315,-106.8255">Fort Phil Kearny / Fetterman, WY (1866)</option>
+          <option value="44.53219,-106.82644">Fort Phil Kearny / Fetterman, WY (1866)</option>
           <option value="39.8722,-102.1844">Beecher Island, CO (1868)</option>
           <option value="35.6209,-99.7045">Washita, OK (1868)</option>
           <option value="32.1492,-109.4512">Fort Bowie / Apache Pass, AZ (1862–86)</option>
@@ -3916,7 +3916,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   const restoreBox = document.getElementById('restoreBox');
   const restoreStatus = document.getElementById('restoreStatus');
 
-  // The three places a locked device may search. Hard-coded to match
+  // The places a locked device may search. Hard-coded to match
   // access.DEMO_LOCATIONS on the server; the server is what enforces them, so
   // a mismatch here costs a confusing rejection rather than a free search.
   const DEMO_LOCATIONS = [
@@ -3925,7 +3925,15 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     { id: 'stonehenge', name: 'Stonehenge, England', lat: 51.178889, lon: -1.826111,
       blurb: 'The henge, the Avenue and a field of barrows' },
     { id: 'fort-patrick-kelly', name: 'Fort Patrick Kelly, Virginia', lat: 37.176614, lon: -77.349177,
-      blurb: 'A Civil War siege fort the trees have covered since 1865' }
+      blurb: 'A Civil War siege fort the trees have covered since 1865' },
+    // One per group in the battlefield list below, which points at these same
+    // coordinates, so each group has an option a locked device can search.
+    { id: 'bloody-lane', name: 'Bloody Lane, Antietam, Maryland', lat: 39.47038, lon: -77.73860,
+      blurb: 'The sunken road held in 1862, still cut deep into the fields' },
+    { id: 'yorktown-redoubts', name: 'Yorktown Redoubts, Virginia', lat: 37.22792, lon: -76.49847,
+      blurb: 'Two redoubts stormed in 1781, and the British line behind them' },
+    { id: 'fort-phil-kearny', name: 'Fort Phil Kearny, Wyoming', lat: 44.53219, lon: -106.82644,
+      blurb: 'An 1866 stockade, its building grid still in the ground' }
   ];
   let demoRendered = false;
   // null while the first status call is in flight. Only an explicit false
@@ -3933,7 +3941,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   // status lands must never be shown a paywall.
   let deviceUnlocked = null;
   const LOCKED_SEARCH_MSG =
-    'Free searches cover the three places listed beside the map. '
+    'Free searches cover the example places listed beside the map. '
     + 'Unlock to point the scanner anywhere you like.';
 
   // Matches access.demo_location_for() on the server, including its 250 m
@@ -3993,6 +4001,20 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         ? '🔒 Use my location — unlock first'
         : '📍 Use my location';
       geoBtn.title = locked ? LOCKED_SEARCH_MSG : '';
+    }
+    // The battlefield list has one free place per group. While locked, say
+    // which: a free label on those and a padlock on the rest, so nobody
+    // picks Gettysburg, presses Search and meets the paywall by surprise.
+    const bfSelect = document.getElementById('battlefieldSelect');
+    if (bfSelect) {
+      for (const opt of bfSelect.options) {
+        if (!opt.value) continue;
+        if (!opt.dataset.label) opt.dataset.label = opt.textContent;
+        const [la, lo] = opt.value.split(',').map(Number);
+        opt.textContent = !locked ? opt.dataset.label
+          : demoLocationFor(la, lo) ? opt.dataset.label + ' — free'
+          : '🔒 ' + opt.dataset.label;
+      }
     }
     if (lockClickWired) return;
     lockClickWired = true;
@@ -4287,12 +4309,12 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     }
     else {
       setStatus(deviceUnlocked === false
-        ? 'Pick one of the three free places above.'
+        ? 'Pick one of the free places above.'
         : 'Enter a place name or lat/lon.', true);
       return;
     }
 
-    // A locked device can only scan the three demo places. The server enforces
+    // A locked device can only scan the demo places. The server enforces
     // this as well and is what actually decides; stopping here saves the round
     // trip and, more to the point, answers instantly instead of after a
     // spinner and a 403.
@@ -5675,7 +5697,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   const useLocationBtn = document.getElementById('useLocationBtn');
   const locationStatusEl = document.getElementById('locationStatus');
   useLocationBtn.addEventListener('click', () => {
-    // Locked devices can only scan the three demo places, so there is nothing
+    // Locked devices can only scan the demo places, so there is nothing
     // for a location fix to do here except lead to a refusal.
     if (deviceUnlocked === false) { showPaywall(LOCKED_SEARCH_MSG); return; }
     if (!navigator.geolocation) {
