@@ -983,7 +983,10 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 // first tap on the map page instead. Every failure here is silent: a missing
 // sound must never stop the map opening or Close leaving.
 (function () {
-  var on = null, off = null, closing = false;
+  var on = null, off = null, closing = false, muted = false;
+  // Remembered per device. Storage can throw when site data is blocked; then
+  // the choice just lasts for this page.
+  try { muted = localStorage.getItem('lidarmanSound') === 'off'; } catch (e) {}
   try {
     on = new Audio('assets/saber-on.mp3');
     off = new Audio('assets/saber-off.mp3');
@@ -1001,7 +1004,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     try { on.play().catch(function () {}); } catch (err) {}
   }
   function ignite() {
-    if (!on) return;
+    if (!on || muted) return;
     try {
       var p = on.play();
       if (p && p.catch) p.catch(function () {
@@ -1032,6 +1035,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     var href = btn.href, gone = false;
     function go() { if (gone) return; gone = true; location.href = href; }
     try { if (on) on.pause(); } catch (err) {}
+    if (muted) { go(); return; }
     document.body.classList.add('map-closing');
     // The clip is 1.6 s; this only fires if it stalls or never starts.
     setTimeout(go, 2600);
@@ -1043,6 +1047,28 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       if (p && p.catch) p.catch(go);
     } catch (err) { go(); }
   });
+
+  // Sound on/off, in the Tools dock. Turning it back on lights the saber, so
+  // you hear straight away that it worked.
+  function wireSoundBtn() {
+    var sb = document.getElementById('soundToggleBtn');
+    if (!sb) return;
+    function label() { sb.textContent = muted ? '🔇 Sound: off' : '🔊 Sound: on'; }
+    label();
+    sb.addEventListener('click', function () {
+      muted = !muted;
+      try { localStorage.setItem('lidarmanSound', muted ? 'off' : 'on'); } catch (e) {}
+      label();
+      unarm();
+      if (muted) { try { if (on) on.pause(); } catch (e) {} return; }
+      try { on.currentTime = 0; on.play().catch(function () {}); } catch (e) {}
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', wireSoundBtn);
+  } else {
+    wireSoundBtn();
+  }
 
   // Back from the home page can restore this page exactly as it was left —
   // faded out, mid-close. Put it back.
@@ -1289,7 +1315,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     <div id="toolSidebarRight" class="tool-side">
       <span class="dock-title">Tools</span>
       <!-- Pinned, never collapsed: these four plus the colour picker are what
-           you reach for the moment a scan lands. Everything else earns its
+           you reach for the moment a scan lands (Sound, the fifth button, is
+           the one that works before a scan too). Everything else earns its
            place behind a heading, because the previous version put thirty-five
            controls on screen at once and the layer list alone was twenty
            buttons - of which at most seven ever applied to where you were. -->
@@ -1297,6 +1324,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       <button class="secondary-btn" id="spyToggleBtn" type="button" disabled>🔍 Spy lens: off</button>
       <button class="secondary-btn" id="circlesToggleBtn" type="button" disabled>⭕ Circles: on</button>
       <button class="secondary-btn" id="clearBtn" type="button">🧹 Clear</button>
+      <button class="secondary-btn" id="soundToggleBtn" type="button">🔊 Sound: on</button>
       <label for="baseSelect">Base map</label>
       <select id="baseSelect">
         <option value="satellite">Satellite</option>
