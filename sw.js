@@ -21,7 +21,7 @@
 // server-side compute against a job id that is cleaned up within the hour —
 // so nothing on the backend origin is touched here.
 
-const VERSION = 'lidarman-v2';
+const VERSION = 'lidarman-v3';
 const DOC_CACHE = VERSION + '-doc';
 const ASSET_CACHE = VERSION + '-asset';
 
@@ -31,6 +31,7 @@ const ASSET_CACHE = VERSION + '-asset';
 const PRECACHE = [
   '/',
   '/index.html',
+  '/map.html',
   '/manifest.json',
   '/assets/icon-192.png',
   '/assets/icon-512.png',

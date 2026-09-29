@@ -470,7 +470,10 @@ function renderStats(data){
   // a bare "/". Counting them apart is the only way to see the bottom of the
   // funnel, but "/?unlocked=1" in a list of pages reads like a bug, so it says
   // what it means.
-  const PATH_LABELS = { '/?unlocked=1': '/ — came back from Stripe (paid)' };
+  const PATH_LABELS = {
+    '/?unlocked=1': '/ — came back from Stripe (paid)',
+    '/map.html?unlocked=1': 'map — came back from Stripe (paid)',
+  };
   const pathsBody = document.getElementById('topPaths');
   pathsBody.innerHTML = (data.topPaths || []).length ? data.topPaths.map(p =>
     '<tr><td>' + escapeHtml(PATH_LABELS[p.key] || p.key) + '</td><td>' + p.count.toLocaleString() + '</td></tr>'
