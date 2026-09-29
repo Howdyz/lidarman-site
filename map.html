@@ -852,6 +852,10 @@
     height: 100vh; height: 100dvh; overflow: hidden;
     display: flex; flex-direction: column;
   }
+  .visually-hidden {
+    position: absolute !important; width: 1px; height: 1px; margin: -1px;
+    padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
   body.map-page header.top { position: relative; flex: 0 0 auto; }
   /* Closing fades the page out while the saber retracts, so the wait before
      the home page reads as the close happening rather than a dead button. */
@@ -871,6 +875,15 @@
      map rather than inside it. Hit-testing passes through the tiles, so the
      button still took clicks while being invisible. */
   body.map-page #map { z-index: 0; }
+  /* The layer keys stack up from the bottom-left corner. Six of them came to
+     ~800px, so on a 1366x768 laptop the fifth covered the zoom buttons and the
+     sixth was pushed up behind the header, unreadable. Past the height the map
+     can spare they wrap into a second column instead of climbing. */
+  body.map-page #map .leaflet-bottom.leaflet-left {
+    display: flex; flex-direction: column-reverse; flex-wrap: wrap;
+    align-items: flex-start; align-content: flex-start;
+    max-height: calc(100% - 90px);
+  }
 
   /* Above a phone's width the drawer is not a box at all, so the docks and
      the tablet grid lay themselves out exactly as they always have. */
@@ -1133,6 +1146,9 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 <div id="unlockedBanner"><b>Unlocked!</b> Payment confirmed — this device is unlocked, no subscription.</div>
 
 <div id="tool">
+  <!-- The page's one heading. The map is the page, so there is nowhere for
+       a visible title to sit; screen readers and search engines still need one. -->
+  <h1 class="visually-hidden">Lidarman map — search LiDAR terrain for old foundations</h1>
   <div id="toolPanel">
     <!-- Two panels, one either side of the map on a wide screen. Left is
          picking a place, right is everything that changes what the map
