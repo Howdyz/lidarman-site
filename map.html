@@ -977,13 +977,13 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 </header>
 <script>
 // Lightsaber sounds: ignition when the map opens, the retract when Close takes
-// you back to the home page. Browsers only allow sound after a tap on the
+// you back to the home page. Laser shots on the tool buttons are further down. Browsers only allow sound after a tap on the
 // site — Chrome counts the tap on the home page's "Open the map", Safari and
 // Firefox don't — so when the opening sound is refused it waits for the
 // first tap on the map page instead. Every failure here is silent: a missing
 // sound must never stop the map opening or Close leaving.
 (function () {
-  var on = null, off = null, closing = false, muted = false;
+  var on = null, off = null, closing = false, muted = false, ignitedAt = 0;
   // Remembered per device. Storage can throw when site data is blocked; then
   // the choice just lasts for this page.
   try { muted = localStorage.getItem('lidarmanSound') === 'off'; } catch (e) {}
@@ -1001,6 +1001,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     // A first tap that is Close itself gets the retract, not the ignition.
     if (e.target && e.target.closest && e.target.closest('#closeMapBtn')) return;
     unarm();
+    ignitedAt = Date.now();
     try { on.play().catch(function () {}); } catch (err) {}
   }
   function ignite() {
@@ -1069,6 +1070,36 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   } else {
     wireSoundBtn();
   }
+
+  // A laser shot on every button in the tool — the demo places, search,
+  // layers, Tools, markup, tracking and the buttons inside map popups. One of
+  // five at random, never the same one twice running. Listening in the capture
+  // phase because Leaflet stops clicks inside popups from bubbling. Sound: off
+  // silences these too, and the Sound button itself stays quiet.
+  var lasers = [], lastLaser = -1;
+  try {
+    for (var i = 1; i <= 5; i++) {
+      var l = new Audio('assets/laser-' + i + '.mp3');
+      l.preload = 'auto';
+      lasers.push(l);
+    }
+  } catch (e) { lasers = []; }
+  document.addEventListener('click', function (e) {
+    if (muted || !lasers.length || !e.isTrusted) return;
+    var b = e.target && e.target.closest && e.target.closest('#tool button');
+    if (!b || b.disabled || b.id === 'soundToggleBtn') return;
+    // The tap that finally lit the saber gets the saber on its own.
+    if (Date.now() - ignitedAt < 800) return;
+    var n = lastLaser < 0
+      ? Math.floor(Math.random() * lasers.length)
+      : (lastLaser + 1 + Math.floor(Math.random() * (lasers.length - 1))) % lasers.length;
+    lastLaser = n;
+    try {
+      lasers[n].currentTime = 0;
+      var p = lasers[n].play();
+      if (p && p.catch) p.catch(function () {});
+    } catch (err) {}
+  }, true);
 
   // Back from the home page can restore this page exactly as it was left —
   // faded out, mid-close. Put it back.
