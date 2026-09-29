@@ -661,6 +661,9 @@
     text-align: left;
   }
   .tool-side button.secondary-btn:hover { background: #303030; }
+  #demoButtons button.secondary-btn {
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
   .tool-side button.secondary-btn:disabled { opacity: 0.6; cursor: not-allowed; }
   #locationStatus { font-size: 0.78em; color: #999; margin-top: 5px; min-height: 1.1em; }
   #trackStatus { font-size: 0.85em; color: #ccc; margin-top: 6px; min-height: 1.1em; line-height: 1.5; }
@@ -3928,7 +3931,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       blurb: 'A Civil War siege fort the trees have covered since 1865' },
     // One per group in the battlefield list below, which points at these same
     // coordinates, so each group has an option a locked device can search.
-    { id: 'bloody-lane', name: 'Bloody Lane, Antietam, Maryland', lat: 39.47038, lon: -77.73860,
+    { id: 'bloody-lane', name: 'Antietam — Bloody Lane', lat: 39.47038, lon: -77.73860,
       blurb: 'The sunken road held in 1862, still cut deep into the fields' },
     { id: 'yorktown-redoubts', name: 'Yorktown Redoubts, Virginia', lat: 37.22792, lon: -76.49847,
       blurb: 'Two redoubts stormed in 1781, and the British line behind them' },
@@ -4048,8 +4051,10 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'secondary-btn';
-      b.innerHTML = `📍 ${escapeHtml(d.name)}<br><span style="opacity:.7; font-size:.85em;">`
-        + `${escapeHtml(d.blurb)}</span>`;
+      // One line each: ten two-line buttons filled a laptop-height dock on
+      // their own. The blurb stays on as the hover tooltip.
+      b.textContent = `📍 ${d.name}`;
+      b.title = d.blurb;
       b.addEventListener('click', () => {
         document.getElementById('placeInput').value = '';
         document.getElementById('latInput').value = d.lat;
