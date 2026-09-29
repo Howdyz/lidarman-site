@@ -197,6 +197,13 @@
   @media (max-width: 340px) {
     header.top a.guides-link { display: none; }
   }
+  /* "✕ Close" is two characters wider than the "About" it replaced, and that
+     was enough to push it 15px off a 360px screen. Below 400px the ✕ carries
+     it alone — the one mark everybody already reads as close. */
+  @media (max-width: 400px) {
+    header.top a.gh .close-word { display: none; }
+    header.top a.gh#closeMapBtn { min-width: 40px; text-align: center; }
+  }
 
   .hero {
     position: relative;
@@ -846,6 +853,12 @@
     display: flex; flex-direction: column;
   }
   body.map-page header.top { position: relative; flex: 0 0 auto; }
+  /* Closing fades the page out while the saber retracts, so the wait before
+     the home page reads as the close happening rather than a dead button. */
+  @media (prefers-reduced-motion: no-preference) {
+    body.map-page { transition: opacity 1.4s ease-in; }
+    body.map-page.map-closing { opacity: 0; }
+  }
   body.map-page #unlockedBanner { flex: 0 0 auto; margin: 8px auto; }
   body.map-page #tool {
     flex: 1 1 auto; min-height: 0; position: relative;
@@ -958,10 +971,88 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       <a class="guides-link" href="guides.html">Guides</a>
       <button class="share-btn" id="shareBtn" type="button">🔗 Share</button>
       <button class="install-btn" id="installBtn" type="button">Install App</button>
-      <a class="gh" href="/">About</a>
+      <a class="gh" id="closeMapBtn" href="/" title="Close the map and go back to the home page" aria-label="Close the map">✕<span class="close-word"> Close</span></a>
     </div>
   </div>
 </header>
+<script>
+// Lightsaber sounds: ignition when the map opens, the retract when Close takes
+// you back to the home page. Browsers only allow sound after a tap on the
+// site — Chrome counts the tap on the home page's "Open the map", Safari and
+// Firefox don't — so when the opening sound is refused it waits for the
+// first tap on the map page instead. Every failure here is silent: a missing
+// sound must never stop the map opening or Close leaving.
+(function () {
+  var on = null, off = null, closing = false;
+  try {
+    on = new Audio('assets/saber-on.mp3');
+    off = new Audio('assets/saber-off.mp3');
+    on.preload = 'auto'; off.preload = 'auto';
+  } catch (e) { on = off = null; }
+
+  function unarm() {
+    document.removeEventListener('pointerdown', onFirstTap, true);
+    document.removeEventListener('keydown', onFirstTap, true);
+  }
+  function onFirstTap(e) {
+    // A first tap that is Close itself gets the retract, not the ignition.
+    if (e.target && e.target.closest && e.target.closest('#closeMapBtn')) return;
+    unarm();
+    try { on.play().catch(function () {}); } catch (err) {}
+  }
+  function ignite() {
+    if (!on) return;
+    try {
+      var p = on.play();
+      if (p && p.catch) p.catch(function () {
+        document.addEventListener('pointerdown', onFirstTap, true);
+        document.addEventListener('keydown', onFirstTap, true);
+      });
+    } catch (e) {}
+  }
+  // Not from a tab opened in the background — wait until it is looked at.
+  if (document.visibilityState === 'hidden') {
+    document.addEventListener('visibilitychange', function once() {
+      if (document.visibilityState !== 'visible') return;
+      document.removeEventListener('visibilitychange', once);
+      ignite();
+    });
+  } else {
+    ignite();
+  }
+
+  var btn = document.getElementById('closeMapBtn');
+  if (btn) btn.addEventListener('click', function (e) {
+    // Ctrl/Cmd/Shift/middle clicks open a new tab like any link would.
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    if (closing) return;
+    closing = true;
+    unarm();
+    var href = btn.href, gone = false;
+    function go() { if (gone) return; gone = true; location.href = href; }
+    try { if (on) on.pause(); } catch (err) {}
+    document.body.classList.add('map-closing');
+    // The clip is 1.6 s; this only fires if it stalls or never starts.
+    setTimeout(go, 2600);
+    if (!off) { go(); return; }
+    try {
+      off.currentTime = 0;
+      off.addEventListener('ended', go, { once: true });
+      var p = off.play();
+      if (p && p.catch) p.catch(go);
+    } catch (err) { go(); }
+  });
+
+  // Back from the home page can restore this page exactly as it was left —
+  // faded out, mid-close. Put it back.
+  window.addEventListener('pageshow', function (e) {
+    if (!e.persisted) return;
+    closing = false;
+    document.body.classList.remove('map-closing');
+  });
+})();
+</script>
 <script>
 // The header only lifts off the page once you have actually started reading —
 // at rest it stays flat so the hero is not fighting a shadow.
