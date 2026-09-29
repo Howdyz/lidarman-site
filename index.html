@@ -1353,7 +1353,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
             <p style="margin-top:10px;">The last three are <b>bigger, thicker circles</b>, and they override the shape colour — the scan has something to say about this one beyond its outline, so it stops being just a shape.</p>
             <p><span class="dot" style="background:#8a5f16;"></span><b>Structure</b> — the floor profile holds up: a cellar hole, dug foundation or building platform. These are rare, a handful per scan, and they're the ones to walk to first.</p>
             <p><span class="dot" style="background:#2e9e5b;"></span><b>Dump</b> — raised, lumpy and shallow: a possible dump or spoil heap. Same strength of evidence as a structure, different find — see <i>Finding bottle dumps</i> above.</p>
-            <p><span class="dot" style="background:#c0392b;"></span><b>Off limits</b> — dashed red. The candidate sits on protected land the scan could name. Read the popup before you plan anything around it.</p>
+            <p><span class="dot" style="background:#c0392b;"></span><b>Off limits</b> — a dashed red ring. The candidate sits on protected land the scan could name; the colour inside it is still its shape or reading. Read the popup before you plan anything around it.</p>
           </div>
         </details>
         <br>Click the map to drop a pin there — drag it to fine-tune, then search, save or remove it from its popup.
@@ -4509,17 +4509,25 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
             ? `<br><span style="color:${prohibited ? '#c0392b' : '#8a5f16'};">`
               + `${prohibited ? '⛔' : '⚠️'} ${escapeHtml(c.land_name)}</span>`
             : '';
-          // Prohibited land overrides the shape colour outright: the single
+          // Prohibited land takes the ring: dashed red, because the single
           // most important thing about a candidate you cannot legally dig is
-          // that you cannot legally dig it.
+          // that you cannot legally dig it. The fill keeps the shape (or
+          // reading) colour, stronger than usual so it shows through, so a
+          // scan wholly inside a park still says what it found — at Yorktown
+          // every ring is red, and before this every circle looked the same.
+          const readColor = isDump ? '#2e9e5b'
+            : (evidenced ? '#8a5f16' : shapeColor(c.shape));
+          // A protected circle is a size up with a thinner ring, so the fill
+          // has room to be seen: at radius 6 a 3 px red ring left almost
+          // nothing inside it, and orange read as more red.
           bindDetails(L.circleMarker([c.lat, c.lon], {
               renderer: dotRenderer,
-              radius: evidenced ? 9 : 6,
-              color: prohibited ? '#c0392b'
-                : (isDump ? '#2e9e5b' : (evidenced ? '#8a5f16' : shapeColor(c.shape))),
-              weight: prohibited ? 3 : (evidenced ? 3 : 2),
+              radius: (evidenced ? 9 : 6) + (prohibited ? 1 : 0),
+              color: prohibited ? '#c0392b' : readColor,
+              fillColor: readColor,
+              weight: prohibited ? 2 : (evidenced ? 3 : 2),
               dashArray: prohibited ? '3 3' : null,
-              fillOpacity: evidenced ? 0.35 : 0.2 }),
+              fillOpacity: prohibited ? 0.75 : (evidenced ? 0.35 : 0.2) }),
             // Built lazily: a scan draws 60+ markers and encoding a QR for
             // every one of them up front would be wasted work, since only the
             // one actually opened is ever seen.
@@ -5588,8 +5596,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     }
     const off = rings.filter(r => r.options.dashArray).length;
     const foot = off === rings.length
-      ? 'All of these are on protected land, so every ring is red.'
-      : off ? `${off} of ${rings.length} are on protected land.`
+      ? 'All of these are on protected land: every ring is dashed red, and the colour inside is its shape.'
+      : off ? `${off} of ${rings.length} are on protected land: dashed red ring, shape colour inside.`
       : 'Tap a circle for its details.';
     ringLegend.addTo(map);
     const el = document.getElementById('ringLegend');
