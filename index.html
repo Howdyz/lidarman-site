@@ -2297,6 +2297,32 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     attribution: 'Esri', maxZoom: 20
   }).addTo(map);
 
+  // Leaflet never asks for a failed tile again. The hole stays, and the map's
+  // own #ddd background shows through it as a blank grey square until you
+  // pan far enough to replace it. Reported from real searches near Upper
+  // Sandusky on 2026-09-29; every tile around there came straight back when
+  // asked again, so the failures are momentary. So: try a failed tile again,
+  // a little later each time, three times at most. createTile's load handler
+  // stays attached to the img, so a retry that works is an ordinary load.
+  // The _r tag stops the browser reusing the failed response; Esri and OSM
+  // both ignore it.
+  function retryFailedTiles(layer) {
+    layer.on('tileerror', (e) => {
+      const img = e.tile;
+      const tries = (img._lmRetries || 0) + 1;
+      if (tries > 3) return;
+      img._lmRetries = tries;
+      setTimeout(() => {
+        // Gone, or the map has zoomed since: a new tile is on its way anyway,
+        // and getTileUrl would build this one at the wrong zoom.
+        if (!img.parentNode || map.getZoom() !== e.coords.z) return;
+        const url = layer.getTileUrl(e.coords);
+        img.src = url + (url.indexOf('?') === -1 ? '?' : '&') + '_r=' + tries;
+      }, 800 * tries);
+    });
+  }
+  [satellite, streets, reference].forEach(retryFailedTiles);
+
   // State outlines, as an overlay you switch on rather than a permanent
   // fixture: at a 300m search radius they are almost never in frame, and the
   // point of the map most of the time is the terrain underneath.
