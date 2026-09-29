@@ -2308,6 +2308,30 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   const HOSP_MIN_ZOOM = 6;
   const HOSP_MAX_DRAWN = 800;
 
+  // Hospitals are triangles, so they read as a different kind of place from
+  // the round dots on every other layer. Leaflet's canvas renderer only draws
+  // circles, so this is a circle marker that draws itself as a triangle. It
+  // keeps CircleMarker's projection, bounds, hit test and _point — the phone
+  // tap handler reads _point — and replaces only the path. The drawing
+  // mirrors Canvas._updateCircle in Leaflet 1.9.4: skip when not drawing or
+  // off screen, trace the shape, then the renderer's own _fillStroke. The
+  // triangle is inscribed in the marker's circle, because the renderer clears
+  // and redraws by that circle's bounds and anything outside it would smear.
+  const TriangleMarker = L.CircleMarker.extend({
+    _updatePath: function () {
+      const r = this._renderer;
+      if (!r._drawing || this._empty()) return;
+      const p = this._point, ctx = r._ctx;
+      const c = Math.max(Math.round(this._radius), 1);   // circumradius
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y - c);
+      ctx.lineTo(p.x + c * 0.866, p.y + c * 0.5);
+      ctx.lineTo(p.x - c * 0.866, p.y + c * 0.5);
+      ctx.closePath();
+      r._fillStroke(ctx, this);
+    }
+  });
+
   const oldHospitals = L.layerGroup();
   let hospData = null;
   let hospStates = {};
@@ -2322,8 +2346,10 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 
   function hospLegendHtml(note) {
     return Object.values(HOSP_STYLE)
-        .map(v => `<span><i class="dot" style="background:${v.fill};`
-          + `box-shadow:0 0 0 1.5px ${v.stroke}"></i>${v.label}</span>`)
+        .map(v => `<span><svg width="12" height="11" viewBox="0 0 12 11"`
+          + ` style="margin:0 8px 0 2px;vertical-align:middle" aria-hidden="true">`
+          + `<polygon points="6,1 11,10 1,10" fill="${v.fill}" stroke="${v.stroke}"`
+          + ` stroke-width="1.5" stroke-linejoin="round"/></svg>${v.label}</span>`)
         .join('')
       + `<span class="trail-legend-src">${note}</span>`;
   }
@@ -2350,10 +2376,12 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     for (let k = 0; k < shown; k++) {
       const [lat, lon, name, cls, st, county] = inView[Math.floor(k * step)];
       const sty = HOSP_STYLE[cls] || HOSP_STYLE.hosp;
-      bindDetails(L.circleMarker([lat, lon], {
+      // Radius 8 is the triangle's circumradius: a triangle inscribed in a
+      // radius-6 circle reads smaller than the round dots beside it.
+      bindDetails(new TriangleMarker([lat, lon], {
         renderer: dotRenderer,
-        radius: 6, color: sty.stroke, weight: 2,
-        fillColor: sty.fill, fillOpacity: 0.7,
+        radius: 8, color: sty.stroke, weight: 2,
+        fillColor: sty.fill, fillOpacity: 0.8,
       }), () =>
           `<b>${escapeHtml(name)}</b><br>${sty.popup} · gone or out of use<br>` +
           `${escapeHtml(structPlace(county, st, hospStates))}<br>` +
