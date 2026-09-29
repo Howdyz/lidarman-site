@@ -9,7 +9,7 @@
 <title>LiDAR for Metal Detecting — Find Old Homesteads | Lidarman</title>
 <link rel="canonical" href="https://lidarman.com/">
 <link rel="icon" type="image/png" href="assets/icon-192.png">
-<meta name="description" content="Type in a place in the US, England, Wales, Norway, the Netherlands or Poland. Lidarman scans airborne LiDAR to flag likely old foundations, cellar holes and sunken paths before you dig. 3 free searches.">
+<meta name="description" content="Type in a place in the US, England, Wales, Norway, the Netherlands or Poland. Lidarman scans airborne LiDAR to flag likely old foundations, cellar holes and sunken paths before you dig. 10 free searches.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://lidarman.com/">
 <meta property="og:title" content="Read the ground in six countries">
@@ -34,7 +34,7 @@
     "@type": "Offer",
     "price": "10.00",
     "priceCurrency": "USD",
-    "description": "One-time payment, then up to 100 searches a day. Three free trial searches first."
+    "description": "One-time payment, then up to 100 searches a day. Ten free trial searches first."
   }
 }
 </script>
@@ -51,7 +51,7 @@
     {
       "@type": "Question",
       "name": "How much does Lidarman cost?",
-      "acceptedAnswer": { "@type": "Answer", "text": "The first three searches on a device are free, no account required. After that, a one-time $25 payment unlocks the tool on that device, up to a fair-use ceiling of 100 searches a day — no subscription, no recurring charge." }
+      "acceptedAnswer": { "@type": "Answer", "text": "The first ten searches on a device are free, no account required. After that, a one-time $25 payment unlocks the tool on that device, up to a fair-use ceiling of 100 searches a day — no subscription, no recurring charge." }
     },
     {
       "@type": "Question",
@@ -1355,7 +1355,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 <div class="cost-compare">
   <h2>What this costs</h2>
   <p>
-    Lidarman is <span class="price">$25, once</span>. Three free searches
+    Lidarman is <span class="price">$25, once</span>. Ten free searches
     first — no account, no card.
   </p>
   <p>
@@ -1383,7 +1383,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     <div class="cc-row cc-mine">
       <span class="cc-name">Lidarman</span>
       <span class="cc-price">$25 once</span>
-      <span class="cc-terms">Three free searches first · no account · no card · no renewal</span>
+      <span class="cc-terms">Ten free searches first · no account · no card · no renewal</span>
     </div>
   </div>
 
@@ -1793,7 +1793,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     <p>
       Lidarman runs on a server, not on your phone. Every search pulls fresh
       elevation data for your spot and processes it, which takes real time and
-      real compute — that's why it isn't just a file you download once. Try it free — the first three searches on a device are on
+      real compute — that's why it isn't just a file you download once. Try it free — the first ten searches on a device are on
       the house, then a one-time $25 payment unlocks the tool on that device,
       no subscription. There's a fair-use limit of 100 searches a day on paid
       devices — far more than anyone hunting real ground will use, and it's
@@ -1867,7 +1867,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 
     <h3>How much does Lidarman cost?</h3>
     <p>
-      The first three searches on a device are free, no account required.
+      The first ten searches on a device are free, no account required.
       After that, a one-time $25 payment unlocks that device — no
       subscription, no recurring charge, with a fair-use ceiling of 100
       searches a day.
@@ -1954,7 +1954,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   // and nothing on screen to tell the visitor why.
   //
   // An in-memory id is a worse id: it does not survive a reload, so a visitor
-  // in that state gets three fresh free searches each time. That is the right
+  // in that state gets a fresh set of free searches each time. That is the right
   // trade. The demo lock and the paywall are both enforced server-side, and a
   // slightly leaky trial beats a page that looks broken to everyone whose
   // browser blocks site data.
@@ -4067,7 +4067,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     trialEl.classList.remove('unlocked');
     renderDemoLocations();
     const used = data.scansUsed || 0;
-    const allowed = data.scansAllowed || 3;
+    const allowed = data.scansAllowed || 10;
     const left = Math.max(0, allowed - used);
     trialEl.textContent = `${left} of ${allowed} free searches remaining on this device.`;
 
@@ -4364,7 +4364,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       .then(async r => {
         const data = await r.json();
         if (r.status === 402) { setStatus(''); stopSearchProgress(); searchBtn.disabled = false; showPaywall(data.message); renderTrialStatus(data); return; }
-        // A locked device asking for somewhere other than the three free
+        // A locked device asking for somewhere other than the free
         // places. Raise the unlock prompt rather than an error: wanting a
         // specific spot is the moment this tool is worth paying for, and the
         // message names that rather than scolding.
