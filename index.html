@@ -613,6 +613,14 @@
   .trail-legend i.dot {
     width: 8px; height: 8px; margin: 0 9px 0 3px; border-radius: 50%;
   }
+  /* The scan's circles are rings, not dots, and the dashed one means
+     something, so the key draws them the way the map does. */
+  .trail-legend i.ring {
+    width: 11px; height: 11px; margin: 0 8px 0 2px; border-radius: 50%;
+    border: 2px solid; background: transparent; box-sizing: border-box;
+  }
+  .trail-legend i.ring.thick { border-width: 3px; }
+  .trail-legend i.ring.dashed { border-style: dashed; }
   .trail-legend .trail-legend-src {
     margin-top: 4px; padding-top: 4px; border-top: 1px solid #444;
     color: #aaa; font-size: 10px; white-space: normal;
@@ -4537,6 +4545,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
             })
             .addTo(candidateMarkers);
         });
+        syncRingLegend();
 
         // Search-level notice, so a prohibition is visible without having to
         // click a marker to find it.
@@ -5547,7 +5556,49 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     if (map.hasLayer(candidateMarkers)) map.removeLayer(candidateMarkers);
     else map.addLayer(candidateMarkers);
     setCirclesLabel();
+    syncRingLegend();
   });
+
+  // The circle colours, keyed on the map while a scan's circles are showing.
+  // The same key sits in "Reading the map", but that section starts closed,
+  // so a fresh scan's colours went unexplained. At Yorktown every ring is
+  // dashed red, because the whole scan is inside a national park and off
+  // limits outranks shape, and nothing on screen said what red meant.
+  const ringLegend = L.control({ position: 'bottomleft' });
+  ringLegend.onAdd = function () {
+    const div = L.DomUtil.create('div', 'trail-legend');
+    div.id = 'ringLegend';
+    return div;
+  };
+  // Colour, label, drawn thick, drawn dashed — matching the circleMarker
+  // options where the scan's circles are drawn.
+  const RING_KEY = [
+    ['#ffd54f', 'Rectangular', false, false],
+    ['#4dd0e1', 'Circular', false, false],
+    ['#ff7043', 'Irregular', false, false],
+    ['#8a5f16', 'Structure', true, false],
+    ['#2e9e5b', 'Possible dump', true, false],
+    ['#c0392b', 'Off limits', true, true],
+  ];
+  function syncRingLegend() {
+    const rings = candidateMarkers.getLayers();
+    if (!map.hasLayer(candidateMarkers) || !rings.length) {
+      ringLegend.remove();
+      return;
+    }
+    const off = rings.filter(r => r.options.dashArray).length;
+    const foot = off === rings.length
+      ? 'All of these are on protected land, so every ring is red.'
+      : off ? `${off} of ${rings.length} are on protected land.`
+      : 'Tap a circle for its details.';
+    ringLegend.addTo(map);
+    const el = document.getElementById('ringLegend');
+    if (el) el.innerHTML = '<span style="font-weight:600;">Circles</span>'
+      + RING_KEY.map(([color, label, thick, dashed]) =>
+          `<span><i class="ring${thick ? ' thick' : ''}${dashed ? ' dashed' : ''}"`
+          + ` style="border-color:${color}"></i>${label}</span>`).join('')
+      + `<span class="trail-legend-src">${foot}</span>`;
+  }
 
   const styleSelect = document.getElementById('styleSelect');
   let currentStyles = {};
@@ -5588,6 +5639,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     hideFeatureInfo();
     circlesToggleBtn.disabled = true;
     setCirclesLabel();
+    syncRingLegend();
     stopTracking();
 
     lidarViewOn = true;
