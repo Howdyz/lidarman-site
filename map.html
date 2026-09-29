@@ -3838,6 +3838,10 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         map.invalidateSize();
         framedByResult = true;
         map.fitBounds(data.bounds);
+        // On a phone the search was started from the drawer, which covers
+        // most of the map; the result is what they came for, so get the
+        // drawer out of its way.
+        window.revealMap();
         // A completed search has moved the map to this place as surely as the
         // Show-it button would have. Recording that stops a later map-centre
         // lookup treating the still-filled box as unapplied and re-geocoding,
