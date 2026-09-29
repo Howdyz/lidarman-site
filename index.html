@@ -9,7 +9,7 @@
 <title>LiDAR for Metal Detecting — Find Old Homesteads | Lidarman</title>
 <link rel="canonical" href="https://lidarman.com/">
 <link rel="icon" type="image/png" href="assets/icon-192.png">
-<meta name="description" content="Type in a place in the US, England, Wales, Norway, the Netherlands or Poland. Lidarman scans airborne LiDAR to flag likely old foundations, cellar holes and sunken paths before you dig. 10 free searches.">
+<meta name="description" content="Type in a place in the US, England, Wales, Norway, the Netherlands or Poland. Lidarman scans airborne LiDAR to flag likely old foundations, cellar holes and sunken paths before you dig. Free demo, no account.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://lidarman.com/">
 <meta property="og:title" content="Read the ground in six countries">
@@ -34,7 +34,7 @@
     "@type": "Offer",
     "price": "10.00",
     "priceCurrency": "USD",
-    "description": "One-time payment, then up to 100 searches a day. Ten free trial searches first."
+    "description": "One-time payment, then up to 100 searches a day. Free, unlimited demo searches first."
   }
 }
 </script>
@@ -51,7 +51,7 @@
     {
       "@type": "Question",
       "name": "How much does Lidarman cost?",
-      "acceptedAnswer": { "@type": "Answer", "text": "The first ten searches on a device are free, no account required. After that, a one-time $25 payment unlocks the tool on that device, up to a fair-use ceiling of 100 searches a day — no subscription, no recurring charge." }
+      "acceptedAnswer": { "@type": "Answer", "text": "Searching the demo places is free and unlimited, no account required. To search anywhere else, a one-time $25 payment unlocks the tool on that device, up to a fair-use ceiling of 100 searches a day — no subscription, no recurring charge." }
     },
     {
       "@type": "Question",
@@ -1017,7 +1017,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         <span class="layer-group-label">Free searches — pick a place</span>
         <div id="demoButtons"></div>
         <div id="demoNote" style="font-size:.85em; opacity:.75; line-height:1.55; margin:8px 0 14px;">
-          Any of these shows everything the tool does. Unlock to point it at your own ground.
+          Search these as often as you like — any of them shows everything the tool does. Unlock to point it at your own ground.
         </div>
       </div>
       <span class="dock-title">Find a place</span>
@@ -1355,8 +1355,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 <div class="cost-compare">
   <h2>What this costs</h2>
   <p>
-    Lidarman is <span class="price">$25, once</span>. Ten free searches
-    first — no account, no card.
+    Lidarman is <span class="price">$25, once</span>. The demo places
+    are free to search as often as you like — no account, no card.
   </p>
   <p>
     Here's what the alternatives cost, straight from their own pricing pages:
@@ -1383,7 +1383,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     <div class="cc-row cc-mine">
       <span class="cc-name">Lidarman</span>
       <span class="cc-price">$25 once</span>
-      <span class="cc-terms">Ten free searches first · no account · no card · no renewal</span>
+      <span class="cc-terms">Free unlimited demo · no account · no card · no renewal</span>
     </div>
   </div>
 
@@ -1474,7 +1474,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 <div id="paywallOverlay">
   <div id="paywallCard">
     <h3>Free trial used up</h3>
-    <p id="paywallMessage">You've used your free searches for this device.</p>
+    <p id="paywallMessage">Unlock to search anywhere you like.</p>
     <button class="primary" id="unlockBtn">Unlock — $25 one-time</button>
     <button class="secondary" id="paywallCloseBtn">Maybe later</button>
     <div id="paywallRestore"><a id="paywallRestoreLink">Already paid? Restore access</a></div>
@@ -1793,8 +1793,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     <p>
       Lidarman runs on a server, not on your phone. Every search pulls fresh
       elevation data for your spot and processes it, which takes real time and
-      real compute — that's why it isn't just a file you download once. Try it free — the first ten searches on a device are on
-      the house, then a one-time $25 payment unlocks the tool on that device,
+      real compute — that's why it isn't just a file you download once. Try it free — search the demo places as often as you
+      like, then a one-time $25 payment unlocks the tool on that device,
       no subscription. There's a fair-use limit of 100 searches a day on paid
       devices — far more than anyone hunting real ground will use, and it's
       only there to stop a script hammering the server on one payment.
@@ -1867,8 +1867,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 
     <h3>How much does Lidarman cost?</h3>
     <p>
-      The first ten searches on a device are free, no account required.
-      After that, a one-time $25 payment unlocks that device — no
+      Searching the demo places is free and unlimited, no account required.
+      To search anywhere else, a one-time $25 payment unlocks that device — no
       subscription, no recurring charge, with a fair-use ceiling of 100
       searches a day.
     </p>
@@ -3933,7 +3933,16 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     { id: 'yorktown-redoubts', name: 'Yorktown Redoubts, Virginia', lat: 37.22792, lon: -76.49847,
       blurb: 'Two redoubts stormed in 1781, and the British line behind them' },
     { id: 'fort-phil-kearny', name: 'Fort Phil Kearny, Wyoming', lat: 44.53219, lon: -106.82644,
-      blurb: 'An 1866 stockade, its building grid still in the ground' }
+      blurb: 'An 1866 stockade, its building grid still in the ground' },
+    // One for each guide topic that has a place worth showing.
+    { id: 'old-cahawba', name: 'Old Cahawba, Alabama', lat: 32.31681, lon: -87.10138,
+      blurb: "Alabama's first capital — its whole street grid, no town" },
+    { id: 'bodie', name: 'Bodie, California', lat: 38.21214, lon: -119.01209,
+      blurb: 'Gold-camp ghost town — streets, mine dumps and shafts' },
+    { id: 'guernsey-ruts', name: 'Oregon Trail Ruts, Wyoming', lat: 42.25588, lon: -104.74963,
+      blurb: 'Wagon ruts worn deep into the bluff by emigrant trains' },
+    { id: 'bannack', name: 'Bannack, Montana', lat: 45.16103, lon: -112.99559,
+      blurb: 'An 1862 gold-rush town — main street and dredge tailings' }
   ];
   let demoRendered = false;
   // null while the first status call is in flight. Only an explicit false
@@ -4066,26 +4075,21 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     }
     trialEl.classList.remove('unlocked');
     renderDemoLocations();
-    const used = data.scansUsed || 0;
-    const allowed = data.scansAllowed || 10;
-    const left = Math.max(0, allowed - used);
-    trialEl.textContent = `${left} of ${allowed} free searches remaining on this device.`;
+    // Demo searches are unlimited, so there is no count to show.
+    trialEl.textContent = 'The demo places are free to search as often as you like.';
 
-    // Once the trial is spent, the ONLY way to reach the unlock button used to
-    // be running a *fourth* search and catching the 402 that came back. Anyone
-    // who used their three searches and then simply looked at the page saw
-    // "0 of 3 free searches remaining" and no way to buy anything — reported
-    // from a real phone on 2026-09-08. Put the purchase option on the page
-    // itself so it does not depend on the visitor guessing to search again.
-    if (left === 0) {
-      const btn = document.createElement('button');
-      btn.className = 'primary';
-      btn.id = 'inlineUnlockBtn';
-      btn.type = 'button';
-      btn.textContent = 'Unlock — $25 one-time';
-      btn.addEventListener('click', () => startCheckout(btn));
-      trialEl.appendChild(btn);
-    }
+    // The unlock button used to appear only once a free-search count reached
+    // zero — added after a real phone on 2026-09-08 showed "0 of 3 free
+    // searches remaining" with no way to buy anything. With nothing left to
+    // run out, waiting for zero would mean never showing it, so it is here
+    // from the start.
+    const btn = document.createElement('button');
+    btn.className = 'primary';
+    btn.id = 'inlineUnlockBtn';
+    btn.type = 'button';
+    btn.textContent = 'Unlock — $25 one-time';
+    btn.addEventListener('click', () => startCheckout(btn));
+    trialEl.appendChild(btn);
   }
 
   function refreshTrialStatus(attempt) {
@@ -4151,7 +4155,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   function wakingOr(msg) { return backendLooksDown() ? BACKEND_DOWN_MSG : msg; }
 
   function showPaywall(message) {
-    paywallMessage.textContent = message || "You've used your free searches for this device.";
+    paywallMessage.textContent = message || "Unlock to search anywhere you like.";
     paywallOverlay.classList.add('show');
   }
   function hidePaywall() { paywallOverlay.classList.remove('show'); }
