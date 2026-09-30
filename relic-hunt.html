@@ -478,6 +478,16 @@
     if (t.tone === 'silver' || t.tone === 'gold') play(strength > 0.5 ? t.tone + '2' : t.tone, vol);
     else play(t.tone, vol);
   }
+  // A real detector's faint threshold hum. It also keeps the computer's sound
+  // output awake: Linux (and some laptops) power audio down when nothing plays
+  // and swallow the first moment of the next sound, which is a whole beep.
+  let hum = null;
+  try { hum = new Audio('assets/sounds/hum.mp3'); hum.loop = true; hum.preload = 'auto'; } catch (e) {}
+  function humOn() {
+    if (!hum || !soundOn) return;
+    try { const p = hum.play(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+  }
+  function humOff() { try { if (hum) hum.pause(); } catch (e) {} }
   function thud() { play('dig', 0.8); }
   function fanfare() { play('find', 0.8); }
 
@@ -687,6 +697,7 @@
 
   // ---------- input ----------
   canvas.addEventListener('click', e => {
+    if (hum && hum.paused) humOn();
     if (!active) return;
     const p = toCanvas(e);
     if (tool === 'detect') detect(p); else dig(p);
@@ -705,7 +716,7 @@
     if (e.key === 'v' || e.key === 'V') setView(view === 'lidar' ? 'aerial' : 'lidar');
   });
   function soundLabel() { $('soundBtn').textContent = soundOn ? 'Sound on' : 'Sound off'; }
-  $('soundBtn').onclick = () => { soundOn = !soundOn; save('relicHuntSound', soundOn ? '1' : '0'); soundLabel(); };
+  $('soundBtn').onclick = () => { soundOn = !soundOn; save('relicHuntSound', soundOn ? '1' : '0'); soundLabel(); if (soundOn) { humOn(); play('silver'); } else humOff(); };
   soundLabel();
   $('endBtn').onclick = () => { if (active) endLevel('You called it.'); };
 
@@ -715,7 +726,7 @@
     '<p>But LIDAR sees through the trees. Read the hillshade, find the old foundation or road, sweep your detector over it and dig the good signals.</p>' +
     (best ? '<p>Your best: <b>' + best + '</b></p>' : '') +
     '<div class="row"><button class="btn primary" id="startBtn">Start hunting</button></div>');
-  $('startBtn').onclick = newGame;
+  $('startBtn').onclick = () => { humOn(); newGame(); };
 })();
 </script>
 </body>
