@@ -89,7 +89,7 @@
   <div class="game">
     <div>
       <div class="hud">
-        <span>Field <b id="hudField">1</b>/3</span>
+        <span>Field <b id="hudField">1</b>/<span id="hudFieldTotal">6</span></span>
         <span>Score <b id="hudScore">0</b></span>
         <span>Digs <b id="hudDigs">0</b></span>
         <span>Relics <b id="hudRelics">0/0</b></span>
@@ -130,6 +130,8 @@
           <li>A <b>rectangle of low ridges</b> is a house foundation. A <b>round pit</b> beside it is the cellar hole.</li>
           <li>A <b>long shallow groove</b> is an old wagon road, worn down by wheels and hooves.</li>
           <li>A <b>zigzag trench</b> with a mound beside it is a Civil War earthwork.</li>
+          <li><b>Round, flat platforms</b> on a hillside are old charcoal hearths.</li>
+          <li>A <b>long straight ridge</b> across a hollow is a mill dam. The flat ground behind it was the pond.</li>
           <li>Flip to <b>Aerial</b> to see what the woods hide from ordinary photos.</li>
         </ul>
       </section>
@@ -249,6 +251,24 @@
       { n: 'Officer\u2019s gold watch', p: 500, tone: 'gold', vdi: 57, w: 0.5 },
       { n: '$10 gold Eagle', p: 800, tone: 'gold', vdi: 63, w: 0.3 }
     ],
+    hearth: [
+      { n: 'Company scrip token', p: 90, tone: 'gold', vdi: 61, w: 3 },
+      { n: 'Seated Liberty dime', p: 120, tone: 'silver', vdi: 82, w: 2 },
+      { n: 'Indian Head cent', p: 80, tone: 'silver', vdi: 77, w: 3 },
+      { n: 'Brass powder flask top', p: 70, tone: 'gold', vdi: 58, w: 2 },
+      { n: 'Collier\u2019s pocket knife', p: 40, tone: 'iron', vdi: 11, w: 2 },
+      { n: 'Gold nugget', p: 300, tone: 'gold', vdi: 50, w: 0.5 },
+      { n: 'Silver watch chain', p: 150, tone: 'silver', vdi: 83, w: 1 }
+    ],
+    dam: [
+      { n: 'Large cent', p: 110, tone: 'silver', vdi: 80, w: 3 },
+      { n: 'Mill toll token', p: 130, tone: 'gold', vdi: 63, w: 2 },
+      { n: 'Lead cloth seal', p: 40, tone: 'gold', vdi: 42, w: 2 },
+      { n: 'Capped Bust half dime', p: 200, tone: 'silver', vdi: 79, w: 1 },
+      { n: 'Spanish silver real', p: 300, tone: 'silver', vdi: 84, w: 0.7 },
+      { n: 'Brass thimble', p: 35, tone: 'gold', vdi: 60, w: 2 },
+      { n: '$2\u00bd gold Quarter Eagle', p: 450, tone: 'gold', vdi: 55, w: 0.4 }
+    ],
     junk: [
       { n: 'Crushed pop can', p: 0, tone: 'alum', vdi: 38, w: 3 },
       { n: 'Pull tab', p: 0, tone: 'alum', vdi: 47, w: 4 },
@@ -269,7 +289,13 @@
     { name: 'Crossroads Stage Stop', blurb: 'Two old roads met here, and a stage stop fed the travelers. Coins changed hands.',
       features: ['foundation', 'road', 'road'], relief: 0.75, noise: 10, junk: 32, digs: 14 },
     { name: 'Ridge Camp, 1863', blurb: 'Soldiers dug in along this ridge for a week. The trench is still there if you can see it.',
-      features: ['earthwork', 'road', 'foundation'], relief: 0.6, noise: 13, junk: 42, digs: 13 }
+      features: ['earthwork', 'road', 'foundation'], relief: 0.6, noise: 13, junk: 42, digs: 13 },
+    { name: 'Ghost Town Main Street', blurb: 'A boom town of a dozen families, gone by 1910. The street is still there, and so are the houses that lined it.',
+      features: ['road', 'foundation', 'foundation', 'foundation'], relief: 0.6, noise: 11, junk: 48, digs: 18 },
+    { name: 'Charcoal Hearth Camp', blurb: 'Colliers burned wood into charcoal for the iron furnaces. Each burn left a round, flat hearth, and the men who tended them dropped things.',
+      features: ['hearths', 'foundation', 'road'], relief: 0.55, noise: 12, junk: 44, digs: 15 },
+    { name: 'Mill Pond', blurb: 'A grist mill ground the whole valley\u2019s corn. Farmers waited on the dam with coins in their pockets. The pond is long drained.',
+      features: ['dam', 'foundation', 'road'], relief: 0.5, noise: 14, junk: 46, digs: 14 }
   ];
 
   const N = 512;
@@ -379,6 +405,58 @@
           place('road', p[0] + R(-7, 7), p[1] + R(-7, 7));
         }
         for (let i = 0; i < 2; i++) { const p = pick(pts); place('junk', p[0] + R(-10, 10), p[1] + R(-10, 10)); }
+      } else if (f === 'hearths') {
+        // round, flat charcoal platforms, cut into the slope with a low rim
+        const count = 6 + Math.floor(rnd() * 3);
+        for (let k = 0; k < count; k++) {
+          const [hx, hy] = freeSpot(40);
+          const hr = R(10, 14);
+          shapes.push({ cx: hx, cy: hy, r: hr + 6 });
+          for (let y = Math.max(0, Math.floor(hy - hr - 8)); y < Math.min(N, hy + hr + 8); y++) {
+            for (let x = Math.max(0, Math.floor(hx - hr - 8)); x < Math.min(N, hx + hr + 8); x++) {
+              const r = Math.hypot(x - hx, y - hy);
+              // flatten toward the platform's own level, then add a rim
+              const flat = r < hr ? 1 : Math.max(0, 1 - (r - hr) / 5);
+              const i = y * N + x;
+              H[i] += (H[Math.floor(hy) * N + Math.floor(hx)] - H[i]) * flat * 0.85 * relief;
+              H[i] += 0.45 * gauss(r - hr, 1.4) * relief;
+            }
+          }
+          if (k % 2 === 0) place('hearth', hx + R(-hr, hr) * 0.9, hy + R(-hr, hr) * 0.9);
+          if (rnd() < 0.5) place('junk', hx + R(-hr, hr), hy + R(-hr, hr));
+        }
+      } else if (f === 'dam') {
+        // a long straight earthen dam, with the millrace groove running off below it
+        const [cx, cy] = freeSpot(120);
+        const ang = R(0, Math.PI), len = R(190, 240);
+        const ca = Math.cos(ang), sa = Math.sin(ang);
+        const damPts = [[cx - ca * len / 2, cy - sa * len / 2], [cx + ca * len / 2, cy + sa * len / 2]];
+        const side = rnd() < 0.5 ? 1 : -1, nx = -sa * side, ny = ca * side;
+        const racePts = [];
+        for (let i = 0; i <= 12; i++) {
+          const t = i / 12;
+          racePts.push([cx + ca * len * 0.3 + nx * (8 + t * 160) + ca * Math.sin(t * 3) * 14,
+                        cy + sa * len * 0.3 + ny * (8 + t * 160) + sa * Math.sin(t * 3) * 14]);
+        }
+        shapes.push({ cx, cy, r: len / 2 });
+        for (let y = 0; y < N; y++) {
+          for (let x = 0; x < N; x++) {
+            const dd = distToPolyline(x, y, damPts), dr = distToPolyline(x, y, racePts);
+            let dz = 0;
+            if (dd < 22) dz += 3.2 * gauss(dd, 4.2);
+            if (dr < 12) dz -= 1.0 * gauss(dr, 2.4);
+            // the drained pond bed: a gentle flat on the upstream side
+            const up = (x - cx) * nx + (y - cy) * ny;
+            if (up < -6 && dd < 90) dz -= 0.5 * Math.min(1, (-up - 6) / 20) * (1 - dd / 90);
+            if (dz) H[y * N + x] += dz * relief;
+          }
+        }
+        for (let i = 0; i < 4; i++) {
+          const t = R(0.1, 0.9);
+          place('dam', damPts[0][0] + (damPts[1][0] - damPts[0][0]) * t + nx * R(3, 9),
+                       damPts[0][1] + (damPts[1][1] - damPts[0][1]) * t + ny * R(3, 9));
+        }
+        for (let i = 0; i < 3; i++) { const q = pick(racePts); place('junk', q[0] + R(-8, 8), q[1] + R(-8, 8)); }
       } else if (f === 'earthwork') {
         const [cx, cy] = freeSpot(110);
         const ang = R(0, Math.PI), len = R(200, 260), segs = 7;
@@ -519,6 +597,7 @@
 
   function hud() {
     $('hudField').textContent = levelIdx + 1;
+    $('hudFieldTotal').textContent = LEVELS.length;
     $('hudScore').textContent = score;
     $('hudDigs').textContent = digs;
     const r = relicsIn(field);
@@ -677,7 +756,7 @@
   function finalCard() {
     const isBest = score > best;
     if (isBest) { best = score; save('relicHuntBest', String(best)); }
-    const rank = score >= 2000 ? 'Lidarman' : score >= 1300 ? 'Relic Hunter' : score >= 600 ? 'Weekend Digger' : 'Greenhorn';
+    const rank = score >= 4000 ? 'Lidarman' : score >= 2600 ? 'Relic Hunter' : score >= 1200 ? 'Weekend Digger' : 'Greenhorn';
     const top = runFinds.filter(t => t.p > 0).sort((a, b) => b.p - a.p)[0];
     showCard('<h2>Hunt over</h2><div class="big">' + score + '</div>' +
       '<p>Rank: <b>' + rank + '</b>' + (isBest ? ' · <b>new best!</b>' : ' · best ' + best) + '</p>' +
@@ -736,7 +815,7 @@
 
   // ---------- title card ----------
   showCard('<h2>Relic Hunt</h2>' +
-    '<p>Three patches of woods. Under each one is a place people lived, traveled or fought, and nobody can see it from the air.</p>' +
+    '<p>Six patches of woods. Under each one is a place people lived, traveled or fought, and nobody can see it from the air.</p>' +
     '<p>But LIDAR sees through the trees. Read the hillshade, find the old foundation or road, sweep your detector over it and dig the good signals.</p>' +
     '<p><b>Move your mouse</b> to sweep (on a phone, drag your finger). <b>Click</b> or tap to dig.</p>' +
     (best ? '<p>Your best: <b>' + best + '</b></p>' : '') +
