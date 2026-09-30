@@ -270,15 +270,16 @@
 
   const LEVELS = [
     { name: 'Homestead Hollow', blurb: 'A family farmed these woods until about 1890. Nothing is left above ground. Find the house.',
-      features: ['foundation', 'road'], relief: 1.0, noise: 7, junk: 22, digs: 15, battery: 70 },
+      features: ['foundation', 'road'], relief: 1.0, noise: 7, junk: 22, digs: 15, battery: 120 },
     { name: 'Crossroads Stage Stop', blurb: 'Two old roads met here, and a stage stop fed the travelers. Coins changed hands.',
-      features: ['foundation', 'road', 'road'], relief: 0.75, noise: 10, junk: 32, digs: 14, battery: 60 },
+      features: ['foundation', 'road', 'road'], relief: 0.75, noise: 10, junk: 32, digs: 14, battery: 100 },
     { name: 'Ridge Camp, 1863', blurb: 'Soldiers dug in along this ridge for a week. The trench is still there if you can see it.',
-      features: ['earthwork', 'road', 'foundation'], relief: 0.6, noise: 13, junk: 42, digs: 13, battery: 55 }
+      features: ['earthwork', 'road', 'foundation'], relief: 0.6, noise: 13, junk: 42, digs: 13, battery: 90 }
   ];
 
   const N = 512;
-  const DETECT_R = 24;
+  const DETECT_R = 24;   // the coil ring you see
+  const HEAR_R = 60;     // how far away a target still gives a faint beep
   const DIG_R = 9;
 
   // ---------- build a field ----------
@@ -455,7 +456,7 @@
   // an iPhone's ring/silent switch; <audio> playback is not.
   let soundOn = load('relicHuntSound', '1') === '1';
   const SOUNDS = {};
-  for (const k of ['silver', 'silver2', 'gold', 'gold2', 'alum', 'iron', 'dig', 'find']) {
+  for (const k of ['silver', 'silver2', 'gold', 'gold2', 'alum', 'iron', 'dig', 'find', 'sweep']) {
     try { SOUNDS[k] = new Audio('assets/sounds/' + k + '.mp3'); SOUNDS[k].preload = 'auto'; } catch (e) {}
   }
   function play(k, vol) {
@@ -564,18 +565,19 @@
     for (const t of field.targets) {
       if (t.found) continue;
       const d = Math.hypot(t.x - p.x, t.y - p.y);
-      if (d < DETECT_R) { count++; const s = 1 - d / DETECT_R; if (s > bestS) { bestS = s; bestT = t; } }
+      if (d < HEAR_R) { if (d < DETECT_R) count++; const s = 1 - d / HEAR_R; if (s > bestS) { bestS = s; bestT = t; } }
     }
     pulse = { x: p.x, y: p.y, t0: performance.now() };
+    play('sweep', 0.5);
     if (bestT) {
       beep(bestT, bestS);
-      const strength = bestS > 0.66 ? 'strong' : bestS > 0.33 ? 'fair' : 'faint';
+      const strength = bestS > 0.85 ? 'strong \u2014 dig here' : bestS > 0.6 ? 'getting close' : bestS > 0.3 ? 'fair' : 'faint, it\u2019s off to one side';
       const name = { silver: 'HIGH tone (silver)', gold: 'LOW tone (gold)', alum: 'scratchy (aluminum)', iron: 'iron grunt' }[bestT.tone];
       $('readout').textContent = 'VDI ' + bestT.vdi + ' · ' + name + ' · ' + strength + (count > 1 ? ' · more targets nearby' : '');
       setMeter(bestS);
       swings.push({ x: p.x, y: p.y, tone: bestT.tone });
     } else {
-      $('readout').textContent = 'Nothing. Just dirt and roots.';
+      $('readout').textContent = 'Nothing nearby. Try closer to the foundation or road.';
       setMeter(0);
       swings.push({ x: p.x, y: p.y, tone: null });
     }
