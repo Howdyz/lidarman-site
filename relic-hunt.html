@@ -39,7 +39,7 @@
   .hud b { color: var(--accent); }
 
   .stage { position: relative; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; box-shadow: 0 2px 10px var(--shadow); background: #888; touch-action: manipulation; }
-  canvas#field { display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; cursor: crosshair; }
+  canvas#field { display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; cursor: none; touch-action: none; }
   .north { position: absolute; top: 8px; right: 10px; font-family: var(--mono); font-size: 0.75rem; color: #fff; text-shadow: 0 1px 2px #000; pointer-events: none; }
   .scale { position: absolute; bottom: 8px; left: 10px; font-family: var(--mono); font-size: 0.7rem; color: #fff; text-shadow: 0 1px 2px #000; pointer-events: none; }
   .scale i { display: block; width: 50px; height: 4px; border: 1px solid #fff; border-top: 0; margin-top: 2px; }
@@ -92,7 +92,6 @@
         <span>Field <b id="hudField">1</b>/3</span>
         <span>Score <b id="hudScore">0</b></span>
         <span>Digs <b id="hudDigs">0</b></span>
-        <span>Battery <b id="hudBatt">0</b></span>
         <span>Relics <b id="hudRelics">0/0</b></span>
       </div>
 
@@ -105,10 +104,6 @@
       </div>
 
       <div class="controls">
-        <div class="seg" role="group" aria-label="Tool">
-          <button id="toolDetect" class="on">Detect</button>
-          <button id="toolDig">Dig</button>
-        </div>
         <div class="seg" role="group" aria-label="View">
           <button id="viewLidar" class="on">LIDAR</button>
           <button id="viewAerial">Aerial</button>
@@ -119,7 +114,7 @@
 
       <div class="readout">
         <div class="meter"><i id="meter"></i></div>
-        <div id="readout">Tap the map to swing your detector.</div>
+        <div id="readout">Move your mouse over the map to sweep the detector.</div>
       </div>
     </div>
 
@@ -146,7 +141,7 @@
           <li><b>Choppy scratch</b> is aluminum: pop cans, pull tabs and foil. Skip it.</li>
           <li><b>Low grunt</b> is iron: nails, bottle caps and wire. Skip that too.</li>
         </ul>
-        <p>Every swing costs battery. Every hole costs a dig. Don't waste them on empty woods.</p>
+        <p><b>Sweep</b> by moving your mouse across the map (on a phone, drag your finger). When it beeps, move around until it's loudest, then <b>click</b> (or tap) right there to dig. Holes are limited, so don't dig junk.</p>
       </section>
       <section>
         <h2>Finds this field</h2>
@@ -270,16 +265,15 @@
 
   const LEVELS = [
     { name: 'Homestead Hollow', blurb: 'A family farmed these woods until about 1890. Nothing is left above ground. Find the house.',
-      features: ['foundation', 'road'], relief: 1.0, noise: 7, junk: 22, digs: 15, battery: 120 },
+      features: ['foundation', 'road'], relief: 1.0, noise: 7, junk: 22, digs: 15 },
     { name: 'Crossroads Stage Stop', blurb: 'Two old roads met here, and a stage stop fed the travelers. Coins changed hands.',
-      features: ['foundation', 'road', 'road'], relief: 0.75, noise: 10, junk: 32, digs: 14, battery: 100 },
+      features: ['foundation', 'road', 'road'], relief: 0.75, noise: 10, junk: 32, digs: 14 },
     { name: 'Ridge Camp, 1863', blurb: 'Soldiers dug in along this ridge for a week. The trench is still there if you can see it.',
-      features: ['earthwork', 'road', 'foundation'], relief: 0.6, noise: 13, junk: 42, digs: 13, battery: 90 }
+      features: ['earthwork', 'road', 'foundation'], relief: 0.6, noise: 13, junk: 42, digs: 13 }
   ];
 
   const N = 512;
   const DETECT_R = 24;   // the coil ring you see
-  const HEAR_R = 60;     // how far away a target still gives a faint beep
   const DIG_R = 9;
 
   // ---------- build a field ----------
@@ -456,7 +450,7 @@
   // an iPhone's ring/silent switch; <audio> playback is not.
   let soundOn = load('relicHuntSound', '1') === '1';
   const SOUNDS = {};
-  for (const k of ['silver', 'silver2', 'gold', 'gold2', 'alum', 'iron', 'dig', 'find', 'sweep']) {
+  for (const k of ['silver', 'silver2', 'gold', 'gold2', 'alum', 'iron', 'dig', 'find']) {
     try { SOUNDS[k] = new Audio('assets/sounds/' + k + '.mp3'); SOUNDS[k].preload = 'auto'; } catch (e) {}
   }
   function play(k, vol) {
@@ -496,7 +490,7 @@
   const ctx = canvas.getContext('2d');
   const $ = id => document.getElementById(id);
   let levelIdx = 0, score = 0, field = null, lidarImg = null, aerialImg = null;
-  let digs = 0, battery = 0, tool = 'detect', view = 'lidar', holes = [], swings = [], active = false;
+  let digs = 0, view = 'lidar', lastBeepT = null, lastBeepAt = 0, holes = [], swings = [], active = false;
   let hover = null, pulse = null, runFinds = [];
   let best = parseInt(load('relicHuntBest', '0'), 10) || 0;
 
@@ -513,12 +507,12 @@
       field = buildField(L, seed);
       lidarImg = renderLidar(field.H);
       aerialImg = renderAerial(seed);
-      digs = L.digs; battery = L.battery; holes = []; swings = []; active = true;
+      digs = L.digs; holes = []; lastBeepT = null; swings = []; active = true;
       $('fieldName').textContent = L.name;
       $('fieldBlurb').textContent = L.blurb;
       renderFinds();
       hideCard(); hud(); draw();
-      $('readout').textContent = 'Study the hillshade, then tap to swing your detector.';
+      $('readout').textContent = 'Study the hillshade, then sweep your mouse over the ground.';
       setMeter(0);
     }, 30);
   }
@@ -527,7 +521,6 @@
     $('hudField').textContent = levelIdx + 1;
     $('hudScore').textContent = score;
     $('hudDigs').textContent = digs;
-    $('hudBatt').textContent = battery;
     const r = relicsIn(field);
     $('hudRelics').textContent = r.filter(t => t.found).length + '/' + r.length;
   }
@@ -561,8 +554,12 @@
       } else pulse = null;
     }
     if (hover && active) {
-      ctx.beginPath(); ctx.arc(hover.x, hover.y, tool === 'detect' ? DETECT_R : DIG_R, 0, Math.PI * 2);
-      ctx.lineWidth = 1.5; ctx.strokeStyle = tool === 'detect' ? 'rgba(255,255,255,0.8)' : 'rgba(255,200,120,0.9)'; ctx.stroke();
+      // the coil, and a small ring in the middle where the shovel goes
+      ctx.beginPath(); ctx.arc(hover.x, hover.y, DETECT_R, 0, Math.PI * 2);
+      ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(20,20,20,0.55)'; ctx.stroke();
+      ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.stroke();
+      ctx.beginPath(); ctx.arc(hover.x, hover.y, DIG_R, 0, Math.PI * 2);
+      ctx.setLineDash([2, 3]); ctx.strokeStyle = 'rgba(255,210,140,0.95)'; ctx.stroke(); ctx.setLineDash([]);
     }
   }
 
@@ -572,37 +569,40 @@
   }
   function setMeter(v) { $('meter').style.width = Math.round(v * 100) + '%'; }
 
-  function detect(p) {
-    if (battery <= 0) { $('readout').textContent = 'Battery dead. You can still dig blind, or end the field.'; return; }
-    battery--;
-    let bestT = null, bestS = 0, count = 0;
+  // Sweeping: the coil beeps whenever it passes over metal, like the real thing.
+  function sweep(p) {
+    let bestT = null, bestD = DETECT_R;
     for (const t of field.targets) {
       if (t.found) continue;
       const d = Math.hypot(t.x - p.x, t.y - p.y);
-      if (d < HEAR_R) { if (d < DETECT_R) count++; const s = 1 - d / HEAR_R; if (s > bestS) { bestS = s; bestT = t; } }
+      if (d < bestD) { bestD = d; bestT = t; }
     }
-    pulse = { x: p.x, y: p.y, t0: performance.now() };
-    play('sweep', 0.5);
-    if (bestT) {
-      beep(bestT, bestS);
-      const strength = bestS > 0.85 ? 'strong \u2014 dig here' : bestS > 0.6 ? 'getting close' : bestS > 0.3 ? 'fair' : 'faint, it\u2019s off to one side';
-      const name = { silver: 'HIGH tone (silver)', gold: 'LOW tone (gold)', alum: 'scratchy (aluminum)', iron: 'iron grunt' }[bestT.tone];
-      $('readout').textContent = 'VDI ' + bestT.vdi + ' · ' + name + ' · ' + strength + (count > 1 ? ' · more targets nearby' : '');
-      setMeter(bestS);
+    if (!bestT) {
+      if (lastBeepT) { $('readout').textContent = 'Quiet. Keep sweeping.'; setMeter(0); }
+      lastBeepT = null;
+      return;
+    }
+    const strength = 1 - bestD / DETECT_R;
+    const now = performance.now();
+    // one beep as the coil crosses a target; it beeps again if you sweep back over it
+    if (bestT !== lastBeepT || now - lastBeepAt > 550) {
+      beep(bestT, strength);
+      lastBeepAt = now;
       swings.push({ x: p.x, y: p.y, tone: bestT.tone });
-    } else {
-      $('readout').textContent = 'Nothing nearby. Try closer to the foundation or road.';
-      setMeter(0);
-      swings.push({ x: p.x, y: p.y, tone: null });
+      if (swings.length > 400) swings.shift();
     }
-    hud(); draw();
-    if (battery === 0 && digs > 0) $('readout').textContent += ' Battery’s dead now.';
+    lastBeepT = bestT;
+    const where = bestD < DIG_R ? 'right under the middle \u2014 click to dig' : strength > 0.4 ? 'close, move toward the loudest spot' : 'edge of the coil';
+    const name = { silver: 'HIGH tone (silver)', gold: 'LOW tone (gold)', alum: 'scratchy (aluminum)', iron: 'iron grunt' }[bestT.tone];
+    $('readout').textContent = 'VDI ' + bestT.vdi + ' \u00b7 ' + name + ' \u00b7 ' + where;
+    setMeter(strength);
   }
 
   function dig(p) {
     if (digs <= 0) return;
     digs--;
     thud();
+    pulse = { x: p.x, y: p.y, t0: performance.now() };
     let hit = null, bestD = DIG_R;
     for (const t of field.targets) {
       if (t.found) continue;
@@ -619,7 +619,7 @@
       $('readout').textContent = 'You dug up: ' + hit.n + (hit.p ? ' (+' + hit.p + ')' : '');
     } else {
       toast('Empty hole.', true);
-      $('readout').textContent = 'Empty hole. Swing the detector first to pinpoint.';
+      $('readout').textContent = 'Empty hole. Sweep until it beeps loudest, then dig right there.';
     }
     setMeter(0);
     renderFinds(); hud(); draw();
@@ -696,23 +696,37 @@
   function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
   // ---------- input ----------
-  canvas.addEventListener('click', e => {
-    if (hum && hum.paused) humOn();
-    if (!active) return;
-    const p = toCanvas(e);
-    if (tool === 'detect') detect(p); else dig(p);
+  // Mouse: moving sweeps, clicking digs. Touch: dragging sweeps, a tap digs.
+  let down = null;
+  canvas.addEventListener('pointermove', e => {
+    if (e.pointerType !== 'mouse' && !down) return;
+    hover = toCanvas(e);
+    if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 10) down.moved = true;
+    if (active) sweep(hover);
+    draw();
   });
-  canvas.addEventListener('pointermove', e => { if (e.pointerType === 'mouse') { hover = toCanvas(e); draw(); } });
-  canvas.addEventListener('pointerleave', () => { hover = null; draw(); });
+  canvas.addEventListener('pointerdown', e => {
+    if (hum && hum.paused) humOn();
+    down = { x: e.clientX, y: e.clientY, moved: false };
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+    hover = toCanvas(e);
+    if (active) sweep(hover);
+    draw();
+  });
+  canvas.addEventListener('pointerup', e => {
+    const wasTap = down && !down.moved;
+    down = null;
+    if (e.pointerType !== 'mouse') hover = null;
+    if (active && wasTap) dig(toCanvas(e));
+    draw();
+  });
+  canvas.addEventListener('pointercancel', () => { down = null; });
+  canvas.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') { hover = null; draw(); } });
 
-  function setTool(t) { tool = t; $('toolDetect').classList.toggle('on', t === 'detect'); $('toolDig').classList.toggle('on', t === 'dig'); draw(); }
   function setView(v) { view = v; $('viewLidar').classList.toggle('on', v === 'lidar'); $('viewAerial').classList.toggle('on', v === 'aerial'); draw(); }
-  $('toolDetect').onclick = () => setTool('detect');
-  $('toolDig').onclick = () => setTool('dig');
   $('viewLidar').onclick = () => setView('lidar');
   $('viewAerial').onclick = () => setView('aerial');
   document.addEventListener('keydown', e => {
-    if (e.key === 'd' || e.key === 'D') setTool(tool === 'detect' ? 'dig' : 'detect');
     if (e.key === 'v' || e.key === 'V') setView(view === 'lidar' ? 'aerial' : 'lidar');
   });
   function soundLabel() { $('soundBtn').textContent = soundOn ? 'Sound on' : 'Sound off'; }
@@ -724,6 +738,7 @@
   showCard('<h2>Relic Hunt</h2>' +
     '<p>Three patches of woods. Under each one is a place people lived, traveled or fought, and nobody can see it from the air.</p>' +
     '<p>But LIDAR sees through the trees. Read the hillshade, find the old foundation or road, sweep your detector over it and dig the good signals.</p>' +
+    '<p><b>Move your mouse</b> to sweep (on a phone, drag your finger). <b>Click</b> or tap to dig.</p>' +
     (best ? '<p>Your best: <b>' + best + '</b></p>' : '') +
     '<div class="row"><button class="btn primary" id="startBtn">Start hunting</button></div>');
   $('startBtn').onclick = () => { humOn(); newGame(); };
