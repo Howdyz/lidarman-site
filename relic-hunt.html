@@ -451,73 +451,30 @@
   }
 
   // ---------- sound ----------
-  let actx = null;
+  // Plain audio files, same as the map page's sounds. Web Audio is silenced by
+  // an iPhone's ring/silent switch; <audio> playback is not.
   let soundOn = load('relicHuntSound', '1') === '1';
-  function audio() {
-    if (!soundOn) return null;
-    try { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); } catch (e) { return null; }
-    return actx;
+  const SOUNDS = {};
+  for (const k of ['silver', 'silver2', 'gold', 'gold2', 'alum', 'iron', 'dig', 'find']) {
+    try { SOUNDS[k] = new Audio('assets/sounds/' + k + '.mp3'); SOUNDS[k].preload = 'auto'; } catch (e) {}
   }
-  function tone(freq, type, vol, dur, when) {
-    const a = audio(); if (!a) return;
-    const t = a.currentTime + (when || 0);
-    const o = a.createOscillator(), g = a.createGain();
-    o.type = type; o.frequency.value = freq;
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.linearRampToValueAtTime(vol, t + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(g); g.connect(a.destination);
-    o.start(t); o.stop(t + dur + 0.05);
-  }
-  // real detector recordings for silver and gold, synthesized junk tones
-  const SAMPLES = { silver: 'assets/sounds/silver.mp3', gold: 'assets/sounds/gold.mp3' };
-  const buffers = {};
-  let samplesRequested = false;
-  function loadSamples() {
-    const a = audio(); if (!a || samplesRequested) return;
-    samplesRequested = true;
-    for (const k in SAMPLES) {
-      fetch(SAMPLES[k]).then(r => r.arrayBuffer())
-        .then(b => new Promise((ok, bad) => a.decodeAudioData(b, ok, bad)))
-        .then(buf => { buffers[k] = buf; })
-        .catch(() => {});
-    }
-  }
-  function playSample(k, vol, when) {
-    const a = audio(); if (!a || !buffers[k]) return false;
-    const s = a.createBufferSource(), g = a.createGain();
-    s.buffer = buffers[k]; g.gain.value = vol;
-    s.connect(g); g.connect(a.destination);
-    s.start(a.currentTime + (when || 0));
-    return true;
+  function play(k, vol) {
+    if (!soundOn || !SOUNDS[k]) return;
+    try {
+      const a = SOUNDS[k].cloneNode();
+      a.volume = vol === undefined ? 1 : vol;
+      const p = a.play();
+      if (p && p.catch) p.catch(() => {});
+    } catch (e) {}
   }
   function beep(t, strength) {
-    const vol = 0.3 + 0.7 * strength;
-    if (t.tone === 'silver' || t.tone === 'gold') {
-      // a strong signal double-beeps, like a detector over a good target
-      const fallback = t.tone === 'silver' ? 2750 : 432;
-      const reps = strength > 0.5 ? 2 : 1;
-      for (let i = 0; i < reps; i++) {
-        if (!playSample(t.tone, vol, i * 0.16)) tone(fallback, 'sine', 0.25 * vol, 0.12, i * 0.16);
-      }
-    } else if (t.tone === 'alum') {
-      // aluminum: broken, scratchy chirps that wobble in pitch
-      for (let i = 0; i < 4; i++) tone(620 + Math.random() * 380, 'square', 0.06 * vol, 0.05, i * 0.06);
-    } else {
-      // iron: a low, buzzy grunt
-      tone(95, 'sawtooth', 0.2 * vol, 0.28);
-      tone(140, 'sawtooth', 0.1 * vol, 0.2, 0.02);
-    }
+    const vol = 0.35 + 0.65 * strength;
+    // a strong signal double-beeps, like a detector right over a good target
+    if (t.tone === 'silver' || t.tone === 'gold') play(strength > 0.5 ? t.tone + '2' : t.tone, vol);
+    else play(t.tone, vol);
   }
-  function thud() {
-    const a = audio(); if (!a) return;
-    const len = a.sampleRate * 0.18, buf = a.createBuffer(1, len, a.sampleRate), ch = buf.getChannelData(0);
-    for (let i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / len) ** 2;
-    const s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
-    f.type = 'lowpass'; f.frequency.value = 700; g.gain.value = 0.5;
-    s.buffer = buf; s.connect(f); f.connect(g); g.connect(a.destination); s.start();
-  }
-  function fanfare() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 'triangle', 0.15, 0.3, i * 0.09)); }
+  function thud() { play('dig', 0.8); }
+  function fanfare() { play('find', 0.8); }
 
   // ---------- state ----------
   const canvas = document.getElementById('field');
@@ -641,7 +598,7 @@
     if (hit) {
       hit.found = true;
       runFinds.push(hit);
-      if (hit.p > 0) { score += hit.p; toast(hit.n + '  +' + hit.p, false); setTimeout(fanfare, 150); }
+      if (hit.p > 0) { score += hit.p; toast(hit.n + '  +' + hit.p, false); fanfare(); }
       else toast(hit.n + '. Junk.', true);
       $('readout').textContent = 'You dug up: ' + hit.n + (hit.p ? ' (+' + hit.p + ')' : '');
     } else {
@@ -742,7 +699,7 @@
     if (e.key === 'v' || e.key === 'V') setView(view === 'lidar' ? 'aerial' : 'lidar');
   });
   function soundLabel() { $('soundBtn').textContent = soundOn ? 'Sound on' : 'Sound off'; }
-  $('soundBtn').onclick = () => { soundOn = !soundOn; save('relicHuntSound', soundOn ? '1' : '0'); soundLabel(); loadSamples(); };
+  $('soundBtn').onclick = () => { soundOn = !soundOn; save('relicHuntSound', soundOn ? '1' : '0'); soundLabel(); };
   soundLabel();
   $('endBtn').onclick = () => { if (active) endLevel('You called it.'); };
 
@@ -752,7 +709,7 @@
     '<p>But LIDAR sees through the trees. Read the hillshade, find the old foundation or road, sweep your detector over it and dig the good signals.</p>' +
     (best ? '<p>Your best: <b>' + best + '</b></p>' : '') +
     '<div class="row"><button class="btn primary" id="startBtn">Start hunting</button></div>');
-  $('startBtn').onclick = () => { audio(); loadSamples(); newGame(); };
+  $('startBtn').onclick = newGame;
 })();
 </script>
 </body>
