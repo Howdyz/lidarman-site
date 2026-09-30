@@ -461,8 +461,12 @@
   }
   function play(k, vol) {
     if (!soundOn || !SOUNDS[k]) return;
+    // same as the map page's lightsaber: rewind the preloaded clip and play it.
+    // (Fresh copies made on each click can be thrown away by Chrome unplayed.)
     try {
-      const a = SOUNDS[k].cloneNode();
+      const a = SOUNDS[k];
+      a.pause();
+      a.currentTime = 0;
       a.volume = vol === undefined ? 1 : vol;
       const p = a.play();
       if (p && p.catch) p.catch(() => {});
