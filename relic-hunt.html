@@ -813,6 +813,38 @@
   soundLabel();
   $('endBtn').onclick = () => { if (active) endLevel('You called it.'); };
 
+  // ---------- lightsaber on opening, same as the map page ----------
+  // Chrome may refuse sound before the visitor has touched the page; then it
+  // waits for the first tap or key instead. A failed sound never blocks anything.
+  (function () {
+    let saber = null;
+    try { saber = new Audio('assets/saber-on.mp3'); saber.preload = 'auto'; } catch (e) { return; }
+    function onFirstTap() {
+      document.removeEventListener('pointerdown', onFirstTap, true);
+      document.removeEventListener('keydown', onFirstTap, true);
+      if (!soundOn) return;
+      try { saber.play().catch(() => {}); } catch (e) {}
+    }
+    function ignite() {
+      if (!soundOn) return;
+      try {
+        const p = saber.play();
+        if (p && p.catch) p.catch(() => {
+          document.addEventListener('pointerdown', onFirstTap, true);
+          document.addEventListener('keydown', onFirstTap, true);
+        });
+      } catch (e) {}
+    }
+    // not from a tab opened in the background — wait until it is looked at
+    if (document.visibilityState === 'hidden') {
+      document.addEventListener('visibilitychange', function once() {
+        if (document.visibilityState !== 'visible') return;
+        document.removeEventListener('visibilitychange', once);
+        ignite();
+      });
+    } else ignite();
+  })();
+
   // ---------- title card ----------
   showCard('<h2>Relic Hunt</h2>' +
     '<p>Six patches of woods. Under each one is a place people lived, traveled or fought, and nobody can see it from the air.</p>' +
