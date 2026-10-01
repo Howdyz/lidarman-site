@@ -109,7 +109,7 @@
       <div class="stage" id="stage">
         <canvas id="field" width="512" height="512"></canvas>
         <div class="north">N &uarr;</div>
-        <div class="scale">50 m<i></i></div>
+        <div class="scale"><span id="scaleLabel">50 m</span><i></i></div>
         <div class="toast" id="toast"></div>
         <div class="overlay show" id="overlay"><div class="card" id="card"></div></div>
       </div>
@@ -294,7 +294,7 @@
     ]
   };
 
-  const LEVELS = [
+  const WOODS = [
     { name: 'Homestead Hollow', blurb: 'A family farmed these woods until about 1890. Nothing is left above ground. Find the house.',
       features: ['foundation', 'road'], relief: 1.0, noise: 7, junk: 22, digs: 15 },
     { name: 'Crossroads Stage Stop', blurb: 'Two old roads met here, and a stage stop fed the travelers. Coins changed hands.',
@@ -308,6 +308,22 @@
     { name: 'Mill Pond', blurb: 'A grist mill ground the whole valley\u2019s corn. Farmers waited on the dam with coins in their pockets. The pond is long drained.',
       features: ['dam', 'foundation', 'road'], relief: 0.5, noise: 14, junk: 46, digs: 14 }
   ];
+
+  // Real Lidarman scans of five of the map's demo places. Spots are where
+  // Lidarman's own detector flagged a likely structure; relics are buried there.
+  const REAL = [
+    { name: 'Old Cahawba, Alabama', blurb: 'Alabama\u2019s first state capital, empty since the years after the Civil War. The street grid still shows under the grass, and so do the house lots.', img: 'assets/relic-fields/old-cahawba.jpg', metres: 431, kind: null, relics: 9, junk: 40, digs: 15,
+      spots: [[433,93,"foundation"],[252,65,"foundation"],[468,160,"foundation"],[495,239,"foundation"],[409,352,"foundation"],[438,15,"foundation"],[217,425,"dam"],[261,336,"road"],[329,423,"foundation"],[495,87,"foundation"],[291,266,"road"],[497,279,"foundation"],[288,263,"foundation"],[346,179,"road"],[423,159,"foundation"],[186,51,"road"],[227,403,"dam"],[288,83,"road"],[354,160,"road"],[439,195,"foundation"],[74,218,"foundation"],[467,100,"road"],[243,428,"foundation"],[347,405,"foundation"],[367,434,"foundation"],[444,33,"foundation"],[394,103,"road"],[223,439,"foundation"],[37,206,"foundation"],[488,192,"foundation"],[450,206,"foundation"],[432,287,"dam"],[442,169,"foundation"],[452,329,"foundation"],[323,399,"foundation"],[339,84,"road"],[367,363,"foundation"],[496,212,"foundation"],[409,203,"dam"],[196,471,"foundation"],[171,237,"foundation"],[235,266,"road"],[344,382,"foundation"],[309,231,"road"],[358,105,"foundation"]] },
+    { name: 'Bodie, California', blurb: 'A gold-rush boomtown of thousands in the 1870s and 80s. Cellar holes and foundations are everywhere on this scan.', img: 'assets/relic-fields/bodie.jpg', metres: 331, kind: null, relics: 9, junk: 40, digs: 15,
+      spots: [[34,79,"foundation"],[39,86,"road"],[28,160,"foundation"],[52,162,"foundation"],[351,88,"foundation"],[199,79,"foundation"],[386,376,"road"],[448,89,"dam"],[251,364,"road"],[437,265,"foundation"],[299,291,"road"],[373,44,"dam"],[470,493,"foundation"],[93,153,"foundation"],[480,265,"foundation"],[448,75,"foundation"],[398,209,"foundation"],[180,329,"dam"],[412,139,"foundation"],[321,413,"foundation"],[329,237,"road"],[323,249,"foundation"],[355,145,"foundation"],[126,218,"foundation"],[20,76,"foundation"],[363,172,"dam"],[403,133,"foundation"],[308,256,"foundation"],[487,111,"foundation"],[72,220,"foundation"],[476,170,"foundation"],[435,331,"foundation"],[403,143,"foundation"],[418,124,"foundation"],[454,364,"foundation"],[371,383,"foundation"],[394,122,"foundation"],[418,389,"road"],[200,101,"foundation"],[368,228,"foundation"],[198,461,"foundation"],[433,409,"foundation"],[304,426,"foundation"],[371,450,"dam"],[462,109,"foundation"]] },
+    { name: 'Bannack, Montana', blurb: 'Gold was found on Grasshopper Creek in 1862 and a town sprang up overnight. Look along the creek and the old roads.', img: 'assets/relic-fields/bannack.jpg', metres: 329, kind: null, relics: 9, junk: 40, digs: 15,
+      spots: [[491,247,"foundation"],[144,452,"foundation"],[259,101,"foundation"],[27,138,"road"],[492,388,"foundation"],[55,28,"foundation"],[132,49,"foundation"],[270,66,"foundation"],[457,406,"foundation"],[99,459,"foundation"],[361,16,"foundation"],[353,132,"foundation"],[438,230,"foundation"],[371,206,"hearth"],[295,99,"hearth"],[262,79,"foundation"],[155,468,"foundation"],[277,486,"foundation"],[319,183,"road"],[246,251,"foundation"],[410,27,"foundation"],[58,79,"foundation"],[336,65,"foundation"],[464,420,"foundation"],[450,185,"foundation"],[47,484,"foundation"],[408,225,"dam"],[33,459,"foundation"],[415,167,"foundation"],[457,497,"road"],[299,452,"foundation"],[370,432,"foundation"],[191,441,"road"],[467,57,"foundation"],[451,440,"foundation"],[265,466,"road"],[120,492,"foundation"],[315,53,"foundation"],[136,470,"foundation"],[430,83,"foundation"],[58,127,"road"],[339,403,"foundation"],[73,490,"dam"],[341,434,"foundation"],[204,439,"foundation"]] },
+    { name: 'Oregon Trail Ruts, Wyoming', blurb: 'Wagons bound for Oregon wore grooves deep into the ridge here. Travelers dropped coins, buckles and tack along the way.', img: 'assets/relic-fields/guernsey-ruts.jpg', metres: 379, kind: 'road', relics: 9, junk: 40, digs: 14,
+      spots: [[282,200,"foundation"],[336,80,"road"],[357,241,"foundation"],[369,76,"dam"],[41,151,"foundation"],[352,49,"foundation"],[431,349,"foundation"],[360,61,"dam"],[482,498,"foundation"],[292,42,"foundation"],[261,353,"foundation"],[483,240,"foundation"],[383,357,"foundation"],[159,205,"foundation"],[351,254,"foundation"],[120,358,"road"],[391,495,"dam"],[479,313,"foundation"],[407,393,"foundation"],[399,363,"foundation"],[32,421,"foundation"],[389,285,"foundation"],[141,495,"foundation"],[349,116,"foundation"],[232,188,"foundation"],[460,465,"foundation"],[483,268,"foundation"],[266,235,"foundation"],[404,250,"road"],[37,94,"road"],[399,475,"foundation"],[441,385,"foundation"],[361,81,"foundation"],[484,468,"foundation"],[278,384,"foundation"],[193,193,"foundation"],[376,403,"foundation"],[395,228,"foundation"],[132,429,"foundation"],[362,390,"foundation"],[272,393,"foundation"],[287,343,"foundation"],[391,293,"foundation"],[498,379,"hearth"],[168,375,"foundation"]] },
+    { name: 'Fort Patrick Kelly, Virginia', blurb: 'A Union fort in the siege lines around Petersburg, 1864\u201365. The six-sided earthwork is still standing.', img: 'assets/relic-fields/fort-patrick-kelly.jpg', metres: 353, kind: 'earthwork', relics: 9, junk: 40, digs: 14,
+      spots: [[286,253,"earthwork"],[277,274,"earthwork"],[256,283,"earthwork"],[235,274,"earthwork"],[226,253,"earthwork"],[235,232,"earthwork"],[256,223,"earthwork"],[277,232,"earthwork"],[256,253,"earthwork"],[245,262,"earthwork"],[184,376,"foundation"],[59,38,"foundation"],[157,251,"foundation"],[59,185,"dam"],[244,83,"foundation"],[28,42,"foundation"],[74,77,"foundation"],[190,234,"foundation"],[18,97,"foundation"],[200,138,"foundation"],[84,420,"foundation"],[57,192,"road"],[20,157,"foundation"],[171,76,"dam"],[153,278,"foundation"],[244,75,"foundation"],[37,168,"foundation"],[19,113,"foundation"],[494,492,"road"],[46,36,"foundation"],[140,495,"foundation"],[32,23,"foundation"],[142,483,"foundation"],[235,227,"foundation"],[202,301,"foundation"],[17,426,"foundation"],[130,33,"foundation"],[136,23,"foundation"],[326,20,"dam"],[271,42,"foundation"],[177,286,"road"]] }
+  ];
+  let LEVELS = WOODS, mode = 'woods';
 
   const N = 512;
   const DETECT_R = 24;   // the coil ring you see
@@ -497,6 +513,40 @@
     return { H, targets, seed };
   }
 
+  function buildRealField(L, seed) {
+    const rnd = mulberry32(seed);
+    const R = (a, b) => a + rnd() * (b - a);
+    const pickFind = arr => {
+      let r = rnd() * arr.reduce((sum, f) => sum + f.w, 0);
+      for (const f of arr) { r -= f.w; if (r <= 0) return f; }
+      return arr[arr.length - 1];
+    };
+    const targets = [];
+    function place(kind, x, y) {
+      const t = Object.assign({}, pickFind(FINDS[kind]));
+      t.x = Math.max(6, Math.min(N - 6, x)); t.y = Math.max(6, Math.min(N - 6, y));
+      t.found = false; t.kind = kind;
+      targets.push(t);
+    }
+    // shuffle the flagged spots and bury relics at ones that aren't bunched together
+    const spots = L.spots.slice();
+    for (let i = spots.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [spots[i], spots[j]] = [spots[j], spots[i]]; }
+    // about half go near the middle, where the historic site itself is (each scan is centered on it)
+    const mid = N / 2, isMid = ([x, y]) => Math.hypot(x - mid, y - mid) < 110;
+    const order = spots.filter(isMid).slice(0, Math.ceil(L.relics / 2)).concat(spots.filter(sp => !isMid(sp)), spots.filter(isMid));
+    const used = [];
+    for (const [x, y, k] of order) {
+      if (used.length >= L.relics) break;
+      if (used.some(([ux, uy]) => Math.hypot(ux - x, uy - y) < 28)) continue;
+      used.push([x, y]);
+      place(L.kind || k, x + R(-4, 4), y + R(-4, 4));
+    }
+    // junk: some on the other flagged spots (people dumped trash where they lived), the rest anywhere
+    for (const [x, y] of spots.slice(-12)) if (rnd() < 0.6) place('junk', x + R(-6, 6), y + R(-6, 6));
+    for (let i = 0; i < L.junk; i++) place('junk', R(8, N - 8), R(8, N - 8));
+    return { targets, seed };
+  }
+
   // ---------- render ----------
   function renderLidar(H) {
     const c = document.createElement('canvas'); c.width = c.height = N;
@@ -591,19 +641,44 @@
     const L = LEVELS[i];
     $('readout').textContent = 'Surveying the ground…';
     showCard('<h2>Loading field…</h2><p>Flying the LIDAR survey.</p>');
+    const seed = (Date.now() ^ (i * 7919)) >>> 0;
+    if (L.img) {
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement('canvas'); c.width = c.height = N;
+        c.getContext('2d').drawImage(img, 0, 0, N, N);
+        field = buildRealField(L, seed);
+        lidarImg = c; aerialImg = null;
+        begin(L);
+      };
+      img.onerror = () => {
+        showCard('<h2>Couldn\u2019t load this field</h2><p>Check your connection and try again.</p><div class="row"><button class="btn primary" id="retryBtn">Try again</button></div>');
+        $('retryBtn').onclick = () => startLevel(i);
+      };
+      img.src = L.img;
+      return;
+    }
     setTimeout(() => {
-      const seed = (Date.now() ^ (i * 7919)) >>> 0;
       field = buildField(L, seed);
       lidarImg = renderLidar(field.H);
       aerialImg = renderAerial(seed);
-      digs = L.digs; holes = []; lastBeepT = null; swings = []; active = true;
-      $('fieldName').textContent = L.name;
-      $('fieldBlurb').textContent = L.blurb;
-      renderFinds();
-      hideCard(); hud(); draw();
-      $('readout').textContent = 'Study the hillshade, then sweep your mouse over the ground.';
-      setMeter(0);
+      begin(L);
     }, 30);
+  }
+
+  function begin(L) {
+    // real scans have no made-up aerial photo, and their own scale
+    $('viewAerial').style.display = aerialImg ? '' : 'none';
+    if (!aerialImg) setView('lidar');
+    const mpp = (L.metres || N) / N;
+    $('scaleLabel').textContent = Math.round(50 * mpp) + ' m';
+    digs = L.digs; holes = []; lastBeepT = null; swings = []; active = true;
+    $('fieldName').textContent = L.name;
+    $('fieldBlurb').textContent = L.blurb;
+    renderFinds();
+    hideCard(); hud(); draw();
+    $('readout').textContent = 'Study the hillshade, then sweep your mouse over the ground.';
+    setMeter(0);
   }
 
   function hud() {
@@ -767,19 +842,22 @@
   function finalCard() {
     const isBest = score > best;
     if (isBest) { best = score; save('relicHuntBest', String(best)); }
-    const rank = score >= 4000 ? 'Lidarman' : score >= 2600 ? 'Relic Hunter' : score >= 1200 ? 'Weekend Digger' : 'Greenhorn';
+    const k = LEVELS.length / 6;
+    const rank = score >= 4000 * k ? 'Lidarman' : score >= 2600 * k ? 'Relic Hunter' : score >= 1200 * k ? 'Weekend Digger' : 'Greenhorn';
     const top = runFinds.filter(t => t.p > 0).sort((a, b) => b.p - a.p)[0];
     showCard('<h2>Hunt over</h2><div class="big">' + score + '</div>' +
       '<p>Rank: <b>' + rank + '</b>' + (isBest ? ' · <b>new best!</b>' : ' · best ' + best) + '</p>' +
       (top ? '<p>Best find: <b>' + esc(top.n) + '</b></p>' : '') +
       '<p>Real old homesteads and roads show up on LIDAR exactly like this. Lidarman finds them for you, anywhere in the US.</p>' +
       '<div class="row"><button class="btn" id="againBtn">Play again</button>' +
+      '<button class="btn" id="otherBtn">' + (mode === 'woods' ? 'Try Real Places' : 'Try Practice Woods') + '</button>' +
       '<a class="btn primary" href="map.html">Search real LIDAR &rarr;</a></div>');
-    $('againBtn').onclick = newGame;
+    $('againBtn').onclick = () => newGame(mode);
+    $('otherBtn').onclick = () => newGame(mode === 'woods' ? 'real' : 'woods');
   }
 
   function clearPeekBtn() { const old = $('peekNext'); if (old) old.remove(); }
-  function newGame() { score = 0; runFinds = []; startLevel(0); }
+  function newGame(m) { mode = m; LEVELS = m === 'real' ? REAL : WOODS; score = 0; runFinds = []; startLevel(0); }
 
   function showCard(html) { $('card').innerHTML = html; $('overlay').classList.add('show'); }
   function hideCard() { $('overlay').classList.remove('show'); }
@@ -891,12 +969,14 @@
 
   // ---------- title card ----------
   showCard('<h2>Relic Hunt</h2>' +
-    '<p>Six patches of woods. Under each one is a place people lived, traveled or fought, and nobody can see it from the air.</p>' +
-    '<p>But LIDAR sees through the trees. Read the hillshade, find the old foundation or road, sweep your detector over it and dig the good signals.</p>' +
+    '<p>LIDAR sees the ground the way no photo can. Read the hillshade, find the old foundation or road, sweep your detector over it and dig the good signals.</p>' +
+    '<p><b>Practice Woods:</b> six made-up fields that teach you what to look for.<br><b>Real Places:</b> five real Lidarman scans \u2014 Bodie, Bannack, Old Cahawba, the Oregon Trail ruts and Fort Patrick Kelly.</p>' +
     '<p><b>Move your mouse</b> to sweep (on a phone, drag your finger). <b>Click</b> or tap to dig.</p>' +
     (best ? '<p>Your best: <b>' + best + '</b></p>' : '') +
-    '<div class="row"><button class="btn primary" id="startBtn">Start hunting</button></div>');
-  $('startBtn').onclick = () => { humOn(); newGame(); };
+    '<div class="row"><button class="btn primary" id="startBtn">Practice Woods</button>' +
+    '<button class="btn primary" id="realBtn">Real Places</button></div>');
+  $('startBtn').onclick = () => { humOn(); newGame('woods'); };
+  $('realBtn').onclick = () => { humOn(); newGame('real'); };
 })();
 </script>
 </body>
