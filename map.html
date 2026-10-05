@@ -6334,7 +6334,12 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     // Aim at the ground in the middle of the scan. A fixed share of the relief
     // (it was a third) sits inside the hill wherever the centre is high ground
     // - a pa on a ridge - and zooming in then flew the camera into the hillside.
-    three.controls.target.y = three.centerHeight * ex;
+    // The camera rises and falls with it, so the viewing angle stays the same
+    // whatever the height setting - only the target moving tipped a hilly
+    // scan over to a near-sideways view.
+    const lift = three.centerHeight * ex - three.controls.target.y;
+    three.controls.target.y += lift;
+    three.camera.position.y += lift;
   }
 
   async function applyDrape() {
