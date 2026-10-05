@@ -6331,9 +6331,10 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     pos.needsUpdate = true;
     geom.computeVertexNormals();
     geom.computeBoundingSphere();
-    // Aim at the middle of the relief, so taller exaggeration doesn't leave the
-    // view staring at the scan's feet.
-    three.controls.target.y = three.relief * ex / 3;
+    // Aim at the ground in the middle of the scan. A fixed share of the relief
+    // (it was a third) sits inside the hill wherever the centre is high ground
+    // - a pa on a ridge - and zooming in then flew the camera into the hillside.
+    three.controls.target.y = three.centerHeight * ex;
   }
 
   async function applyDrape() {
@@ -6482,7 +6483,8 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     };
     window.addEventListener('resize', onResize);
 
-    three = { THREE, renderer, scene, camera, controls, geom, mat, heights: filled, valid: has, base, relief: top - base, gw, gh, onResize, raf: 0 };
+    three = { THREE, renderer, scene, camera, controls, geom, mat, heights: filled, valid: has, base, relief: top - base,
+      centerHeight: filled[Math.floor(gh / 2) * gw + Math.floor(gw / 2)] - base, gw, gh, onResize, raf: 0 };
     applyHeights();
     try { await applyDrape(); } catch (e) { v3.status.textContent = "Couldn't load the scan image."; }
     if (!three) return;
