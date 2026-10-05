@@ -6467,7 +6467,11 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     controls.maxPolarAngle = Math.PI * 0.47;
     controls.minDistance = size * 0.15;
     controls.maxDistance = size * 4;
-    controls.autoRotateSpeed = 0.6;
+    // With a delta passed to update(), one circle takes 60 / speed seconds -
+    // 40 s here - whatever the frame rate. Without one, three.js assumes
+    // 60 fps per call, so a phone drawing 20 fps spun three times slower.
+    controls.autoRotateSpeed = 1.5;
+    const clock = new THREE.Clock();
     controls.autoRotate = v3.spin.checked;
 
     const onResize = () => {
@@ -6490,7 +6494,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     const loop = () => {
       if (!three) return;
       three.raf = requestAnimationFrame(loop);
-      controls.update();
+      controls.update(Math.min(clock.getDelta(), 0.1));
       renderer.render(scene, camera);
     };
     loop();
