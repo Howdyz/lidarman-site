@@ -9,18 +9,18 @@
 <title>Lidarman map — search LiDAR terrain for old foundations</title>
 <link rel="canonical" href="https://lidarman.com/map.html">
 <link rel="icon" type="image/png" href="assets/icon-192.png">
-<meta name="description" content="The Lidarman map: search airborne LiDAR in the US, England, Wales, Norway, the Netherlands and Poland for old foundations, cellar holes and sunken paths.">
+<meta name="description" content="The Lidarman map: search airborne LiDAR in the US, England, Wales, Norway, the Netherlands, Poland and New Zealand for old foundations, cellar holes and sunken paths.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://lidarman.com/map.html">
 <meta property="og:title" content="12 historic places. Search them free.">
-<meta property="og:description" content="Poverty Point, the Grand Canyon, Bodie, Yorktown, Stonehenge and 7 more — as often as you like, no account. Then $25 once to search anywhere in six countries. No subscription.">
+<meta property="og:description" content="Poverty Point, the Grand Canyon, Bodie, Yorktown, Stonehenge and 7 more — as often as you like, no account. Then $25 once to search anywhere in seven countries. No subscription.">
 <meta property="og:image" content="https://lidarman.com/assets/twelve-demos-card.jpg">
 <meta property="og:image:alt" content="A Lidarman scan of the Bodie ghost town in California, its old street grid circled, beside the free demo places and the $25-once price.">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="12 historic places. Search them free.">
-<meta name="twitter:description" content="Poverty Point, the Grand Canyon, Bodie, Yorktown, Stonehenge and 7 more — as often as you like, no account. Then $25 once to search anywhere in six countries. No subscription.">
+<meta name="twitter:description" content="Poverty Point, the Grand Canyon, Bodie, Yorktown, Stonehenge and 7 more — as often as you like, no account. Then $25 once to search anywhere in seven countries. No subscription.">
 <meta name="twitter:image" content="https://lidarman.com/assets/twelve-demos-card.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4451,7 +4451,10 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     // Still biased to US territory, but no longer limited to it. Elevation
     // comes from whichever national survey covers the spot — USGS 3DEP,
     // the Environment Agency in England, Kartverket in Norway, AHN in the
-    // Netherlands, GUGiK in Poland — so all five are worth resolving.
+    // Netherlands, GUGiK in Poland, LINZ in New Zealand — so all are worth
+    // resolving. Adding nz (2026-10-05) changed no US or UK answer; it only
+    // fixed NZ names (Arrowtown, Napier, Auckland) and moved a bare
+    // "Christchurch" from Dorset to Canterbury NZ.
     //
     // Nominatim will not do that ranking for us, and neither obvious approach
     // survives contact with it. Measured 2026-09-22:
@@ -4473,7 +4476,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     // vs 0.265, Amsterdam 0.788 vs 0.467, Warsaw 0.800 vs 0.465). 0.25 splits
     // them without landing near either group.
     const url = 'https://nominatim.openstreetmap.org/search?' + new URLSearchParams({
-      q: text, format: 'jsonv2', limit: '6', countrycodes: 'us,pr,vi,gb,no,nl,pl',
+      q: text, format: 'jsonv2', limit: '6', countrycodes: 'us,pr,vi,gb,no,nl,pl,nz',
       addressdetails: '1'
     });
     // fetch has no timeout of its own, and this is a free shared service whose
