@@ -633,6 +633,28 @@
   #locationStatus { font-size: 0.78em; color: #999; margin-top: 5px; min-height: 1.1em; }
   #trackStatus { font-size: 0.85em; color: #ccc; margin-top: 6px; min-height: 1.1em; line-height: 1.5; }
   #trackStatus b { font-size: 1.15em; color: #fff; }
+  #trailStatus { font-size: 0.85em; color: #ccc; margin-top: 6px; min-height: 1.1em; line-height: 1.5; }
+  #trailStatus b { color: #ff4081; }
+  #trailList .trail-head { font-size: 0.75em; color: #999; margin: 10px 0 4px; text-transform: uppercase; letter-spacing: .05em; }
+  #trailList .trail-row { border: 1px solid #333; border-radius: 4px; padding: 6px 8px; margin-top: 5px; background: #1e1e1e; }
+  #trailList .trail-name { font-size: 0.85em; color: #eee; }
+  #trailList .trail-warn { color: #ffb74d; font-size: 0.9em; }
+  #trailList .trail-meta { font-size: 0.75em; color: #999; margin: 2px 0 5px; }
+  #trailList .trail-acts { display: flex; gap: 5px; }
+  #trailList .trail-acts button { flex: 1; padding: 4px 6px; border-radius: 4px; border: 1px solid #444; background: #262626; color: #ddd; font-size: 0.78em; cursor: pointer; }
+  #trailList .trail-acts button[data-act="del"] { flex: 0 0 34px; }
+  #view3d { position: fixed; inset: 0; z-index: 10050; background: #111; display: flex; flex-direction: column; }
+  #view3d[hidden] { display: none; }
+  body.v3-open { overflow: hidden; }
+  #v3Bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 8px 14px; background: #1b1b1b; border-bottom: 1px solid #333; color: #ddd; font-size: 0.9em; }
+  #v3Bar label { display: flex; align-items: center; gap: 6px; }
+  #v3Bar select { background: #262626; color: #ddd; border: 1px solid #444; border-radius: 4px; padding: 3px 6px; }
+  #v3Height { width: 110px; }
+  #v3Close { margin-left: auto; background: #7a3b2e; color: #fff; border: 0; border-radius: 4px; padding: 6px 12px; cursor: pointer; font-size: 0.95em; }
+  #v3Stage { flex: 1; position: relative; min-height: 0; touch-action: none; }
+  #v3Stage canvas { display: block; width: 100%; height: 100%; }
+  #v3Status:empty { display: none; }
+  #v3Status { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); background: rgba(0,0,0,.65); color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 0.82em; pointer-events: none; max-width: calc(100% - 32px); text-align: center; }
   #trialStatus { font-size: 0.8em; color: #ffb74d; margin-top: 10px; line-height: 1.5; }
   #trialStatus.unlocked { color: #81c784; }
   #paywallRestore { margin-top: 12px; font-size: 0.8em; }
@@ -1370,6 +1392,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       <button class="secondary-btn" id="viewToggleBtn" type="button" disabled>🔦 Lidar view: on</button>
       <button class="secondary-btn" id="spyToggleBtn" type="button" disabled>🔍 Spy lens: off</button>
       <button class="secondary-btn" id="circlesToggleBtn" type="button" disabled>⭕ Circles: on</button>
+      <button class="secondary-btn" id="view3dBtn" type="button" disabled>🧊 3D view</button>
       <button class="secondary-btn" id="clearBtn" type="button">🧹 Clear</button>
       <button class="secondary-btn" id="soundToggleBtn" type="button">🔊 Sound: on</button>
       <label for="baseSelect">Base map</label>
@@ -1493,9 +1516,12 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       </div>
       </details>
       <details class="dock-sec" id="secMore">
-        <summary>Live tracking</summary>
+        <summary>Live tracking &amp; trails</summary>
         <button class="secondary-btn" id="trackBtn" type="button">🎯 Start tracking</button>
         <div id="trackStatus"></div>
+        <button class="secondary-btn" id="trailBtn" type="button">🔴 Record my trail</button>
+        <div id="trailStatus"></div>
+        <div id="trailList"></div>
       </details>
     </div>
     </div><!-- /#panelDrawer -->
@@ -1503,6 +1529,18 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     <button id="drawerToggle" type="button" aria-controls="panelDrawer">☰ Search &amp; tools</button>
   </div>
   <div id="featureInfo" hidden></div>
+  <div id="view3d" hidden>
+    <div id="v3Bar">
+      <b>🧊 3D view</b>
+      <label>Colors <select id="v3Style"><option value="composite">Composite</option><option value="hillshade">Hillshade</option><option value="slope">Slope</option><option value="lrm">Local relief</option></select></label>
+      <label>Height <input type="range" id="v3Height" min="1" max="6" step="0.5" value="2"> <span id="v3HeightVal">2x</span></label>
+      <label><input type="checkbox" id="v3Circles" checked> Circles</label>
+      <label><input type="checkbox" id="v3Spin"> Spin</label>
+      <button type="button" id="v3Close">✕ Close</button>
+    </div>
+    <div id="v3Stage"></div>
+    <div id="v3Status"></div>
+  </div>
 </div>
 
 
@@ -4141,6 +4179,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         currentStyles = data.styles || { composite: data.composite_url };
         compositeOverlay = L.imageOverlay(`${API_BASE}${data.composite_url}`, data.bounds, { opacity: 0.7 });
         compositeOverlay.addTo(map);
+        setScan3d(data.elevation, data.bounds);
         map.invalidateSize();
         framedByResult = true;
         map.fitBounds(data.bounds);
@@ -5371,6 +5410,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     map.closePopup();
 
     if (compositeOverlay) { map.removeLayer(compositeOverlay); compositeOverlay = null; }
+    setScan3d(null, null);
     spyOn = false;
     spyToggleBtn.disabled = true;
     spyToggleBtn.textContent = '🔍 Spy lens: off';
@@ -5928,6 +5968,538 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       })
       .catch(err => setStatus('Gift code request failed: ' + err, true));
   }
+
+
+  // ---- record trail ---------------------------------------------------------
+  // Draws the path you walk over the scan and keeps it on this device, so a
+  // second visit can see what the first one already covered. Nothing is sent
+  // anywhere: trails live in localStorage, and GPX export is a download.
+  //
+  // Its own watchPosition, separate from Start tracking: that one reports the
+  // distance to a pin and may be stopped and restarted many times on one walk.
+  //
+  // localStorage writes can throw (quota, blocked site data — see `store`
+  // above), and `store.set` deliberately swallows that. A trail is the one
+  // thing here a visitor would be upset to lose silently, so it uses its own
+  // writes that report failure, and the GPX button stays on screen either way.
+  const TRAILS_KEY = 'lidarmanTrails';
+  const TRAIL_ACTIVE_KEY = 'lidarmanTrailActive';
+  const TRAIL_MIN_STEP_M = 3;       // GPS jitter while standing still is ~1-5 m
+  const TRAIL_MAX_ACCURACY_M = 35;  // fixes worse than this draw zigzags
+  const trailBtn = document.getElementById('trailBtn');
+  const trailStatus = document.getElementById('trailStatus');
+  const trailListEl = document.getElementById('trailList');
+  const trailsShown = L.layerGroup().addTo(map);
+  const trailLayers = new Map();    // trail id -> polyline currently on the map
+  let trailWatchId = null, trailWatchdog = null, trailWakeLock = null;
+  let trail = null;                 // the one being recorded
+  let trailLine = null, trailDot = null, trailClock = null;
+  let trailMemoryOnly = [];         // finished trails storage refused to keep
+
+  function readTrails() {
+    try { return JSON.parse(localStorage.getItem(TRAILS_KEY) || '[]'); } catch (e) { return []; }
+  }
+  function writeTrails(list) {
+    try { localStorage.setItem(TRAILS_KEY, JSON.stringify(list)); return true; } catch (e) { return false; }
+  }
+  function writeActive() {
+    try { localStorage.setItem(TRAIL_ACTIVE_KEY, JSON.stringify(trail)); } catch (e) { /* GPX still works */ }
+  }
+  function clearActive() {
+    try { localStorage.removeItem(TRAIL_ACTIVE_KEY); } catch (e) { /* nothing to clear */ }
+  }
+
+  function fmtDist(m) {
+    const mi = m / 1609.344;
+    return mi >= 0.1 ? `${mi.toFixed(2)} mi` : `${Math.round(m * 3.28084)} ft`;
+  }
+  function fmtDuration(ms) {
+    const min = Math.floor(ms / 60000);
+    if (min < 1) return 'under 1 min';
+    return min < 60 ? `${min} min` : `${Math.floor(min / 60)} h ${min % 60} min`;
+  }
+
+  function gpxFor(t) {
+    const start = Date.parse(t.started);
+    const pts = t.points.map(([la, lo, s]) =>
+      `<trkpt lat="${la}" lon="${lo}"><time>${new Date(start + s * 1000).toISOString()}</time></trkpt>`).join('\n');
+    return '<?xml version="1.0" encoding="UTF-8"?>\n'
+      + '<gpx version="1.1" creator="Lidarman" xmlns="http://www.topografix.com/GPX/1/1">\n'
+      + `<trk><name>${escapeHtml(t.name)}</name><trkseg>\n${pts}\n</trkseg></trk>\n</gpx>\n`;
+  }
+  function downloadGpx(t) {
+    const blob = new Blob([gpxFor(t)], { type: 'application/gpx+xml' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = t.name.replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '_') + '.gpx';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+
+  function allTrails() { return trailMemoryOnly.concat(readTrails()); }
+
+  function showTrail(t, fit) {
+    if (trailLayers.has(t.id)) return;
+    const line = L.polyline(t.points.map(p => [p[0], p[1]]),
+      { color: '#ff4081', weight: 4, opacity: 0.9, interactive: false });
+    trailsShown.addLayer(line);
+    trailLayers.set(t.id, line);
+    if (fit && t.points.length) { map.fitBounds(line.getBounds(), { maxZoom: 19, padding: [30, 30] }); window.revealMap(); }
+  }
+  function hideTrail(id) {
+    const line = trailLayers.get(id);
+    if (line) { trailsShown.removeLayer(line); trailLayers.delete(id); }
+  }
+
+  function renderTrailList() {
+    const list = allTrails();
+    if (!list.length) { trailListEl.innerHTML = ''; return; }
+    trailListEl.innerHTML = '<div class="trail-head">Your trails (kept on this device)</div>' + list.map(t => {
+      const when = new Date(t.started).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+      const unsaved = trailMemoryOnly.includes(t) ? ' <span class="trail-warn">not saved, download it</span>' : '';
+      return `<div class="trail-row" data-id="${escapeHtml(t.id)}">
+          <div class="trail-name">${escapeHtml(t.name)}${unsaved}</div>
+          <div class="trail-meta">${when} · ${fmtDist(t.dist)} · ${fmtDuration(t.ms || 0)}</div>
+          <div class="trail-acts">
+            <button type="button" data-act="show">${trailLayers.has(t.id) ? 'Hide' : 'Show'}</button>
+            <button type="button" data-act="gpx">GPX</button>
+            <button type="button" data-act="del" title="Delete this trail">✕</button>
+          </div></div>`;
+    }).join('');
+  }
+
+  trailListEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-act]');
+    const row = e.target.closest('.trail-row');
+    if (!btn || !row) return;
+    const id = row.dataset.id;
+    const t = allTrails().find(x => x.id === id);
+    if (!t) return;
+    if (btn.dataset.act === 'show') {
+      if (trailLayers.has(id)) hideTrail(id); else showTrail(t, true);
+    } else if (btn.dataset.act === 'gpx') {
+      downloadGpx(t);
+    } else if (btn.dataset.act === 'del') {
+      if (!confirm(`Delete "${t.name}"? This can't be undone.`)) return;
+      hideTrail(id);
+      trailMemoryOnly = trailMemoryOnly.filter(x => x.id !== id);
+      writeTrails(readTrails().filter(x => x.id !== id));
+    }
+    renderTrailList();
+  });
+
+  function updateTrailStatus(extra) {
+    if (!trail) return;
+    const n = trail.points.length;
+    trailStatus.innerHTML = `<b>● Recording</b> · ${fmtDuration(Date.now() - Date.parse(trail.started))}`
+      + ` · ${fmtDist(trail.dist)} · ${n} point${n === 1 ? '' : 's'}`
+      + `<br>${extra || 'Keep this page open. Phones pause GPS when the screen locks.'}`;
+  }
+
+  async function holdScreenOn() {
+    try { if ('wakeLock' in navigator) trailWakeLock = await navigator.wakeLock.request('screen'); }
+    catch (e) { trailWakeLock = null; }
+  }
+  // A wake lock is dropped whenever the page is hidden; take it back on return.
+  document.addEventListener('visibilitychange', () => {
+    if (trail && document.visibilityState === 'visible') holdScreenOn();
+  });
+
+  function endTrailWatch() {
+    if (trailWatchId !== null) navigator.geolocation.clearWatch(trailWatchId);
+    if (trailWatchdog !== null) clearTimeout(trailWatchdog);
+    if (trailClock !== null) clearInterval(trailClock);
+    trailWatchId = trailWatchdog = trailClock = null;
+    if (trailWakeLock) { trailWakeLock.release().catch(() => {}); trailWakeLock = null; }
+    if (trailDot) { map.removeLayer(trailDot); trailDot = null; }
+    if (trailLine) { map.removeLayer(trailLine); trailLine = null; }
+    trailBtn.textContent = '🔴 Record my trail';
+  }
+
+  // Ends a recording and keeps it. Also used for a trail recovered after the
+  // page was closed mid-walk, so a dead battery doesn't cost the whole walk.
+  function finishTrail(t, recovered) {
+    if (!t || t.points.length < 2) return 'Too short to keep. Walk a little farther next time.';
+    t.ms = (t.points[t.points.length - 1][2]) * 1000;
+    if (recovered) t.name += ' (recovered)';
+    const list = readTrails();
+    list.unshift(t);
+    if (writeTrails(list)) {
+      showTrail(t, false);
+      return `Saved "${t.name}": ${fmtDist(t.dist)}.`;
+    }
+    trailMemoryOnly.unshift(t);
+    showTrail(t, false);
+    return "This browser wouldn't store it, so it will be gone after a reload. Tap GPX below to keep it.";
+  }
+
+  function stopTrail() {
+    const t = trail;
+    trail = null;
+    endTrailWatch();
+    clearActive();
+    trailStatus.textContent = finishTrail(t, false);
+    renderTrailList();
+  }
+
+  trailBtn.addEventListener('click', () => {
+    if (trail) { stopTrail(); return; }
+    if (!navigator.geolocation) { trailStatus.textContent = "This browser can't share your location."; return; }
+    const now = new Date();
+    trail = {
+      id: 't' + now.getTime().toString(36),
+      name: 'Trail ' + now.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }),
+      started: now.toISOString(), points: [], dist: 0,
+    };
+    trailLine = L.polyline([], { color: '#ff4081', weight: 4, opacity: 0.95, interactive: false }).addTo(map);
+    trailBtn.textContent = '⏹ Stop and save trail';
+    trailStatus.textContent = 'Getting your position…';
+    holdScreenOn();
+    trailClock = setInterval(() => updateTrailStatus(), 30000);
+    trailWatchdog = setTimeout(() => {
+      if (trail && !trail.points.length) {
+        trail = null;
+        endTrailWatch();
+        trailStatus.textContent = GEO_BLOCKED_MSG;
+      }
+    }, GEO_WATCHDOG_MS);
+    trailWatchId = navigator.geolocation.watchPosition((pos) => {
+      if (!trail) return;
+      if (trailWatchdog !== null) { clearTimeout(trailWatchdog); trailWatchdog = null; }
+      const { latitude: la, longitude: lo, accuracy } = pos.coords;
+      const here = [la, lo];
+      if (!trailDot) {
+        trailDot = L.circleMarker(here, { radius: 7, color: '#fff', weight: 2, fillColor: '#ff4081', fillOpacity: 1, interactive: false }).addTo(map);
+        if (!map.getBounds().contains(here)) map.setView(here, Math.max(map.getZoom(), 17));
+      } else {
+        trailDot.setLatLng(here);
+      }
+      if (accuracy > TRAIL_MAX_ACCURACY_M) {
+        updateTrailStatus(`Waiting for a better GPS fix (±${Math.round(accuracy)} m)…`);
+        return;
+      }
+      const pts = trail.points;
+      const last = pts[pts.length - 1];
+      const step = last ? haversineDistanceMeters(last[0], last[1], la, lo) : 0;
+      if (last && step < TRAIL_MIN_STEP_M) { updateTrailStatus(); return; }
+      pts.push([+la.toFixed(6), +lo.toFixed(6), Math.round((pos.timestamp - Date.parse(trail.started)) / 1000)]);
+      trail.dist += step;
+      trailLine.addLatLng(here);
+      if (pts.length % 5 === 1) writeActive();
+      updateTrailStatus();
+    }, (err) => {
+      if (!trail) return;
+      if (err.code === 1 || !trail.points.length) {
+        trail = null;
+        endTrailWatch();
+        clearActive();
+        trailStatus.textContent = err.code === 1 ? GEO_BLOCKED_MSG : GEO_FAILED_MSG;
+      } else {
+        updateTrailStatus('GPS dropped out for a moment. Still recording.');
+      }
+    }, { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 });
+  });
+
+  // A trail still marked active means the page closed mid-walk. Keep it.
+  (function recoverTrail() {
+    let t = null;
+    try { t = JSON.parse(localStorage.getItem(TRAIL_ACTIVE_KEY) || 'null'); } catch (e) { t = null; }
+    if (!t) return;
+    clearActive();
+    const msg = finishTrail(t, true);
+    if (t.points && t.points.length >= 2) trailStatus.textContent = msg;
+  })();
+  renderTrailList();
+
+  // ---- 3D view ----------------------------------------------------------------
+  // The scan's own 1 m bare-earth DEM as a 3D surface, with the current colour
+  // style and the circles draped over it. Built from elevation_wgs84.png, which
+  // the backend writes on the same grid as the style images (R = high byte,
+  // G = low byte of height scaled between elevation.min and .max, alpha =
+  // has data). A search answered from a cache made before that existed has no
+  // elevation, and the button says so instead of failing.
+  //
+  // three.js is loaded only when someone opens the view, so the map page
+  // carries none of its weight otherwise.
+  const view3dBtn = document.getElementById('view3dBtn');
+  const v3 = {
+    root: document.getElementById('view3d'),
+    stage: document.getElementById('v3Stage'),
+    status: document.getElementById('v3Status'),
+    style: document.getElementById('v3Style'),
+    height: document.getElementById('v3Height'),
+    heightVal: document.getElementById('v3HeightVal'),
+    circles: document.getElementById('v3Circles'),
+    spin: document.getElementById('v3Spin'),
+  };
+  let scanElevation = null, scanBounds = null;
+  let three = null;      // live scene, torn down on close
+  let threeLib = null;
+
+  function setScan3d(elevation, bounds) {
+    scanElevation = elevation || null;
+    scanBounds = bounds || null;
+    view3dBtn.disabled = !(scanElevation && scanBounds);
+    view3dBtn.title = scanElevation ? 'Turn and tilt this scan in 3D'
+      : (scanBounds ? 'Search this spot again to get 3D' : 'Run a search first');
+  }
+  setScan3d(null, null);
+
+  function loadThree() {
+    if (!threeLib) {
+      threeLib = Promise.all([
+        import('https://cdn.jsdelivr.net/npm/three@0.169.0/+esm'),
+        import('https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/controls/OrbitControls.js/+esm'),
+      ]).catch(e => { threeLib = null; throw e; });
+    }
+    return threeLib;
+  }
+
+  // CORS, and a query string: Leaflet already fetched these PNGs as plain
+  // <img>s, and a cached copy from that request carries no CORS header, which
+  // would taint the canvas and fail the WebGL upload.
+  function loadCorsImage(url) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('image failed'));
+      img.src = url + (url.includes('?') ? '&' : '?') + 'v3d=1';
+    });
+  }
+
+  // The style image with the scan's circles painted on, at 2x so the rings
+  // stay crisp when you lean in close.
+  async function drapeCanvas(styleKey, withCircles) {
+    const url = currentStyles[styleKey] || currentStyles.composite;
+    const img = await loadCorsImage(`${API_BASE}${url}`);
+    const c = document.createElement('canvas');
+    c.width = img.naturalWidth * 2;
+    c.height = img.naturalHeight * 2;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    if (withCircles) {
+      const [[s, w], [n, e]] = scanBounds;
+      const r0 = Math.max(7, c.width / 110);
+      candidateMarkers.eachLayer(m => {
+        if (!m.getLatLng) return;
+        const ll = m.getLatLng(), o = m.options || {};
+        const x = (ll.lng - w) / (e - w) * c.width, y = (n - ll.lat) / (n - s) * c.height;
+        const r = r0 * ((o.radius || 6) / 6);
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fillStyle = o.fillColor || o.color || '#ffd54f';
+        ctx.globalAlpha = Math.min(0.6, (o.fillOpacity || 0.2) + 0.1);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.setLineDash(o.dashArray ? [r * 0.5, r * 0.5] : []);
+        ctx.lineWidth = Math.max(2, (o.weight || 2) * c.width / 900);
+        ctx.strokeStyle = o.color || '#ffd54f';
+        ctx.stroke();
+      });
+      ctx.setLineDash([]);
+    }
+    return c;
+  }
+
+  function skyTexture(THREE) {
+    const c = document.createElement('canvas');
+    c.width = 2; c.height = 256;
+    const g = c.getContext('2d').createLinearGradient(0, 0, 0, 256);
+    g.addColorStop(0, '#3d6fa6');
+    g.addColorStop(0.55, '#a9c6e0');
+    g.addColorStop(1, '#e9e2d0');
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 2, 256);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }
+
+  function applyHeights() {
+    if (!three) return;
+    const { geom, heights, valid, base, gw, gh } = three;
+    const ex = parseFloat(v3.height.value);
+    v3.heightVal.textContent = ex === 1 ? 'true height' : `${ex}x`;
+    const pos = geom.attributes.position;
+    for (let i = 0; i < gw * gh; i++) pos.setY(i, valid[i] ? (heights[i] - base) * ex : 0);
+    pos.needsUpdate = true;
+    geom.computeVertexNormals();
+    geom.computeBoundingSphere();
+    // Aim at the middle of the relief, so taller exaggeration doesn't leave the
+    // view staring at the scan's feet.
+    three.controls.target.y = three.relief * ex / 3;
+  }
+
+  async function applyDrape() {
+    if (!three) return;
+    const { THREE } = three;
+    const c = await drapeCanvas(v3.style.value, v3.circles.checked);
+    if (!three) return;
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = three.renderer.capabilities.getMaxAnisotropy();
+    if (three.mat.map) three.mat.map.dispose();
+    three.mat.map = tex;
+    three.mat.needsUpdate = true;
+  }
+
+  function close3d() {
+    v3.root.hidden = true;
+    document.body.classList.remove('v3-open');
+    if (!three) return;
+    cancelAnimationFrame(three.raf);
+    window.removeEventListener('resize', three.onResize);
+    three.controls.dispose();
+    three.geom.dispose();
+    if (three.mat.map) three.mat.map.dispose();
+    three.mat.dispose();
+    three.renderer.dispose();
+    three.renderer.domElement.remove();
+    three = null;
+  }
+
+  async function open3d() {
+    if (!scanElevation || !scanBounds) return;
+    v3.root.hidden = false;
+    document.body.classList.add('v3-open');
+    v3.style.value = styleSelect.value;
+    v3.circles.checked = map.hasLayer(candidateMarkers);
+    v3.status.textContent = 'Building the 3D view…';
+    let THREE, OrbitControls, elevImg;
+    try {
+      const [mod, ctl] = await loadThree();
+      THREE = mod; OrbitControls = ctl.OrbitControls;
+      elevImg = await loadCorsImage(`${API_BASE}${scanElevation.url}`);
+    } catch (e) {
+      v3.status.textContent = "Couldn't load the 3D view. Check your connection and try again.";
+      return;
+    }
+    if (v3.root.hidden) return;   // closed while loading
+
+    // Heights, thinned to at most ~500 vertices a side. A 1000 m scan at
+    // 1 m is a million cells; 250,000 vertices still shows every foundation.
+    const W = elevImg.naturalWidth, H = elevImg.naturalHeight;
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const cx = cv.getContext('2d', { willReadFrequently: true });
+    cx.drawImage(elevImg, 0, 0);
+    const px = cx.getImageData(0, 0, W, H).data;
+    const step = Math.max(1, Math.ceil(Math.max(W, H) / 500));
+    const gw = Math.floor((W - 1) / step) + 1, gh = Math.floor((H - 1) / step) + 1;
+    const span = scanElevation.max - scanElevation.min;
+    const heights = new Float32Array(gw * gh), valid = new Uint8Array(gw * gh);
+    let base = Infinity, top = -Infinity;
+    for (let r = 0; r < gh; r++) for (let q = 0; q < gw; q++) {
+      const k = ((r * step) * W + q * step) * 4, i = r * gw + q;
+      if (px[k + 3] > 127) {
+        heights[i] = scanElevation.min + ((px[k] << 8) | px[k + 1]) / 65535 * span;
+        valid[i] = 1;
+        if (heights[i] < base) base = heights[i];
+        if (heights[i] > top) top = heights[i];
+      }
+    }
+
+    // The scan is a tilted square inside its north-up image, so the image's
+    // corners are empty. Dropping those vertices to the floor made a curtain
+    // along every edge, stretched over the texture. Give each empty vertex the
+    // height of the nearest real one in its row (then column), so the empty
+    // corners lie flat against the edge and alphaTest simply leaves them out.
+    const fillRow = (get, set, len) => {
+      let last = -1;
+      for (let q = 0; q < len; q++) {
+        if (get(q) !== null) {
+          if (last < q - 1) for (let k = last + 1; k < q; k++) set(k, get(last >= 0 && q - k > k - last ? last : q));
+          last = q;
+        }
+      }
+      if (last >= 0) for (let k = last + 1; k < len; k++) set(k, get(last));
+      return last >= 0;
+    };
+    const filled = Float32Array.from(heights);
+    const has = Uint8Array.from(valid);
+    for (let r = 0; r < gh; r++) {
+      fillRow(q => (has[r * gw + q] ? filled[r * gw + q] : null),
+        (q, v) => { filled[r * gw + q] = v; has[r * gw + q] = 2; }, gw);
+    }
+    for (let q = 0; q < gw; q++) {
+      fillRow(r => (has[r * gw + q] ? filled[r * gw + q] : null),
+        (r, v) => { filled[r * gw + q] = v; has[r * gw + q] = 2; }, gh);
+    }
+
+    const [[s, w], [n, e]] = scanBounds;
+    const latMid = (s + n) / 2 * Math.PI / 180;
+    const widthM = (e - w) * 111320 * Math.cos(latMid);
+    const depthM = (n - s) * 110574;
+    const size = Math.max(widthM, depthM);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(v3.stage.clientWidth, v3.stage.clientHeight);
+    v3.stage.appendChild(renderer.domElement);
+    const scene = new THREE.Scene();
+    scene.background = skyTexture(THREE);
+    scene.fog = new THREE.Fog(0xd8dde0, size * 1.6, size * 4);
+    const camera = new THREE.PerspectiveCamera(45, v3.stage.clientWidth / v3.stage.clientHeight, 0.5, size * 10);
+    // A tall phone screen sees less across, so start farther back there.
+    const back = Math.max(1, 1.15 / camera.aspect);
+    camera.position.set(0, size * 0.55 * back, size * 0.85 * back);
+
+    // PlaneGeometry lays its vertices out row by row from the top edge, the
+    // same order as the image; rotated flat, the top edge is north (-z).
+    const geom = new THREE.PlaneGeometry(widthM, depthM, gw - 1, gh - 1);
+    geom.rotateX(-Math.PI / 2);
+    const mat = new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0, side: THREE.DoubleSide, alphaTest: 0.5, transparent: false });
+    const mesh = new THREE.Mesh(geom, mat);
+    scene.add(mesh);
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x5a5040, 1.9));
+    const sun = new THREE.DirectionalLight(0xffffff, 1.1);
+    sun.position.set(-size, size * 1.2, -size * 0.6);
+    scene.add(sun);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.maxPolarAngle = Math.PI * 0.47;
+    controls.minDistance = size * 0.15;
+    controls.maxDistance = size * 4;
+    controls.autoRotateSpeed = 0.6;
+    controls.autoRotate = v3.spin.checked;
+
+    const onResize = () => {
+      if (!three) return;
+      camera.aspect = v3.stage.clientWidth / v3.stage.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(v3.stage.clientWidth, v3.stage.clientHeight);
+    };
+    window.addEventListener('resize', onResize);
+
+    three = { THREE, renderer, scene, camera, controls, geom, mat, heights: filled, valid: has, base, relief: top - base, gw, gh, onResize, raf: 0 };
+    applyHeights();
+    try { await applyDrape(); } catch (e) { v3.status.textContent = "Couldn't load the scan image."; }
+    if (!three) return;
+    v3.status.textContent = matchMedia('(pointer: coarse)').matches
+      ? 'Drag to turn · pinch to zoom · two fingers to slide'
+      : 'Drag to turn · scroll to zoom · right-drag to slide';
+    const hint = v3.status.textContent;
+    setTimeout(() => { if (v3.status.textContent === hint) v3.status.textContent = ''; }, 8000);
+    const loop = () => {
+      if (!three) return;
+      three.raf = requestAnimationFrame(loop);
+      controls.update();
+      renderer.render(scene, camera);
+    };
+    loop();
+  }
+
+  view3dBtn.addEventListener('click', open3d);
+  document.getElementById('v3Close').addEventListener('click', close3d);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !v3.root.hidden) close3d(); });
+  v3.height.addEventListener('input', applyHeights);
+  v3.style.addEventListener('change', () => applyDrape().catch(() => {}));
+  v3.circles.addEventListener('change', () => applyDrape().catch(() => {}));
+  v3.spin.addEventListener('change', () => { if (three) three.controls.autoRotate = v3.spin.checked; });
 
   refreshTrialStatus();
   loadSaved();
