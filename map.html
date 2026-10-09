@@ -9,18 +9,18 @@
 <title>Lidarman map — search LiDAR terrain for old foundations</title>
 <link rel="canonical" href="https://lidarman.com/map.html">
 <link rel="icon" type="image/png" href="assets/icon-192.png">
-<meta name="description" content="The Lidarman map: search airborne LiDAR in the US, England, Wales, Norway, the Netherlands, Poland and New Zealand for old foundations, cellar holes and sunken paths.">
+<meta name="description" content="The Lidarman map: search airborne LiDAR in the US, England, Wales, Scotland, Norway, the Netherlands, Poland and New Zealand for old foundations, cellar holes and sunken paths.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://lidarman.com/map.html">
 <meta property="og:title" content="12 historic places. Search them free.">
-<meta property="og:description" content="Poverty Point, the Grand Canyon, Bodie, Yorktown, Stonehenge and 7 more — as often as you like, no account. Then $25 once to search anywhere in seven countries. No subscription.">
+<meta property="og:description" content="Poverty Point, the Grand Canyon, Bodie, Yorktown, Stonehenge and 7 more — as often as you like, no account. Then $25 once to search anywhere in eight countries. No subscription.">
 <meta property="og:image" content="https://lidarman.com/assets/twelve-demos-card.jpg">
 <meta property="og:image:alt" content="A Lidarman scan of the Bodie ghost town in California, its old street grid circled, beside the free demo places and the $25-once price.">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="12 historic places. Search them free.">
-<meta name="twitter:description" content="Poverty Point, the Grand Canyon, Bodie, Yorktown, Stonehenge and 7 more — as often as you like, no account. Then $25 once to search anywhere in seven countries. No subscription.">
+<meta name="twitter:description" content="Poverty Point, the Grand Canyon, Bodie, Yorktown, Stonehenge and 7 more — as often as you like, no account. Then $25 once to search anywhere in eight countries. No subscription.">
 <meta name="twitter:image" content="https://lidarman.com/assets/twelve-demos-card.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1268,7 +1268,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
           <option value="auto">Where I'm looking</option>
           <option value="us">United States</option>
           <option value="england">England</option>
-          <option value="scotland">Scotland — map only</option>
+          <option value="scotland">Scotland</option>
           <option value="wales">Wales</option>
           <option value="netherlands">Netherlands</option>
           <option value="norway">Norway</option>
@@ -1286,19 +1286,11 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         <button class="secondary-btn" id="smBtn" type="button">🏺 Show scheduled monuments</button>
         <button class="secondary-btn" id="ebBtn" type="button">⚔️ Show English battlefields</button>
         <button class="secondary-btn" id="ecBtn" type="button">🏰 Show castle sites</button>
-        <!-- Scotland is the one country here with layers but no scan. Said on
-             the button group rather than only in the FAQ, because this is
-             where someone switches the layers on and reasonably assumes a
-             search will work too. -->
         </div>
         <div class="layer-country" data-country="scotland">
-        <span class="layer-group-label">Scotland — map only</span>
+        <span class="layer-group-label">Scotland</span>
         <button class="secondary-btn" id="sumBtn" type="button">🏺 Show scheduled monuments</button>
         <button class="secondary-btn" id="sucBtn" type="button">🏰 Show castle sites</button>
-        <div class="layer-note">These show you where things are. You can't scan
-          Scotland yet — its lidar covers about a third of the country and is
-          published as pictures rather than ground heights, so there's nothing
-          to read a hillshade from.</div>
         </div>
         <div class="layer-country" data-country="wales">
         <span class="layer-group-label">Wales</span>
