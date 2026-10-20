@@ -547,6 +547,7 @@
     border-color: #3a7bd5; background: #1d2b3f; color: #cfe1fa;
   }
   #layerNone { font-size: 0.82em; color: #9a9a9a; line-height: 1.5; margin: 8px 0; }
+  .layer-note { font-size: 0.82em; color: #9a9a9a; line-height: 1.5; margin: 0 0 8px; }
   .tool-side label { display: block; font-size: 0.78em; color: #aaa; margin: 7px 0 2px; }
   .trail-legend {
     background: rgba(20,20,20,0.82); color: #eee; padding: 7px 9px;
@@ -846,6 +847,23 @@
     background: var(--accent); color: white; border: none; padding: 12px 24px; border-radius: 4px;
     font-size: 1em; cursor: pointer; margin-top: 16px; font-family: var(--serif);
   }
+  /* For someone who hasn't run a single demo yet. A stranger on a phone
+     tapped the locked search box, met $25 before seeing a scan, and left
+     (2026-10-19). This puts the free places one tap away instead. */
+  #paywallCard button.try-free {
+    display: block; width: 100%; margin-top: 12px; padding: 11px 16px; border-radius: 4px;
+    background: none; border: 1px solid var(--accent); color: var(--accent);
+    font-size: 1em; cursor: pointer; font-family: var(--serif);
+  }
+  #paywallCard button.try-free[hidden] { display: none; }
+  #paywallCard button.try-free:hover { background: rgba(122, 59, 46, 0.08); }
+  @keyframes demoFlash {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 213, 79, 0); }
+    50% { box-shadow: 0 0 0 4px rgba(255, 213, 79, 0.85); }
+  }
+  #demoBox.demo-flash { border-radius: 6px; animation: demoFlash 0.8s ease-in-out 3; }
+  /* clear the phone drawer's sticky header when scrolled into view */
+  #demoBox { scroll-margin-top: 64px; }
   #paywallCard button.secondary {
     background: none; border: none; color: var(--ink-soft); text-decoration: underline;
     cursor: pointer; margin-top: 12px; display: block; margin-left: auto; margin-right: auto; font-family: var(--serif);
@@ -1273,6 +1291,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
           <option value="netherlands">Netherlands</option>
           <option value="norway">Norway</option>
           <option value="poland">Poland</option>
+          <option value="nz">New Zealand</option>
           <option value="all">Every country</option>
         </select>
         <button class="secondary-btn" id="referenceBtn" type="button">🌐 Borders &amp; names: on</button>
@@ -1286,6 +1305,10 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         <button class="secondary-btn" id="smBtn" type="button">🏺 Show scheduled monuments</button>
         <button class="secondary-btn" id="ebBtn" type="button">⚔️ Show English battlefields</button>
         <button class="secondary-btn" id="ecBtn" type="button">🏰 Show castle sites</button>
+        </div>
+        <div class="layer-country" data-country="nz">
+        <span class="layer-group-label">New Zealand</span>
+        <p class="layer-note">No New Zealand map layers yet, but lidar searches work anywhere in the country.</p>
         </div>
         <div class="layer-country" data-country="scotland">
         <span class="layer-group-label">Scotland</span>
@@ -1538,9 +1561,10 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 
 <div id="paywallOverlay">
   <div id="paywallCard">
-    <h3>Free trial used up</h3>
+    <h3 id="paywallTitle">Unlock Lidarman</h3>
     <p id="paywallMessage">Unlock to search anywhere you like.</p>
     <button class="primary" id="unlockBtn">Unlock — $25 one-time</button>
+    <button class="try-free" id="tryFreeBtn" type="button" hidden>Not sure yet? Try a free place first</button>
     <button class="secondary" id="paywallCloseBtn">Maybe later</button>
     <div id="paywallRestore"><a id="paywallRestoreLink">Already paid? Restore access</a></div>
   </div>
@@ -3174,6 +3198,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     norway:      [[57.9, 71.3, 4.0, 31.5]],
     netherlands: [[50.70, 53.60, 3.30, 7.30]],
     poland:      [[49.00, 54.90, 14.10, 24.20]],
+    nz:          [[-47.40, -34.00, 166.40, 178.90]],
   };
   // 'auto' follows the map, a country name pins the list to that country, and
   // 'all' shows the lot. Read fresh on every sync rather than cached, so the
@@ -3935,11 +3960,29 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 
   function showPaywall(message) {
     paywallMessage.textContent = message || "Unlock to search anywhere you like.";
+    // Free demo searches are unlimited, so nobody has "used up" anything.
+    // The old fixed heading said so anyway, to visitors who hadn't searched once.
+    document.getElementById('paywallTitle').textContent =
+      message === LOCKED_SEARCH_MSG ? 'Search your own ground' : 'Unlock Lidarman';
+    document.getElementById('tryFreeBtn').hidden =
+      !(deviceUnlocked === false && !store.get('lidarmanTriedDemo'));
     paywallOverlay.classList.add('show');
   }
   function hidePaywall() { paywallOverlay.classList.remove('show'); }
 
   document.getElementById('paywallCloseBtn').addEventListener('click', hidePaywall);
+  // Close the pop-up and point at the free places: open the phone drawer they
+  // live in, bring them into view and flash them so the eye lands there.
+  document.getElementById('tryFreeBtn').addEventListener('click', () => {
+    hidePaywall();
+    document.body.classList.add('drawer-open');
+    const box = document.getElementById('demoBox');
+    if (!box || box.hidden) return;
+    box.scrollIntoView({ block: 'start' });
+    box.classList.remove('demo-flash');
+    void box.offsetWidth;            // restart the animation on a second tap
+    box.classList.add('demo-flash');
+  });
   function startCheckout(btn) {
     // This chain previously had no .catch() and called r.json() directly.
     // The backend is on Render's free tier and spins down, so a cold start
@@ -4166,6 +4209,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         stopSearchProgress();
         searchBtn.disabled = false;
         renderTrialStatus(data);
+        store.set('lidarmanTriedDemo', '1');   // they've seen a scan; stop offering the free places
 
         if (compositeOverlay) map.removeLayer(compositeOverlay);
         currentStyles = data.styles || { composite: data.composite_url };
