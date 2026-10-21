@@ -1407,6 +1407,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       <button class="secondary-btn" id="viewToggleBtn" type="button" disabled>🔦 Lidar view: on</button>
       <button class="secondary-btn" id="spyToggleBtn" type="button" disabled>🔍 Spy lens: off</button>
       <button class="secondary-btn" id="circlesToggleBtn" type="button" disabled>⭕ Circles: on</button>
+      <button class="secondary-btn" id="huntingToggleBtn" type="button" disabled>🦌 Hunting: off</button>
       <button class="secondary-btn" id="view3dBtn" type="button" disabled>🧊 3D view</button>
       <button class="secondary-btn" id="clearBtn" type="button">🧹 Clear</button>
       <button class="secondary-btn" id="soundToggleBtn" type="button">🔊 Sound: on</button>
@@ -1849,7 +1850,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
   // while they are actually on the map, so a hidden layer cannot be selected.
   function nearestTapTarget(containerPoint) {
     let best = null, bestDist = Infinity;
-    [candidateMarkers, vanishedPlaces, oldStructures, oldHospitals, oldMines].forEach((group) => {
+    [candidateMarkers, huntingMarkers, vanishedPlaces, oldStructures, oldHospitals, oldMines].forEach((group) => {
       if (!group || !map.hasLayer(group)) return;
       group.eachLayer((l) => {
         if (!l.__build || !l._point) return;
@@ -3372,6 +3373,9 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
 
   let compositeOverlay = null;
   let candidateMarkers = L.layerGroup().addTo(map);
+  // Saddles and benches for deer hunters. Off until asked for: most visitors
+  // came for old foundations, and these would crowd their circles.
+  const huntingMarkers = L.layerGroup();
   let savedMarkers = L.layerGroup().addTo(map);
 
   const statusEl = document.getElementById('toolStatus');
@@ -4240,6 +4244,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
         styleSelect.value = 'composite';
 
         candidateMarkers.clearLayers();
+        drawHunting(data.hunting || []);
         hideFeatureInfo();   // details for the previous scan's circles
         // A fresh scan always shows its circles. Leaving them hidden because
         // the last search was toggled off would silently drop the result of
@@ -5419,6 +5424,83 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
       + `<span class="trail-legend-src">${foot}</span>`;
   }
 
+  // ---- Hunting: saddles and benches ------------------------------------
+  // The backend reads these off the same bare-earth scan (hunting_terrain.py).
+  // A saddle is a point; a bench is a patch, drawn at its real size so a big
+  // shelf reads bigger than a small one.
+  const SADDLE_COLOR = '#c6ff00', BENCH_COLOR = '#ffffff';
+  const huntingToggleBtn = document.getElementById('huntingToggleBtn');
+  let huntingCount = 0;
+  const huntLegend = L.control({ position: 'bottomleft' });
+  huntLegend.onAdd = function () {
+    const div = L.DomUtil.create('div', 'trail-legend');
+    div.id = 'huntLegend';
+    return div;
+  };
+  function setHuntingLabel() {
+    const on = map.hasLayer(huntingMarkers);
+    huntingToggleBtn.textContent = on
+      ? (huntingCount ? '\u{1F98C} Hunting: on' : '\u{1F98C} Hunting: on (none here)')
+      : '\u{1F98C} Hunting: off';
+    huntingToggleBtn.classList.toggle('layer-on', on);
+  }
+  function syncHuntLegend() {
+    if (!map.hasLayer(huntingMarkers) || !huntingCount) { huntLegend.remove(); return; }
+    huntLegend.addTo(map);
+    const el = document.getElementById('huntLegend');
+    if (el) el.innerHTML = '<span style="font-weight:600;">Hunting</span>'
+      + `<span><i class="dot" style="background:${SADDLE_COLOR}"></i>Saddle: low point on a ridge</span>`
+      + `<span><i class="ring" style="border-color:${BENCH_COLOR}"></i>Bench: flat shelf on a slope</span>`
+      + '<span class="trail-legend-src">Tap one for why it matters.</span>';
+  }
+  function huntingDetails(f) {
+    const coords = `<br><span style="font-family:ui-monospace,monospace; font-size:0.85em; opacity:0.75;">${f.lat.toFixed(6)}, ${f.lon.toFixed(6)}</span>`;
+    const track = `<br><button class="cand-track-btn" data-lat="${f.lat}" data-lon="${f.lon}" style="margin-top:6px; padding:4px 10px; cursor:pointer;">🎯 Track this</button>`;
+    let qr = '';
+    try {
+      const url = `https://www.google.com/maps/search/?api=1&query=${f.lat.toFixed(6)},${f.lon.toFixed(6)}`;
+      qr = `<div style="margin-top:8px; text-align:center;">${qrSvg(url, 104)}`
+         + `<div style="font-size:0.78em; opacity:0.7; margin-top:2px;">scan to open on your phone</div></div>`;
+    } catch (e) { qr = ''; }
+    if (f.type === 'saddle') {
+      return '<b>\u{1F98C} Saddle</b>'
+        + '<br>A low point on a ridge. Deer cross ridges at saddles because it\u2019s the easiest way over, so trails tend to funnel through them.'
+        + '<br><span style="opacity:0.75;">Set up off to the side, downwind of where they\u2019ll come through.</span>'
+        + `<br>${Math.round(f.elev_m)} m above sea level` + coords + track + qr;
+    }
+    return '<b>\u{1F98C} Bench</b>'
+      + `<br>A flat shelf partway up a steep slope, about ${Math.round(f.area_m2)} m\u00b2. Deer walk benches along hillsides and bed on them, out of sight from above and below.`
+      + `<br>${Math.round(f.elev_m)} m above sea level` + coords + track + qr;
+  }
+  // features: an array from a search, or null to clear everything
+  function drawHunting(features) {
+    huntingMarkers.clearLayers();
+    huntingCount = 0;
+    (features || []).forEach((f) => {
+      if (f.lat == null || f.lon == null) return;
+      const layer = f.type === 'saddle'
+        ? L.circleMarker([f.lat, f.lon], { renderer: dotRenderer, radius: 9, color: '#1b1b1b', weight: 2,
+            fillColor: SADDLE_COLOR, fillOpacity: 0.9 })
+        : L.circle([f.lat, f.lon], { renderer: dotRenderer, radius: Math.max(6, Math.sqrt((f.area_m2 || 150) / Math.PI)),
+            color: BENCH_COLOR, weight: 2, fillColor: BENCH_COLOR, fillOpacity: 0.25 });
+      bindDetails(layer, () => huntingDetails(f)).addTo(huntingMarkers);
+      huntingCount++;
+    });
+    huntingToggleBtn.disabled = features == null;
+    if (features == null && map.hasLayer(huntingMarkers)) map.removeLayer(huntingMarkers);
+    setHuntingLabel();
+    syncHuntLegend();
+  }
+  huntingToggleBtn.addEventListener('click', () => {
+    if (map.hasLayer(huntingMarkers)) map.removeLayer(huntingMarkers);
+    else map.addLayer(huntingMarkers);
+    setHuntingLabel();
+    syncHuntLegend();
+    if (map.hasLayer(huntingMarkers) && !huntingCount) {
+      setStatus('No saddles or benches in this scan. The ground here is too flat or too even to have any.');
+    }
+  });
+
   const styleSelect = document.getElementById('styleSelect');
   let currentStyles = {};
   styleSelect.addEventListener('change', () => {
@@ -5456,6 +5538,7 @@ fetch('https://lidarman-backend.onrender.com/api/visit', {
     if (searchPin) { map.removeLayer(searchPin); searchPin = null; }
     candidateMarkers.clearLayers();
     if (!map.hasLayer(candidateMarkers)) map.addLayer(candidateMarkers);
+    drawHunting(null);
     hideFeatureInfo();
     circlesToggleBtn.disabled = true;
     setCirclesLabel();
